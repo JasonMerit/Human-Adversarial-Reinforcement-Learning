@@ -17,49 +17,46 @@ logical_surface = pg.Surface(LOGICAL_SIZE)
 FPS = 4
 clock = pg.time.Clock()
 
-background = (27, 79, 114)
 white = (236, 240, 241)
 green = (0,128,0)
 darkGreen = (0,100,0)
 red = (231, 76, 60)
 darkRed = (241, 148, 138)
-darkBlue = (40, 116, 166)
+blue = (41, 64, 82)
+blue_alt = (34, 49, 63)
 
 font = pg.font.SysFont("Agency FB", 65)
 
 # Tron Bike Class
 class Bike:
     def __init__(self, pos):
-        self.x = pos[0]
-        self.y = pos[1]
+        self.pos = pos
 
     def move(self, xdir, ydir):
-        self.x += xdir
-        self.y += ydir
+        self.pos[0] += xdir
+        self.pos[1] += ydir
 
     # Check if Bike Collides with Trail
     def is_hit(self, walls):
-        if walls[self.y, self.x] != 0 or \
-            self.x < 0 or self.x >= GRID_SIZE or \
-                self.y < 0 or self.y >= GRID_SIZE:
+        if walls[self.pos[1], self.pos[0]] != 0 or \
+            self.pos[0] < 0 or self.pos[0] >= GRID_SIZE or \
+                self.pos[1] < 0 or self.pos[1] >= GRID_SIZE:
             return True
 
 class Tron:
     
     def reset(self):
         self.walls = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)
-        self.heads = [[1, GRID_SIZE // 2], [GRID_SIZE - 2, GRID_SIZE // 2]]
-        
-        self.bike1 = Bike(self.heads[0])
-        self.bike2 = Bike(self.heads[1])
+        self.bike1 = Bike([1, GRID_SIZE // 2])
+        self.bike2 = Bike([GRID_SIZE - 2, GRID_SIZE // 2])
 
         self.x1 = 1
         self.y1 = self.y2 = 0
         self.x2 = -1
     
     def move_bikes(self):
-        self.walls[self.bike1.y, self.bike1.x] = 1
-        self.walls[self.bike2.y, self.bike2.x] = 2
+        self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
+        self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
         self.bike1.move(self.x1, self.y1)
         self.bike2.move(self.x2, self.y2)
     
@@ -103,51 +100,51 @@ class Tron:
                         self.x1 = 1
                         self.y1 = 0
 
+        
+        
         self.move_bikes()
-        self.heads = [[self.bike1.x, self.bike1.y], [self.bike2.x, self.bike2.y]]  # For drawing heads
-        draw(self.walls, self.heads)
 
         bike1_hit = self.bike1.is_hit(self.walls)
         bike2_hit = self.bike2.is_hit(self.walls)
 
         if not (bike1_hit or bike2_hit):
-            return
+            return 0
         if bike1_hit:
             if bike2_hit:
-                self.gameOver(0)
+                return 3
             else:
-                self.gameOver(1)
+                return 1
         else:
-            self.gameOver(2)
+            return 2
                     
-    def gameOver(self, number):
-        if number == 0:
-            text = font.render("Both the Players Collided!", True, white)
-        else:
-            text = font.render("Player %d Lost the Tron!" %(number), True, white)
-        while True:
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    self.close()
-                if event.type == pg.KEYDOWN:
-                    if event.key == pg.K_q or event.key == pg.K_ESCAPE:
-                        self.close()
-                    if event.key == pg.K_r:
-                        self.reset()
-                        return
-
-            display.blit(text, (50, GRID_SIZE/2))
-            
-            pg.display.update()
-            clock.tick(60)
-
-    def close(self):
+    def close(self):        
         pg.quit()
         sys.exit()
 
-def draw(walls, heads):  # TODO Draw once and have bike in seperate layer
+def gameOver(number):
+    if number == 3:
+        text = font.render("Both Actors Collided!", True, white)
+    else:
+        text = font.render("Actor %d Lost!" %(number), True, white)
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                tron.close()
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_q or event.key == pg.K_ESCAPE:
+                    tron.close()
+                if event.key == pg.K_r:
+                    tron.reset()
+                    return
+
+        display.blit(text, (50, GRID_SIZE/2))
+        
+        pg.display.update()
+        clock.tick(60)
+
+
+def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in seperate layer
     # Draw checkered grid background
-    logical_surface.fill(background)
     for x in range(0, GRID_SIZE):
         for y in range(0, GRID_SIZE):
             rect = pg.Rect(x, y, 1, 1)
@@ -156,13 +153,13 @@ def draw(walls, heads):  # TODO Draw once and have bike in seperate layer
             elif walls[y, x] == 2:
                 pg.draw.rect(logical_surface, green, rect)
             elif (x + y) % 2 == 0:
-                pg.draw.rect(logical_surface, (34, 49, 63), rect)
+                pg.draw.rect(logical_surface, blue, rect)
             else:
-                pg.draw.rect(logical_surface, (41, 64, 82), rect)
+                pg.draw.rect(logical_surface, blue_alt, rect)
     
     # Draw heads
-    pg.draw.rect(logical_surface, darkRed, (heads[0][0], heads[0][1], 1, 1))
-    pg.draw.rect(logical_surface, darkGreen, (heads[1][0], heads[1][1], 1, 1))
+    pg.draw.rect(logical_surface, darkRed, (bike1_pos[0], bike1_pos[1], 1, 1))
+    pg.draw.rect(logical_surface, darkGreen, (bike2_pos[0], bike2_pos[1], 1, 1))
     scaled = pg.transform.scale(logical_surface, WINDOW_SIZE)
     display.blit(scaled, (0, 0))
 
@@ -172,11 +169,16 @@ def draw(walls, heads):  # TODO Draw once and have bike in seperate layer
 if __name__ == "__main__":
     tron = Tron()
     tron.reset()
-
     
     while True:
-        tron.tick()
-        # print(tron.walls[5], tron.walls[tron.bike1.y, tron.bike1.x])
+        result = tron.tick()
+        
+        state = (tron.walls, tron.bike1.pos, tron.bike2.pos)
+        draw(*state)
+        
+        if result != 0:
+            gameOver(result)
+            tron.reset()
         
         
 
