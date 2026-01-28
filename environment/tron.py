@@ -1,4 +1,3 @@
-from pyclbr import Class
 import pygame as pg
 import sys
 import numpy as np
@@ -98,7 +97,6 @@ def gameOver(number):
         pg.display.update()
         clock.tick(60)
 
-
 def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in seperate layer
     # Draw checkered grid background
     for x in range(0, GRID_SIZE):
@@ -157,8 +155,6 @@ def get_inputs(dir1, dir2):
                     dir1 = (1, 0)
 
     return dir1, dir2
-
-
 
 if __name__ == "__main__":
     tron = Tron()
