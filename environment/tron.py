@@ -102,19 +102,18 @@ def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in sepera
     # Draw checkered grid background
     for x in range(0, GRID_SIZE):
         for y in range(0, GRID_SIZE):
-            rect = pg.Rect(x, y, 1, 1)
             if walls[y, x] == 1:
-                pg.draw.rect(logical_surface, red, rect)
+                logical_surface.set_at((x, y), red)
             elif walls[y, x] == 2:
-                pg.draw.rect(logical_surface, green, rect)
+                logical_surface.set_at((x, y), green)
             elif (x + y) % 2 == 0:
-                pg.draw.rect(logical_surface, blue, rect)
+                logical_surface.set_at((x, y), blue)
             else:
-                pg.draw.rect(logical_surface, blue_alt, rect)
+                logical_surface.set_at((x, y), blue_alt)
     
     # Draw heads
-    pg.draw.rect(logical_surface, darkRed, (bike1_pos[0], bike1_pos[1], 1, 1))
-    pg.draw.rect(logical_surface, darkGreen, (bike2_pos[0], bike2_pos[1], 1, 1))
+    logical_surface.set_at((bike1_pos[0], bike1_pos[1]), darkRed)
+    logical_surface.set_at((bike2_pos[0], bike2_pos[1]), darkGreen)
     scaled = pg.transform.scale(logical_surface, WINDOW_SIZE)
     display.blit(scaled, (0, 0))
 
