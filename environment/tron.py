@@ -37,10 +37,10 @@ class Bike:
 
     # Check if Bike Collides with Trail
     def is_hit(self, walls):
-        print(self.pos)
-        if self.pos[1] < 0 or self.pos[1] >= GRID_SIZE or \
-            self.pos[0] < 0 or self.pos[0] >= GRID_SIZE or \
-            walls[self.pos[1], self.pos[0]] != 0:
+        x, y = self.pos
+        if y < 0 or y >= GRID_SIZE or \
+            x < 0 or x >= GRID_SIZE or \
+            walls[y, x] != 0:
             return True
 
 class Tron:
@@ -50,31 +50,32 @@ class Tron:
         self.bike1 = Bike([1, GRID_SIZE // 2])
         self.bike2 = Bike([GRID_SIZE - 2, GRID_SIZE // 2])
 
-    def move_bikes(self, dir1, dir2):
+    def tick(self, dir1, dir2):        
+        self._move_bikes(dir1, dir2)
+        return self._check_collisions()
+    
+    def _move_bikes(self, dir1, dir2):
         self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
         self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
         self.bike1.move(dir1[0], dir1[1])
         self.bike2.move(dir2[0], dir2[1])
     
-    def tick(self, dir1, dir2):        
-        self.move_bikes(dir1, dir2)
-
+    def _check_collisions(self):
         bike1_hit = self.bike1.is_hit(self.walls)
         bike2_hit = self.bike2.is_hit(self.walls)
 
-        if not (bike1_hit or bike2_hit):
-            return 0
+        if bike1_hit and bike2_hit:
+            return 3  
         if bike1_hit:
-            if bike2_hit:
-                return 3
-            else:
-                return 1
-        else:
-            return 2
+            return 1  
+        if bike2_hit:
+            return 2  
+        return 0
+        
                     
-    def close(self):        
-        pg.quit()
-        sys.exit()
+def close():        
+    pg.quit()
+    sys.exit()
 
 def gameOver(number):
     if number == 3:
@@ -84,10 +85,10 @@ def gameOver(number):
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                tron.close()
+                close()
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_q or event.key == pg.K_ESCAPE:
-                    tron.close()
+                    close()
                 if event.key == pg.K_r:
                     tron.reset()
                     return
@@ -123,10 +124,10 @@ def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in sepera
 def get_inputs(dir1, dir2):
     for event in pg.event.get():
         if event.type == pg.QUIT:
-            tron.close()
+            close()
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_q or event.key == pg.K_ESCAPE:
-                tron.close()
+                close()
 
             if event.key == pg.K_UP:
                 if not (dir2 == (0, 1)):
