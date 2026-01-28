@@ -38,9 +38,10 @@ class Bike:
 
     # Check if Bike Collides with Trail
     def is_hit(self, walls):
-        if walls[self.pos[1], self.pos[0]] != 0 or \
+        print(self.pos)
+        if self.pos[1] < 0 or self.pos[1] >= GRID_SIZE or \
             self.pos[0] < 0 or self.pos[0] >= GRID_SIZE or \
-                self.pos[1] < 0 or self.pos[1] >= GRID_SIZE:
+            walls[self.pos[1], self.pos[0]] != 0:
             return True
 
 class Tron:
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     tron.reset()
     dir1 = (1, 0)
     dir2 = (-1, 0)
-    
+
     while True:
         dir1, dir2 = get_inputs(dir1, dir2)
         result = tron.tick(dir1, dir2)
