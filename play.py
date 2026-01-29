@@ -51,8 +51,8 @@ def gameOver(number):
         clock.tick(60)
 
 def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in seperate layer
-    for x in range(0, GRID_SIZE):
-        for y in range(0, GRID_SIZE):
+    for x in range(GRID_SIZE):
+        for y in range(GRID_SIZE):
             if walls[y, x] == 1:
                 logical_surface.set_at((x, y), red)
             elif walls[y, x] == 2:
