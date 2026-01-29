@@ -6,6 +6,7 @@ from tron import Tron
 class TronEnv(gym.Env):
     
     action_mapping = [(1,0), (-1,0), (0,1), (0,-1)]  # right, left, down, up
+    reward_mapping = {0: 0.0, 1: -1.0, 2: 1, 3: 0.5}  # lose, win, draw
 
     def __init__(self, size=10, render=False):
         self.action_space = gym.spaces.Discrete(4)
@@ -49,7 +50,7 @@ class TronEnv(gym.Env):
             self.prev1 = self.tron.bike1.pos
             self.prev2 = self.tron.bike2.pos
             self.render()
-        return self._get_state()
+        return self._get_state(), {}
     
     def step(self, action):
         self.dir1 = self.action_mapping[action]
@@ -58,9 +59,10 @@ class TronEnv(gym.Env):
     
         result = self.tron.tick(self.dir1, self.dir2)
         state = self._get_state()
+        reward = self.reward_mapping[result]
         done = result != 0
         info = {'result': result}
-        return state, done, info
+        return state, reward, done, False, info
     
     def _get_state(self):
         return (self.tron.walls.copy(), 
@@ -102,9 +104,10 @@ if __name__ == "__main__":
     while True:
         # action = np.random.randint(0, 4)
         action = 0
-        state, done, info = env.step(action)
+        state, reward, done, _, info = env.step(action)
         env.render()
-
+        print(state)
         if done:
             env.reset()
+            exit()
 

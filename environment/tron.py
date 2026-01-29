@@ -26,7 +26,18 @@ class Tron:
         self.bike1 = Bike([1, self.grid_size // 2])
         self.bike2 = Bike([self.grid_size - 2, self.grid_size // 2])
 
-    def tick(self, dir1, dir2):        
+    def tick(self, dir1, dir2):
+        """
+        Updates the game state by moving the bikes and checking for collisions.
+        
+        :param dir1: Direction for bike1 as a tuple (dx, dy)
+        :param dir2: Direction for bike2 as a tuple (dx, dy)
+        :return: An integer indicating the result of the tick:
+                 0 - No collision
+                 1 - Bike1 collided
+                 2 - Bike2 collided
+                 3 - Both bikes collided (draw)
+        """      
         self._move_bikes(dir1, dir2)
         return self._check_collisions()
     
