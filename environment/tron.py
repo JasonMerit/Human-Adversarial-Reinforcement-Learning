@@ -26,8 +26,8 @@ blue_alt = (34, 49, 63)
 
 font = pg.font.SysFont("Agency FB", 65)
 
-# Tron Bike Class
 class Bike:
+    
     def __init__(self, pos):
         self.pos = pos
 
@@ -35,7 +35,6 @@ class Bike:
         self.pos[0] += dx
         self.pos[1] += dy
 
-    # Check if Bike Collides with Trail
     def is_hit(self, walls):
         x, y = self.pos
         if y < 0 or y >= GRID_SIZE or \
@@ -44,7 +43,7 @@ class Bike:
             return True
 
 class Tron:
-    
+
     def reset(self):
         self.walls = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)
         self.bike1 = Bike([1, GRID_SIZE // 2])
@@ -64,7 +63,7 @@ class Tron:
         bike1_hit = self.bike1.is_hit(self.walls)
         bike2_hit = self.bike2.is_hit(self.walls)
 
-        if bike1_hit and bike2_hit:
+        if (bike1_hit and bike2_hit) or (self.bike1.pos == self.bike2.pos):
             return 3  
         if bike1_hit:
             return 1  
@@ -99,7 +98,6 @@ def gameOver(number):
         clock.tick(60)
 
 def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in seperate layer
-    # Draw checkered grid background
     for x in range(0, GRID_SIZE):
         for y in range(0, GRID_SIZE):
             if walls[y, x] == 1:
@@ -114,6 +112,7 @@ def draw(walls, bike1_pos, bike2_pos):  # TODO Draw once and have bike in sepera
     # Draw heads
     logical_surface.set_at((bike1_pos[0], bike1_pos[1]), darkRed)
     logical_surface.set_at((bike2_pos[0], bike2_pos[1]), darkGreen)
+    
     scaled = pg.transform.scale(logical_surface, WINDOW_SIZE)
     display.blit(scaled, (0, 0))
 
