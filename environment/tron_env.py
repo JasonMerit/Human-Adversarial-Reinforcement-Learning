@@ -1,12 +1,12 @@
 import numpy as np
 import gymnasium as gym
 
-from tron import Tron
+from environment.tron import Tron
 
 class TronEnv(gym.Env):
     
     action_mapping = [(1,0), (-1,0), (0,1), (0,-1)]  # right, left, down, up
-    reward_mapping = {0: 0.0, 1: -1.0, 2: 1, 3: 0.5}  # lose, win, draw
+    reward_mapping = [0.0, -1.0, 1, 0.5]  # playing, lose, win, draw
 
     def __init__(self, size=10, render=False):
         self.action_space = gym.spaces.Discrete(4)
@@ -36,7 +36,8 @@ class TronEnv(gym.Env):
             self.clock = self.pg.time.Clock()
             self.fps = 4
     
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         self.tron.reset()
         self.dir1 = (1, 0)
         self.dir2 = (-1, 0)
@@ -78,7 +79,7 @@ class TronEnv(gym.Env):
         return state
     
     def render(self):
-        assert hasattr(self, 'pg'), "Render not initialized. Set render=True in constructor."
+        assert hasattr(self, 'pg'), "Jason! Render not initialized. Set render=True in constructor."
         
         self.screen.blit(self.background, (0, 0))
 
@@ -104,18 +105,5 @@ class TronEnv(gym.Env):
 
         self.clock.tick(self.fps)
 
-if __name__ == "__main__":
-    env = TronEnv(size=10, render=True)
-    env.reset()
-    
-    done = False
-    while True:
-        # action = np.random.randint(0, 4)
-        action = 0
-        state, reward, done, _, info = env.step(action)
-        env.render()
-        print(state.shape)
-        if done:
-            env.reset()
-            exit()
+
 
