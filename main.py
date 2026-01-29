@@ -9,14 +9,12 @@
 
 from environment.tron_env import TronEnv, TronView
 env = TronEnv(size=10)
-# env = TronView(env)
+env = TronView(env, 1)
 env.reset()
 
 done = False
 while True:
-    # action = np.random.randint(0, 4)
     action = 0
     state, reward, done, _, info = env.step(action)
-    # env.render()
     if done:
         env.reset()

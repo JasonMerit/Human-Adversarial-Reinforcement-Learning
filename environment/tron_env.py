@@ -9,10 +9,9 @@ class TronEnv(gym.Env):
     reward_mapping = [0.0, -1.0, 1, 0.5]  # playing, lose, win, draw
 
     def __init__(self, size=10):
+        self.tron = Tron(size)
         self.action_space = gym.spaces.Discrete(4)
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(size, size, 3), dtype=float)
-
-        self.tron = Tron(size)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -25,37 +24,43 @@ class TronEnv(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action), "Jason! Invalid Action"
         self.dir1 = self.action_mapping[action]
-        self.dir2 = self.action_mapping[1]
+        self.dir2 = self._get_opponent_action()
         # self.dir2 = self.action_mapping[np.random.randint(0, 4)]
     
         result = self.tron.tick(self.dir1, self.dir2)
-        state = self._get_state()
-        reward = self.reward_mapping[result]
         done = result != 0
+        state = self._get_state(done)
+        reward = self.reward_mapping[result]
         info = {'result': result}
         return state, reward, done, False, info
     
-    def _get_state(self):
+    def _get_state(self, done=False):
         walls = self.tron.walls.copy()
         occ = (walls > 0).astype(float)
 
         bike1 = np.zeros_like(occ)
-        x1, y1 = self.tron.bike1.pos
-        bike1[y1, x1] = 1.0
+        bike2 = np.zeros_like(occ)  
+        if not done:
+            x1, y1 = self.tron.bike1.pos
+            bike1[y1, x1] = 1.0
 
-        bike2 = np.zeros_like(occ)
-        x2, y2 = self.tron.bike2.pos
-        bike2[y2, x2] = 1.0
+            x2, y2 = self.tron.bike2.pos
+            bike2[y2, x2] = 1.0  # Out of bounds - Skip if done.
 
         # Stack into CNN input
         state = np.stack([occ, bike1, bike2], axis=-1)
         assert state.shape == self.observation_space.shape, "Jason! State shape mismatch"
         return state
     
+    def _get_opponent_action(self):
+        rnd = np.random.randint(0, 4)
+        rnd = 0
+        return self.action_mapping[rnd]
+    
     
 class TronView(gym.Wrapper):
     
-    def __init__(self, env):
+    def __init__(self, env, fps=4):
         super().__init__(env)
         import pygame
         
@@ -78,7 +83,7 @@ class TronView(gym.Wrapper):
         self.pg.display.set_caption("Tron Game")
         
         self.clock = self.pg.time.Clock()
-        self.fps = 4
+        self.fps = fps
 
     def reset(self, **kwargs):
         state, info = self.env.reset(**kwargs)
