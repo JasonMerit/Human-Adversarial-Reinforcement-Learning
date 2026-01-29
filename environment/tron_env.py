@@ -10,12 +10,7 @@ class TronEnv(gym.Env):
 
     def __init__(self, size=10, render=False):
         self.action_space = gym.spaces.Discrete(4)
-        self.observation_space = gym.spaces.Dict({
-            'walls': gym.spaces.Box(low=0, high=2, shape=(size, size), dtype=np.int8),
-            'bike1_pos': gym.spaces.Box(low=0, high=size-1, shape=(2,), dtype=np.int8),
-            'bike2_pos': gym.spaces.Box(low=0, high=size-1, shape=(2,), dtype=np.int8),
-        })
-
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(size, size, 3), dtype=float)
 
         self.tron = Tron(size)
 
@@ -53,6 +48,7 @@ class TronEnv(gym.Env):
         return self._get_state(), {}
     
     def step(self, action):
+        assert self.action_space.contains(action), "Jason! Invalid Action"
         self.dir1 = self.action_mapping[action]
         self.dir2 = self.action_mapping[1]
         # self.dir2 = self.action_mapping[np.random.randint(0, 4)]
@@ -65,9 +61,21 @@ class TronEnv(gym.Env):
         return state, reward, done, False, info
     
     def _get_state(self):
-        return (self.tron.walls.copy(), 
-                tuple(self.tron.bike1.pos), 
-                tuple(self.tron.bike2.pos))
+        walls = self.tron.walls.copy()
+        occ = (walls > 0).astype(float)
+
+        bike1 = np.zeros_like(occ)
+        x1, y1 = self.tron.bike1.pos
+        bike1[y1, x1] = 1.0
+
+        bike2 = np.zeros_like(occ)
+        x2, y2 = self.tron.bike2.pos
+        bike2[y2, x2] = 1.0
+
+        # Stack into CNN input
+        state = np.stack([occ, bike1, bike2], axis=-1)
+        assert state.shape == self.observation_space.shape, "Jason! State shape mismatch"
+        return state
     
     def render(self):
         assert hasattr(self, 'pg'), "Render not initialized. Set render=True in constructor."
@@ -106,7 +114,7 @@ if __name__ == "__main__":
         action = 0
         state, reward, done, _, info = env.step(action)
         env.render()
-        print(state)
+        print(state.shape)
         if done:
             env.reset()
             exit()
