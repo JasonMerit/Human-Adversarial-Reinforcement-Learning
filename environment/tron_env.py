@@ -1,11 +1,11 @@
 import numpy as np
 import gymnasium as gym
 
-from environment.tron import Tron
+from environment.tron import Bike, Tron
 
 class TronEnv(gym.Env):
     
-    action_mapping = [(1,0), (-1,0), (0,1), (0,-1)]  # right, left, down, up
+    action_mapping = [(0, -1), (1, 0), (0, 1), (-1, 0)]  # up, right, down, left
     reward_mapping = [0.0, -1.0, 1, 0.5]  # playing, lose, win, draw
 
     def __init__(self, size=10):
@@ -16,18 +16,17 @@ class TronEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.tron.reset()
-        self.dir1 = (1, 0)
-        self.dir2 = (-1, 0)
+        self.last_opponent_action = 0
+        # self.last_opponent_action = 3  # Start moving left
             
-        return self._get_state(), {}
+        return self._get_state(), {'result': 0}
     
     def step(self, action):
         assert self.action_space.contains(action), "Jason! Invalid Action"
-        self.dir1 = self.action_mapping[action]
-        self.dir2 = self._get_opponent_action()
-        # self.dir2 = self.action_mapping[np.random.randint(0, 4)]
+        dir1 = self.action_mapping[action]
+        dir2 = self._get_opponent_action()
     
-        result = self.tron.tick(self.dir1, self.dir2)
+        result = self.tron.tick(dir1, dir2)
         done = result != 0
         state = self._get_state(done)
         reward = self.reward_mapping[result]
@@ -53,9 +52,27 @@ class TronEnv(gym.Env):
         return state
     
     def _get_opponent_action(self):
-        rnd = np.random.randint(0, 4)
-        rnd = 0
-        return self.action_mapping[rnd]
+        """
+        Semi-deterministic agent that repeats its last action unless that action is invalid.
+        In that case, it randomly selects a valid action.
+
+        :return: Direction tuple (dx, dy) for opponent bike
+        """
+        action = self.last_opponent_action
+        possible_actions = {0, 1, 2, 3} - {action, (action + 2) % 4}
+
+        while not self._is_valid_action_bike2(action) and len(possible_actions) > 0:
+            action = self.np_random.choice(list(possible_actions))
+            possible_actions.remove(action)
+
+        self.last_opponent_action = action
+        return self.action_mapping[action]
+    
+    def _is_valid_action_bike2(self, action):
+        dir = self.action_mapping[action]
+        pos = self.tron.bike2.pos
+        new_pos = [pos[0] + dir[0], pos[1] + dir[1]]
+        return not Bike.is_hit(new_pos, self.tron.walls)
     
     
 class TronView(gym.Wrapper):
@@ -98,7 +115,7 @@ class TronView(gym.Wrapper):
         return state, info
     
     def step(self, action):
-        state, reward, done, truncated, info = self.env.step(action)
+        state, reward, done, _, info = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
 
@@ -123,7 +140,7 @@ class TronView(gym.Wrapper):
 
         self.clock.tick(self.fps)
         
-        return state, reward, done, truncated, info
+        return state, reward, done, _, info
 
     def _render(self):
         self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
