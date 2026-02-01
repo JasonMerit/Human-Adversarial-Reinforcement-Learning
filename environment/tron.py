@@ -3,11 +3,10 @@ import numpy as np
 class Bike:
     
     def __init__(self, pos):
-        self.pos = pos
+        self.pos = np.array(pos, dtype=int)
 
-    def move(self, dx, dy):
-        self.pos[0] += dx
-        self.pos[1] += dy
+    def move(self, vel):
+        self.pos += vel
 
     @staticmethod
     def is_hit(pos, walls):
@@ -42,14 +41,14 @@ class Tron:
     def _move_bikes(self, dir1, dir2):
         self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
         self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
-        self.bike1.move(dir1[0], dir1[1])
-        self.bike2.move(dir2[0], dir2[1])
+        self.bike1.move(dir1)
+        self.bike2.move(dir2)
 
     def _check_collisions(self):
         bike1_hit = Bike.is_hit(self.bike1.pos, self.walls)
         bike2_hit = Bike.is_hit(self.bike2.pos, self.walls)
 
-        if (bike1_hit and bike2_hit) or (self.bike1.pos == self.bike2.pos):
+        if (bike1_hit and bike2_hit) or all(self.bike1.pos == self.bike2.pos):
             return 3  
         if bike1_hit:
             return 1  
