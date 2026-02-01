@@ -15,7 +15,7 @@ env = TronEnv(DeterministicAgent(1), size=10)
 env = TronView(env, 10)
 state, _ = env.reset()
 
-agent = DeterministicAgent(3, True)
+agent = DeterministicAgent(3)
 
 done = False
 while True:
