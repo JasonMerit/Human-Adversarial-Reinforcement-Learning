@@ -8,14 +8,19 @@
 # check_env(env.unwrapped)
 
 from environment.tron_env import TronEnv, TronView
-env = TronEnv(size=10)
-env = TronView(env, 5)
-env.reset()
+from agents.deterministic import DeterministicAgent
+
+seed = 523653
+env = TronEnv(DeterministicAgent(1), size=10)
+env = TronView(env, 10)
+state, _ = env.reset()
+
+agent = DeterministicAgent(3, True)
 
 done = False
 while True:
-    action = 1
+    action = agent.compute_single_action(state)
     state, reward, done, _, info = env.step(action)
     if done:
-        # print(info["result"])
         env.reset()
+        agent.reset()
