@@ -1,7 +1,5 @@
 import numpy as np
 
-from environment.tron import Bike
-
 class DeterministicAgent:
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
 
@@ -45,4 +43,16 @@ class DeterministicAgent:
 
     def _is_valid_action(self, action, walls, pos):
         new_pos = pos + self.action_mapping[action]
-        return not Bike.is_hit(new_pos, walls)
+        x, y = new_pos
+        return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
+
+class Random:
+
+    def __init__(self, env):
+        self.action_space = env.action_space
+
+    def compute_single_action(self, state):
+        return self.action_space.sample()
+
+    def reset(self, seed=None):
+        self.np_random = np.random.RandomState(seed)

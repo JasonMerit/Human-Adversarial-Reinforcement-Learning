@@ -8,9 +8,8 @@ class Bike:
     def move(self, vel):
         self.pos += vel
 
-    @staticmethod
-    def is_hit(pos, walls):
-        x, y = pos
+    def is_hit(self, walls):
+        x, y = self.pos
         return not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0
 
 class Tron:
@@ -47,8 +46,8 @@ class Tron:
         self.bike2.move(dir2)
 
     def _check_collisions(self):
-        bike1_hit = Bike.is_hit(self.bike1.pos, self.walls)
-        bike2_hit = Bike.is_hit(self.bike2.pos, self.walls)
+        bike1_hit = self.bike1.is_hit(self.walls)
+        bike2_hit = self.bike2.is_hit(self.walls)
 
         if (bike1_hit and bike2_hit) or all(self.bike1.pos == self.bike2.pos):
             return 3  
