@@ -18,8 +18,8 @@ class TronView(gym.Wrapper):
         self.pg.init()
 
         self.scale = scale
-        width = env.tron.width
-        height = env.tron.height
+        width = env.unwrapped.tron.width
+        height = env.unwrapped.tron.height
         self.window_size = (width * self.scale, height * self.scale)
         self.screen = self.pg.display.set_mode(self.window_size)
         self.trails_screen = self.pg.Surface((width, height), flags=self.pg.SRCALPHA)
@@ -40,7 +40,6 @@ class TronView(gym.Wrapper):
     def view(state, scale):
         import pygame as pg
         pg.init()
-        clock = pg.time.Clock()
 
         height, width, _ = state.shape
         window_size = (width * scale, height * scale)
@@ -104,8 +103,8 @@ class TronView(gym.Wrapper):
         self.trails_screen.fill((0, 0, 0, 0))  # Clear trails with transparency
         self._render()
     
-        self.prev1 = self.env.tron.bike1.pos.copy()
-        self.prev2 = self.env.tron.bike2.pos.copy()
+        self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()
+        self.prev2 = self.env.unwrapped.tron.bike2.pos.copy()
 
         return state, info
     
@@ -113,14 +112,14 @@ class TronView(gym.Wrapper):
         state, reward, done, _, info = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
-        self.trails_screen.set_at((self.env.tron.bike1.pos[0], self.env.tron.bike1.pos[1]), self.green_alt)
-        self.trails_screen.set_at((self.env.tron.bike2.pos[0], self.env.tron.bike2.pos[1]), self.red_alt)
+        self.trails_screen.set_at((self.env.unwrapped.tron.bike1.pos[0], self.env.unwrapped.tron.bike1.pos[1]), self.green_alt)
+        self.trails_screen.set_at((self.env.unwrapped.tron.bike2.pos[0], self.env.unwrapped.tron.bike2.pos[1]), self.red_alt)
         self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
         self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
         self._render()
 
-        self.prev1 = self.env.tron.bike1.pos.copy()
-        self.prev2 = self.env.tron.bike2.pos.copy()
+        self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()
+        self.prev2 = self.env.unwrapped.tron.bike2.pos.copy()
 
         # Input
         for event in self.pg.event.get():
