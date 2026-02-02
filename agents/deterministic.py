@@ -38,7 +38,7 @@ class DeterministicAgent:
         head = state[:, :, 1]  # Bike 1
         try:
             y, x = np.argwhere(head == 1)[0]  # Flipped coordinates
-            pos = np.array([x, y])
+            pos = np.array([x, y], dtype=int)
         except IndexError:
             return self.first_action  # Terminal state - pos is out of bounds
         return self._get_action(walls, pos)

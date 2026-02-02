@@ -9,10 +9,10 @@ class TronEnv(gym.Env):
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
     reward_mapping = [0.0, -1.0, 1, 0.5]  # playing, lose, win, draw
 
-    def __init__(self, opponent, size=10):
-        self.tron = Tron(size)
+    def __init__(self, opponent, width, height):
+        self.tron = Tron(width, height)
         self.action_space = gym.spaces.Discrete(4)
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(size, size, 3), dtype=float)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(height, width, 3), dtype=float)
         self.opponent = opponent
 
     def reset(self, seed=None, options=None):
@@ -55,7 +55,7 @@ class TronEnv(gym.Env):
     
 class TronView(gym.Wrapper):
     
-    def __init__(self, env, fps=4, scale=50):
+    def __init__(self, env, fps, scale):
         super().__init__(env)
         import pygame
         
@@ -63,14 +63,15 @@ class TronView(gym.Wrapper):
         self.pg.init()
 
         self.scale = scale
-        size = env.tron.size
-        self.window_size = (size * self.scale, size * self.scale)
+        width = env.tron.width
+        height = env.tron.height
+        self.window_size = (width * self.scale, height * self.scale)
         self.screen = self.pg.display.set_mode(self.window_size)
-        self.trails_screen = self.pg.Surface((size, size), flags=self.pg.SRCALPHA)
+        self.trails_screen = self.pg.Surface((width, height), flags=self.pg.SRCALPHA)
 
-        background = self.pg.Surface((size, size))
-        for x in range(size):
-            for y in range(size):
+        background = self.pg.Surface((width, height))
+        for x in range(width):
+            for y in range(height):
                 color = (34, 49, 63) if (x + y) % 2 else (41, 64, 82)
                 background.set_at((x, y), color)
         self.background = self.pg.transform.scale(background, self.window_size)

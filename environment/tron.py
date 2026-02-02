@@ -15,13 +15,15 @@ class Bike:
 
 class Tron:
     
-    def __init__(self, size=10):
-        self.size = size
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+
 
     def reset(self):
-        self.walls = np.zeros((self.size, self.size), dtype=int)
-        self.bike1 = Bike([1, self.size // 2])
-        self.bike2 = Bike([self.size - 2, self.size // 2])
+        self.walls = np.zeros((self.height, self.width), dtype=int)
+        self.bike1 = Bike([1, self.height // 2])
+        self.bike2 = Bike([self.width - 2, self.height // 2])
 
     def tick(self, dir1, dir2):
         """

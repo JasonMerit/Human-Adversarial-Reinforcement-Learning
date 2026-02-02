@@ -11,8 +11,8 @@ from environment.tron_env import TronEnv, TronView
 from agents.deterministic import DeterministicAgent
 
 seed = 523653
-env = TronEnv(DeterministicAgent(1), size=10)
-env = TronView(env, 10)
+env = TronEnv(DeterministicAgent(1), width=10, height=11)
+env = TronView(env, fps=10, scale=70)
 state, _ = env.reset()
 
 agent = DeterministicAgent(3)
