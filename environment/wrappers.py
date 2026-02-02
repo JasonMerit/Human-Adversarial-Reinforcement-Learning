@@ -71,8 +71,11 @@ class TronView(gym.Wrapper):
 
         screen.blit(pg.transform.scale(surface, window_size), (0, 0))
         pg.display.flip()
-
-        # Input
+        
+    @staticmethod
+    def wait_for_keypress():
+        import pygame as pg
+        clock = pg.time.Clock()
         while True:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -82,8 +85,17 @@ class TronView(gym.Wrapper):
                     if event.key == pg.K_q or event.key == pg.K_ESCAPE:
                         pg.quit()
                         exit()
+                    if event.key == pg.K_SPACE:
+                        return
+                    if event.key == pg.K_LEFT:
+                        return 0
+                    if event.key == pg.K_RIGHT:
+                        return 2
+                    if event.key == pg.K_UP:
+                        return 1
 
             clock.tick(30)
+        
 
     def reset(self, seed=None, options=None):
         state, info = self.env.reset(seed=seed, options=options)
@@ -133,17 +145,29 @@ class TronView(gym.Wrapper):
         self.pg.display.flip()
 
 
-class TronEgo(gym.ObservationWrapper):
+class TronEgo(gym.Wrapper):
+    """
+    Transforms observation space to rotate view such that agent always heads upwards.
+    Also reduces action space to [left, forward, right] relative to agent's perspective.
+
+    orientation in [up, right, down, left]
+    """
+
     def __init__(self, env):
         super().__init__(env)
+        self.original_action_space = env.action_space
+        self.action_space = gym.spaces.Discrete(3)
+
+    def reset(self, **kwargs):
+        state, info = self.env.reset(**kwargs)
+        self.orientation = 1  # First facing right and generally equal to absolute direction
+        return self.observation(state), info
+
+    def step(self, action):
+        assert self.action_space.contains(action), "Jason! Invalid action"
+        self.orientation = (self.orientation + (action - 1)) % 4  # Because (left, forward, right)
+        state, reward, done, _, info = self.env.step(self.orientation)
+        return self.observation(state), reward, done, _, info
 
     def observation(self, obs):
-        h, w, c = obs.shape  # height, width, channels
-        transformed = np.rot90(obs, k=-1, axes=(0, 1))
-        assert transformed.shape == (w, h, c), "Transformation failed"
-        return transformed
-    
-
-if __name__ == "__main__":
-    state = np.load("state.npy")
-    TronView.view(state, scale=70)
+        return np.rot90(obs, k=self.orientation, axes=(0, 1))
