@@ -101,6 +101,15 @@ class TronView(gym.Wrapper):
 
         self.screen.blit(self.background, (0, 0))
         self.trails_screen.fill((0, 0, 0, 0))  # Clear trails with transparency
+
+        # Fill in walls (neccesary after first move is made before env starts)
+        walls = self.env.unwrapped.tron.walls
+        for y, row in enumerate(walls):
+            for x, cell in enumerate(row):
+                if cell == 0: continue
+                color = self.green if cell == 1 else self.red
+                self.trails_screen.set_at((x, y), color)
+                
         self._render()
     
         self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()

@@ -17,7 +17,7 @@ class TronEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.tron.reset()
-        self.tron.tick(self.action_mapping[1], self.action_mapping[3])
+        self.tron.tick(self.action_mapping[1], self.action_mapping[3])  # First facing
         self.opponent.reset(seed=seed)
             
         return self._get_state(), {'result': 0}

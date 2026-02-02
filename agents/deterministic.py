@@ -3,8 +3,8 @@ import numpy as np
 class DeterministicAgent:
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
 
-    def __init__(self, first_action):
-        self.last_action = self.first_action = first_action
+    def __init__(self, start_left=False):
+        self.last_action = self.first_action = 3 if start_left else 1
         self.np_random = np.random.RandomState()
 
     def reset(self, seed=None):
@@ -34,6 +34,7 @@ class DeterministicAgent:
     def compute_single_action(self, state):
         walls = state[:, :, 0]
         head = state[:, :, 1]  # Bike 1
+
         try:
             y, x = np.argwhere(head == 1)[0]  # Flipped coordinates
             pos = np.array([x, y], dtype=int)
