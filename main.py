@@ -7,7 +7,8 @@
 # env = gym.make("TronEnv-v0")
 # check_env(env.unwrapped)
 
-from environment.tron_env import TronEnv, TronView
+from environment.env import TronEnv
+from environment.wrappers import TronView
 from agents.deterministic import DeterministicAgent
 
 seed = 523653
