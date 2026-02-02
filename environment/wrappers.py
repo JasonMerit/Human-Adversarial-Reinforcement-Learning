@@ -1,7 +1,15 @@
 import gymnasium as gym
+import numpy as np
 
 class TronView(gym.Wrapper):
-    
+
+    blue = (34, 49, 63)
+    blue_alt = (41, 64, 82)
+    green = (20, 180, 20)
+    green_alt = (20, 220, 20)
+    red = (180, 20, 20)
+    red_alt = (220, 20, 20)
+
     def __init__(self, env, fps, scale):
         super().__init__(env)
         import pygame
@@ -19,7 +27,7 @@ class TronView(gym.Wrapper):
         background = self.pg.Surface((width, height))
         for x in range(width):
             for y in range(height):
-                color = (34, 49, 63) if (x + y) % 2 else (41, 64, 82)
+                color = self.blue if (x + y) % 2 else self.blue_alt
                 background.set_at((x, y), color)
         self.background = self.pg.transform.scale(background, self.window_size)
 
@@ -27,6 +35,55 @@ class TronView(gym.Wrapper):
         
         self.clock = self.pg.time.Clock()
         self.fps = fps
+
+    @staticmethod
+    def view(state, scale):
+        import pygame as pg
+        pg.init()
+        clock = pg.time.Clock()
+
+        height, width, _ = state.shape
+        window_size = (width * scale, height * scale)
+        screen = pg.display.set_mode(window_size)
+        pg.display.set_caption("Tron Game (State view)")
+
+        surface = pg.Surface((width, height))
+        walls = state[:, :, 0]
+        for x in range(width):
+            for y in range(height):
+                if walls[y, x]:
+                    color = (180, 180, 20)
+                else:
+                    color = TronView.blue if (x + y) % 2 else TronView.blue_alt
+                surface.set_at((x, y), color)
+
+        # Heads
+        try:
+            y, x = np.argwhere(state[:, :, 1] == 1)[0]  # Flipped coordinates
+            surface.set_at((x, y), TronView.green_alt)
+        except IndexError:
+            pass
+        try:
+            y, x = np.argwhere(state[:, :, 2] == 1)[0]  # Flipped coordinates
+            surface.set_at((x, y), TronView.red_alt)
+        except IndexError:
+            pass
+
+        screen.blit(pg.transform.scale(surface, window_size), (0, 0))
+        pg.display.flip()
+
+        # Input
+        while True:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    exit()
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_q or event.key == pg.K_ESCAPE:
+                        pg.quit()
+                        exit()
+
+            clock.tick(30)
 
     def reset(self, seed=None, options=None):
         state, info = self.env.reset(seed=seed, options=options)
@@ -44,10 +101,10 @@ class TronView(gym.Wrapper):
         state, reward, done, _, info = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
-        self.trails_screen.set_at((self.env.tron.bike1.pos[0], self.env.tron.bike1.pos[1]), (20, 220, 20))
-        self.trails_screen.set_at((self.env.tron.bike2.pos[0], self.env.tron.bike2.pos[1]), (220, 20, 20))
-        self.trails_screen.set_at((self.prev1[0], self.prev1[1]), (20, 180, 20))
-        self.trails_screen.set_at((self.prev2[0], self.prev2[1]), (180, 20, 20))
+        self.trails_screen.set_at((self.env.tron.bike1.pos[0], self.env.tron.bike1.pos[1]), self.green_alt)
+        self.trails_screen.set_at((self.env.tron.bike2.pos[0], self.env.tron.bike2.pos[1]), self.red_alt)
+        self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
+        self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
         self._render()
 
         self.prev1 = self.env.tron.bike1.pos.copy()
@@ -62,6 +119,10 @@ class TronView(gym.Wrapper):
                 if event.key == self.pg.K_q or event.key == self.pg.K_ESCAPE:
                     self.pg.quit()
                     exit()
+                
+                if event.key == self.pg.K_s:
+                    # Save state as state.npy
+                    np.save("state.npy", state)
 
         self.clock.tick(self.fps)
         
@@ -71,3 +132,18 @@ class TronView(gym.Wrapper):
         self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
         self.pg.display.flip()
 
+
+class TronEgo(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def observation(self, obs):
+        h, w, c = obs.shape  # height, width, channels
+        transformed = np.rot90(obs, k=-1, axes=(0, 1))
+        assert transformed.shape == (w, h, c), "Transformation failed"
+        return transformed
+    
+
+if __name__ == "__main__":
+    state = np.load("state.npy")
+    TronView.view(state, scale=70)

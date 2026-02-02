@@ -8,15 +8,16 @@
 # check_env(env.unwrapped)
 
 from environment.env import TronEnv
-from environment.wrappers import TronView
+from environment.wrappers import TronView, TronEgo
 from agents.deterministic import DeterministicAgent
 
 seed = 523653
-env = TronEnv(DeterministicAgent(1), width=10, height=11)
+env = TronEnv(DeterministicAgent(1), width=10, height=10)
 env = TronView(env, fps=10, scale=70)
+# env = TronEgo(env)
 state, _ = env.reset()
 
-agent = DeterministicAgent(3)
+agent = DeterministicAgent(1)
 
 done = False
 while True:

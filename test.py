@@ -9,6 +9,7 @@ import numpy as np
 # print(B[A])
 # print(B[tuple(A)])
 
-A = np.array([3, 0])
-B = A + np.array([1, 2])
+A = np.array([[1, 0], [0, 0]])
+print(A)
+B = np.rot90(A, k=1, axes=(1, 0))
 print(B)
