@@ -83,4 +83,52 @@ policy = make_policy(obs_shape=(3, 10, 10), n_actions=4, device=device)
 train_collector = ts.data.Collector(policy, train_envs)
 test_collector = ts.data.Collector(policy, test_envs)
 
+
+
+from tianshou.trainer import OnpolicyTrainer
+
+max_epoch = 100
+step_per_epoch = 10000        # total env steps per epoch
+repeat_per_collect = 4        # PPO epochs per batch
+episode_per_collect = 16      # episodes collected before each update
+batch_size = 2048             # minibatch size inside PPO
+
+def stop_fn(mean_rewards):
+    # adjust threshold as you like
+    return mean_rewards >= 0.9 * 50  # e.g., close to max 50
+
+trainer = OnpolicyTrainer(
+    policy=policy,
+    train_collector=train_collector,
+    test_collector=test_collector,
+    max_epoch=max_epoch,
+    step_per_epoch=step_per_epoch,
+    repeat_per_collect=repeat_per_collect,
+    episode_per_test=20,
+    batch_size=batch_size,
+    episode_per_collect=episode_per_collect,
+    stop_fn=stop_fn,
+)
+
+for epoch_stat in trainer:
+    print(f"Epoch {epoch_stat.epoch}, "
+          f"reward: {epoch_stat.best_reward}, "
+          f"step: {epoch_stat.env_step}")
+
+
+
+
+# After training
+env = make_env()
+obs = env.reset()
+done = False
+
+while not done:
+    obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+    logits, _ = policy.actor(obs_tensor)
+    action = torch.argmax(logits, dim=-1).item()
+    obs, reward, done, info = env.step(action)
+    env.render()
+
+
     
