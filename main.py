@@ -14,14 +14,15 @@ done = False
 total_reward = 0.0
 episodes = 1
 while True:
-    # TronView.view(state, scale=70)
-    # action = TronView.wait_for_keypress()
-    action = agent.compute_single_action(state)
+    TronView.view(state, scale=70)
+    action = TronView.wait_for_keypress()
+    # action = agent.compute_single_action(state)
     # action = 1 
 
     state, reward, done, _, info = env.step(action)
     if done:
-        total_reward += reward
+        if reward > 0.9:
+            total_reward += reward
         print(f"{episodes}: Avg reward = {round(total_reward / episodes, 2)}", end='\r')
         env.reset()
         agent.reset()

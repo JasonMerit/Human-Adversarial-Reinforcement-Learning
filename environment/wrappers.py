@@ -38,16 +38,17 @@ class TronView(gym.Wrapper):
 
     @staticmethod
     def view(state, scale):
+        walls, bike1, bike2 = state
+
         import pygame as pg
         pg.init()
 
-        height, width, _ = state.shape
+        _, height, width = state.shape
         window_size = (width * scale, height * scale)
         screen = pg.display.set_mode(window_size)
         pg.display.set_caption("Tron Game (State view)")
 
         surface = pg.Surface((width, height))
-        walls = state[:, :, 0]
         for x in range(width):
             for y in range(height):
                 if walls[y, x]:
@@ -58,12 +59,12 @@ class TronView(gym.Wrapper):
 
         # Heads
         try:
-            y, x = np.argwhere(state[:, :, 1] == 1)[0]  # Flipped coordinates
+            y, x = np.argwhere(bike1 == 1)[0]  # Flipped coordinates
             surface.set_at((x, y), TronView.green_alt)
         except IndexError:
             pass
         try:
-            y, x = np.argwhere(state[:, :, 2] == 1)[0]  # Flipped coordinates
+            y, x = np.argwhere(bike2 == 1)[0]  # Flipped coordinates
             surface.set_at((x, y), TronView.red_alt)
         except IndexError:
             pass
@@ -92,6 +93,15 @@ class TronView(gym.Wrapper):
                         return 2
                     if event.key == pg.K_UP:
                         return 1
+                    # WASD is absolute coordinates
+                    if event.key == pg.K_w:
+                        return 0
+                    if event.key == pg.K_d:
+                        return 1
+                    if event.key == pg.K_s:
+                        return 2
+                    if event.key == pg.K_a:
+                        return 3
 
             clock.tick(30)
         
@@ -114,7 +124,7 @@ class TronView(gym.Wrapper):
     
         self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()
         self.prev2 = self.env.unwrapped.tron.bike2.pos.copy()
-
+        print("TronView : ", state.shape)
         return state, info
     
     def step(self, action):
@@ -178,4 +188,4 @@ class TronEgo(gym.Wrapper):
         return self.observation(state), reward, done, _, info
 
     def observation(self, obs):
-        return np.rot90(obs, k=self.orientation, axes=(0, 1))
+        return np.rot90(obs, k=self.orientation, axes=(1, 2))

@@ -11,7 +11,7 @@ class TronEnv(gym.Env):
     def __init__(self, opponent, width, height):
         self.tron = Tron(width, height)
         self.action_space = gym.spaces.Discrete(4)
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(height, width, 3), dtype=float)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=float)
         self.opponent = opponent
 
     def reset(self, seed=None, options=None):
@@ -48,7 +48,7 @@ class TronEnv(gym.Env):
             bike2[y2, x2] = 1.0  # Out of bounds - Skip if done.
 
         # Stack into CNN input
-        state = np.stack([occ, bike1, bike2], axis=-1)
+        state = np.stack([occ, bike1, bike2], axis=0)
         assert state.shape == self.observation_space.shape, "Jason! State shape mismatch"
         return state
     

@@ -32,8 +32,8 @@ class DeterministicAgent:
         return action
 
     def compute_single_action(self, state):
-        walls = state[:, :, 0]
-        head = state[:, :, 1]  # Bike 1
+        walls = state[0]
+        head = state[1]  # Bike 1
 
         try:
             y, x = np.argwhere(head == 1)[0]  # Flipped coordinates
