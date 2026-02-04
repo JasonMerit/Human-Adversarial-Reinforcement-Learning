@@ -124,7 +124,6 @@ class TronView(gym.Wrapper):
     
         self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()
         self.prev2 = self.env.unwrapped.tron.bike2.pos.copy()
-        print("TronView : ", state.shape)
         return state, info
     
     def step(self, action):
@@ -188,4 +187,4 @@ class TronEgo(gym.Wrapper):
         return self.observation(state), reward, done, _, info
 
     def observation(self, obs):
-        return np.rot90(obs, k=self.orientation, axes=(1, 2))
+        return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
