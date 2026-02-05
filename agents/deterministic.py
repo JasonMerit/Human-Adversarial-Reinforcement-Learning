@@ -3,7 +3,7 @@ import numpy as np
 class DeterministicAgent:
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
 
-    def __init__(self, start_left=False):
+    def __init__(self, start_left=True):
         self.last_action = self.first_action = 3 if start_left else 1
         self.np_random = np.random.RandomState()
 

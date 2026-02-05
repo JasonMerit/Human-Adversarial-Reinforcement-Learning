@@ -10,7 +10,7 @@ class TronView(gym.Wrapper):
     red = (180, 20, 20)
     red_alt = (220, 20, 20)
 
-    def __init__(self, env, fps, scale):
+    def __init__(self, env, fps=10, scale=70):
         super().__init__(env)
         import pygame
         
