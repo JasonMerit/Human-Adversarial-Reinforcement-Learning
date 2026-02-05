@@ -35,6 +35,12 @@ class QNet(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return self.fc(x)
+    
+    @staticmethod
+    def load(path):
+        model = QNet()
+        model.load_state_dict(torch.load(path))
+        return model
 
 # ---------------------
 # Experience Replay
