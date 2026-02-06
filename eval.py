@@ -1,15 +1,9 @@
-import torch
-
-def f(x):
-    return torch.tensor(x, dtype=torch.float32).unsqueeze(0)
-
 def eval(env, agent, episodes=10_000):
     agent.eval()
     state, _ = env.reset()
-    state = f(state)
     
     total_reward = 0.0
-    for _ in range(episodes):
+    for i in range(episodes):
 
         done = False
         while not done:
@@ -17,16 +11,27 @@ def eval(env, agent, episodes=10_000):
             action = q_values.argmax().item()
 
             state, reward, done, _, _ = env.step(action)
-            state = f(state)
 
             if done:
                 state, _ = env.reset()
-                state = f(state)
                 
                 if reward > 0.0:  # Only count draws (.5) and wins (1.0)
                     total_reward += reward
 
-                if _ % 1000 == 0:
-                    print(f"Episode {_}, Average Reward: {total_reward / (_ + 1):.4f}")
+                if i % 1000 == 0:
+                    print(f"Episode {i}, Average Reward: {total_reward / (i + 1):.4f}")
 
     return total_reward / episodes
+
+if __name__ == "__main__":
+    from environment.env import TronEnv
+    from environment.wrappers import TronView, TronEgo, TronTorch
+    from agents.deterministic import DeterministicAgent
+    from dqn import QNet
+
+    agent = QNet.load("q_net.pth")
+    env = TronEnv(DeterministicAgent(), width=10, height=10)
+    env = TronEgo(env)
+    env = TronTorch(env)
+
+    print(eval(env, agent, episodes=10))

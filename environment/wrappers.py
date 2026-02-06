@@ -188,3 +188,17 @@ class TronEgo(gym.Wrapper):
 
     def observation(self, obs):
         return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
+
+
+class TronTorch(gym.ObservationWrapper):
+    """
+    Transforms observation space to PyTorch tensor.
+    """
+
+    def __init__(self, env):
+        super().__init__(env)
+        import torch
+        self.torch = torch
+
+    def observation(self, obs):
+        return self.torch.tensor(obs, dtype=self.torch.float32).unsqueeze(0)
