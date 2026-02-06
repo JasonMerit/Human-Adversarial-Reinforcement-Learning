@@ -4,8 +4,9 @@
 #BSUB -q gpuv100
 #BSUB -J Tron-DQN
 #BSUB -n 1
+#BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=4GB]"
+#BSUB -R "rusage[mem=3GB]"
 #BSUB -M 3GB
 #BSUB -W 1:00
 #BSUB -u s216135@dtu.dk
@@ -17,6 +18,7 @@
 cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
 
 module purge
+nvidia-smi
 module load cuda/12.0
 
 # Activate conda properly
