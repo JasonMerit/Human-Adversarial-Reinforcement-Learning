@@ -26,4 +26,7 @@ def eval(env, agent, episodes=10_000):
                 if reward > 0.0:  # Only count draws (.5) and wins (1.0)
                     total_reward += reward
 
+                if _ % 1000 == 0:
+                    print(f"Episode {_}, Average Reward: {total_reward / (_ + 1):.4f}")
+
     return total_reward / episodes
