@@ -1,4 +1,3 @@
-import gymnasium as gym
+import torch 
 
-env = gym.make("ALE/Pong-v5")  # Gymnasium-preferred ID
-print(env.observation_space, env.action_space)
+print(torch.version.cuda)
