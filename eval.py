@@ -27,7 +27,7 @@ if __name__ == "__main__":
     from environment.env import TronEnv
     from environment.wrappers import TronView, TronEgo, TronTorch
     from agents.deterministic import DeterministicAgent
-    from dqn import QNet
+    from train import QNet
 
     agent = QNet.load("q_net.pth")
     env = TronEnv(DeterministicAgent(), width=10, height=10)

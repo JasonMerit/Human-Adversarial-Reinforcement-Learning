@@ -3,7 +3,7 @@
 ###BSUB -q hpc
 #BSUB -q gpuv100
 #BSUB -J Tron-DQN
-#BSUB -n 1
+#BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=3GB]"
@@ -12,8 +12,8 @@
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
-#BSUB -oo Output.out
-#BSUB -eo Output.err
+#BSUB -oo HPC/Output.out
+#BSUB -eo HPC/Error.err
 
 cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
 
