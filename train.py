@@ -1,3 +1,6 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+from time import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -45,6 +48,7 @@ if __name__ == "__main__":
     # ---------------------
     # Training Loop
     # ---------------------
+    t0 = time()
     for episode in range(NUM_EPISODES):
         state,_ = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -94,3 +98,5 @@ if __name__ == "__main__":
     torch.save(q_net.state_dict(), "q_net.pth")
     torch.save(target_net.state_dict(), "target_net.pth")
     print("\nTraining finished and models saved.")
+    print("\033[92mDONE\033[0m")
+    print(f"Total training time: {time() - t0:.2f} seconds")

@@ -27,6 +27,6 @@ class QNet(nn.Module):
     @staticmethod
     def load(path):
         model = QNet()
-        model.load_state_dict(torch.load(path))
+        model.load_state_dict(torch.load(path, weights_only=True))
         return model
 

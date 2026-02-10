@@ -24,6 +24,8 @@ def eval(env, agent, episodes=10_000):
     return total_reward / episodes
 
 if __name__ == "__main__":
+    import os
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     from environment.env import TronEnv
     from environment.wrappers import TronView, TronEgo, TronTorch
     from agents.deterministic import DeterministicAgent

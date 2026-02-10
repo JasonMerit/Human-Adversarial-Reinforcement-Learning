@@ -1,3 +1,5 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import torch
 from agents.dqn import QNet
 
@@ -5,11 +7,10 @@ from environment.env import TronEnv
 from environment.wrappers import TronView, TronEgo
 from agents.deterministic import DeterministicAgent
 
-q_net = QNet()
-q_net.load_state_dict(torch.load("q_net.pth"))
+q_net = QNet.load("q_net.pth")
 
 env = TronEnv(DeterministicAgent(start_left=True), width=10, height=10)
-env = TronView(TronEgo(env), 10, 70)
+env = TronView(TronEgo(env), 2, 70)
 
 state, _ = env.reset()
 state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
@@ -27,4 +28,5 @@ while True:
     if done:
         state, _ = env.reset()
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        print(reward)
         
