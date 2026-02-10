@@ -8,17 +8,16 @@ class HeuristicAgent():
     for all possible actions and picking the one with highest score.
     """
 
-    def __call__(self, walls, player, opponent):
+    def __call__(self, walls : np.ndarray, player : np.ndarray, opponent : np.ndarray):
         """
-        Returns the move (dx, dy) that maximizes chamber_heuristic.
+        Returns the action that maximizes chamber_heuristic.
         """
         best_score = -np.inf
         best_action = None
-        pos = player.pos
 
-        for action, (dx, dy) in enumerate(TronEnv.action_mapping):
+        for action, dir in enumerate(TronEnv.action_mapping):
             # Simulate the move
-            new_pos = (pos[0] + dx, pos[1] + dy)
+            new_pos = player + dir
 
             # Skip invalid moves (into walls or out of bounds)
             if new_pos[0] < 0 or new_pos[0] >= walls.shape[1]:
@@ -38,5 +37,5 @@ class HeuristicAgent():
         # Return the best move
         if best_action is None:
             # If no valid moves, just pick up (or any default)
-            return (0, -1)
-        return TronEnv.action_mapping[best_action]
+            return 0
+        return best_action
