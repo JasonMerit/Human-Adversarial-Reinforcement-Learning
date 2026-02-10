@@ -1,4 +1,5 @@
 import numpy as np
+from utils.helper import bcolors
 
 class Bike:
     
@@ -35,7 +36,9 @@ class Tron:
                  1 - Bike1 collided
                  2 - Bike2 collided
                  3 - Both bikes collided (draw)
-        """      
+        """
+        assert type(dir1) == np.ndarray and type(dir2) == np.ndarray, f"{bcolors.FAIL}Invalid direction type : {type(dir1)}, {type(dir2)}{bcolors.ENDC}"
+        assert dir1.shape == (2, ) and dir2.shape == (2, ), f"{bcolors.FAIL}Invalid direction shape : {dir1.shape}, {dir2.shape}{bcolors.ENDC}"
         self._move_bikes(dir1, dir2)
         return self._check_collisions()
     

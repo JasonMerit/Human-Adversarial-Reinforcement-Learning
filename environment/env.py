@@ -29,8 +29,10 @@ class TronEnv(gym.Env):
     
     def step(self, action):
         assert self.action_space.contains(action), "Jason! Invalid Action"
+        opp_action = self.opponent(self._get_state())
+        
         dir1 = self.action_mapping[action]
-        dir2 = self.opponent.get_direction(self.tron.walls, self.tron.bike2.pos)  # Bike 2
+        dir2 = self.action_mapping[opp_action]
     
         result = self.tron.tick(dir1, dir2)
         done = result != 0
@@ -41,25 +43,6 @@ class TronEnv(gym.Env):
     
     def _get_state(self):
         return self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
-    
-    # def _get_state(self, done):
-    #     walls = self.tron.walls.copy()
-    #     occ = (walls > 0).astype(float)
-
-    #     bike1 = np.zeros_like(occ)
-    #     bike2 = np.zeros_like(occ)  
-    #     if not done:  # Out of bounds - Skip if done.
-    #         x1, y1 = self.tron.bike1.pos
-    #         bike1[y1, x1] = 1.0
-
-    #         x2, y2 = self.tron.bike2.pos
-    #         bike2[y2, x2] = 1.0  
-
-    #     # Stack into CNN input
-    #     state = np.stack([occ, bike1, bike2], axis=0)
-    #     assert state.shape == self.observation_space.shape, "Jason! State shape mismatch"
-    #     return state
-    
     
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo
