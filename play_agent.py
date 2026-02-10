@@ -1,18 +1,16 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-import torch
 from agents.dqn import QNet
 
 from environment.env import TronEnv
 from environment.wrappers import TronView, TronEgo, TronTorch, TronImage
 from agents import DeterministicAgent, RandomAgent, HeuristicAgent, DQNAgent
-from utils.heuristics import chamber_heuristic
 
 q_net = QNet.load("q_net.pth")
 
 env = TronEnv(DeterministicAgent(is_opponent=False), width=10, height=10)
 # env = TronImage(env)
-env = TronEgo(env)
+# env = TronEgo(env)
 # env = TronTorch(env)
 env = TronView(env, 10, 70)
 

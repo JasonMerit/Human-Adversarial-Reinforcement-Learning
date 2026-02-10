@@ -1,5 +1,7 @@
 import numpy as np
 from agents.base import Agent
+from utils.helper import bcolors
+from gymnasium import spaces
 
 class DeterministicAgent(Agent):
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
@@ -36,14 +38,7 @@ class DeterministicAgent(Agent):
     #     pass
 
     def __call__(self, state):
-        walls = state[0]
-        head = state[1]  # Bike 1
-
-        try:
-            y, x = np.argwhere(head == 1)[0]  # Flipped coordinates
-            pos = np.array([x, y], dtype=int)
-        except IndexError:
-            return self.first_action  # Terminal state - pos is out of bounds
+        walls, pos, _ = state
         return self._get_action(walls, pos)
 
     def _is_valid_action(self, action, walls, pos):
@@ -52,4 +47,5 @@ class DeterministicAgent(Agent):
         return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
 
     def _check_env(self, env):
-        return super()._check_env(env)
+        if not isinstance(env.observation_space, spaces.Tuple):
+            raise ValueError(f"{bcolors.FAIL}DeterministicAgent requires an environment with a tuple observation space. Try removing wrappers.{bcolors.ENDC}")    
