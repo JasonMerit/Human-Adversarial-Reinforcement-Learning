@@ -20,9 +20,9 @@ class HeuristicAgent():
             new_pos = player + dir
 
             # Skip invalid moves (into walls or out of bounds)
-            if new_pos[0] < 0 or new_pos[0] >= walls.shape[1]:
+            if not(0 <= new_pos[0] < walls.shape[1]):
                 continue
-            if new_pos[1] < 0 or new_pos[1] >= walls.shape[0]:
+            if not(0 <= new_pos[1] < walls.shape[0]):
                 continue
             if walls[new_pos[1], new_pos[0]] != 0:
                 continue
