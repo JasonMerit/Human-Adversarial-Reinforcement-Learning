@@ -34,4 +34,4 @@ if __name__ == "__main__":
     env = TronEgo(env)
     env = TronTorch(env)
 
-    print(eval(env, agent, episodes=10))
+    print(eval(env, agent))

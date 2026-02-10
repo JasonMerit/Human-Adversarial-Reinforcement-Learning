@@ -1,5 +1,5 @@
 import torch
-from train import QNet
+from agents.dqn import QNet
 
 from environment.env import TronEnv
 from environment.wrappers import TronView, TronEgo
