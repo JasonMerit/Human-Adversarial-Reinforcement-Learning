@@ -12,10 +12,10 @@ def id_mat(r,c):
 
 def get_state(walls, player, opponent):
     state = walls.copy()
-    x, y = player.pos
+    x, y = player
     state[y, x] = FRIENDLY
 
-    x, y = opponent.pos
+    x, y = opponent
     state[y, x] = OPPONENT
     return state
 
@@ -86,11 +86,9 @@ def rec_hopcroft_tarjan(state, row, col, depth, depths, parents, visited, low):
         state[row,col] = ARTICULATION
 
 def compute_voronoi(player, opponent, state):
-    start_time = timeit.default_timer()
-    head = player.pos
-    ophead = opponent.pos
-    player_costs = dijkstra(state, head)
-    op_costs = dijkstra(state, ophead)
+    # start_time = timeit.default_timer()
+    player_costs = dijkstra(state, player)
+    op_costs = dijkstra(state, opponent)
     
     maxcost = SIZE[0] + SIZE[1]
     mask_player = (player_costs < op_costs) & (player_costs <= maxcost)
@@ -100,7 +98,7 @@ def compute_voronoi(player, opponent, state):
     # print(str(timeit.default_timer() - start_time))
     return v
 
-def chamber_heuristic(walls, player, opponent):
+def chamber_heuristic(walls : np.ndarray, player : np.ndarray, opponent : np.ndarray):
     state = get_state(walls, player, opponent)
     hopcroft_tarjan(state)
     return compute_voronoi(player, opponent, state)
@@ -112,5 +110,5 @@ if __name__ == '__main__':
     tron.reset()
     tron.tick((-1, 0), (1, 0))
 
-    chamber = chamber_heuristic(tron.walls, tron.bike1, tron.bike2)
+    chamber = chamber_heuristic(tron.walls, tron.bike1.pos, tron.bike2.pos)
     print(chamber)

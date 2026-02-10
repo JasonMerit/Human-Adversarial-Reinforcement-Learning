@@ -31,7 +31,7 @@ class DeterministicAgent:
         self.last_action = action
         return action
 
-    def compute_single_action(self, state):
+    def __call__(self, state):
         walls = state[0]
         head = state[1]  # Bike 1
 
