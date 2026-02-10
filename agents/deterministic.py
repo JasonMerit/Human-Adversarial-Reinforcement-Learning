@@ -37,7 +37,8 @@ class DeterministicAgent(Agent):
         return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
 
     def _check_env(self, env):
-        self.last_action = self.first_action = 1  # Hack done to distinguish player from opponent
+        # Hack done to distinguish player from opponent
+        self.last_action = self.first_action = 3  
         self.is_opponent = False
 
         if not isinstance(env.observation_space, spaces.Tuple):

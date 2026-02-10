@@ -10,12 +10,19 @@ class HeuristicAgent(Agent):
     Tron agent that selects moves by evaluating the chamber_heuristic
     for all possible actions and picking the one with highest score.
     """
+    def __init__(self):
+        self.is_opponent = True
+
+    def reset(self, seed=None):
+        pass
 
     def __call__(self, state : tuple):
         """
         Returns the action that maximizes chamber_heuristic.
         """
-        walls, player, opponent = state
+        walls, player, opp = state
+        if self.is_opponent:
+            player, opp = opp, player
 
         best_score = -np.inf
         best_action = None
@@ -31,7 +38,7 @@ class HeuristicAgent(Agent):
                 continue
 
             # Evaluate heuristic
-            score = chamber_heuristic(walls, new_pos, opponent)
+            score = chamber_heuristic(walls, new_pos, opp)
 
             if score > best_score:
                 best_score = score
@@ -44,5 +51,6 @@ class HeuristicAgent(Agent):
         return best_action
     
     def _check_env(self, env):
+        self.is_opponent = False
         if not isinstance(env.observation_space, spaces.Tuple):
             raise ValueError(f"{bcolors.FAIL}HeuristicAgent requires an environment with a tuple observation space. Try removing wrappers.{bcolors.ENDC}")    
