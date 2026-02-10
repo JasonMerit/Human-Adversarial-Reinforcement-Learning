@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+from agents.base import Agent
+from environment.wrappers import TronTorch
+from utils.helper import has_wrapper, bcolors
 
 class QNet(nn.Module):
     def __init__(self, input_shape=(3,10,10), num_actions=3):
@@ -30,3 +33,15 @@ class QNet(nn.Module):
         model.load_state_dict(torch.load(path, weights_only=True))
         return model
 
+class DQNAgent(Agent):
+    def __init__(self, qnet_path: str):
+        self.qnet = QNet.load(qnet_path)
+
+    def __call__(self, state):
+        with torch.no_grad():
+            q_values = self.qnet(state)
+            return q_values.argmax().item()
+    
+    def _check_env(self, env):
+        if not has_wrapper(env, TronTorch):
+            raise ValueError(f"{bcolors.FAIL}DQNAgent requires TronTorch wrapper{bcolors.ENDC}")

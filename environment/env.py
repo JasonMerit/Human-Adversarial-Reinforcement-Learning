@@ -11,7 +11,12 @@ class TronEnv(gym.Env):
     def __init__(self, opponent, width, height):
         self.tron = Tron(width, height)
         self.action_space = gym.spaces.Discrete(4)
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=float)
+        self.observation_space = gym.spaces.Tuple((
+            gym.spaces.Box(low=0, high=1, shape=(height, width), dtype=np.int64),
+            gym.spaces.Box(low=0, high=1, shape=(2,), dtype=np.int64),
+            gym.spaces.Box(low=0, high=1, shape=(2,), dtype=np.int64)
+        ))
+
         self.opponent = opponent
 
     def reset(self, seed=None, options=None):
@@ -29,28 +34,31 @@ class TronEnv(gym.Env):
     
         result = self.tron.tick(dir1, dir2)
         done = result != 0
-        state = self._get_state(done)
+        state = self._get_state()
         reward = self.reward_mapping[result]
         info = {'result': result}
         return state, reward, done, False, info
     
-    def _get_state(self, done=False):
-        walls = self.tron.walls.copy()
-        occ = (walls > 0).astype(float)
+    def _get_state(self):
+        return self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
+    
+    # def _get_state(self, done):
+    #     walls = self.tron.walls.copy()
+    #     occ = (walls > 0).astype(float)
 
-        bike1 = np.zeros_like(occ)
-        bike2 = np.zeros_like(occ)  
-        if not done:
-            x1, y1 = self.tron.bike1.pos
-            bike1[y1, x1] = 1.0
+    #     bike1 = np.zeros_like(occ)
+    #     bike2 = np.zeros_like(occ)  
+    #     if not done:  # Out of bounds - Skip if done.
+    #         x1, y1 = self.tron.bike1.pos
+    #         bike1[y1, x1] = 1.0
 
-            x2, y2 = self.tron.bike2.pos
-            bike2[y2, x2] = 1.0  # Out of bounds - Skip if done.
+    #         x2, y2 = self.tron.bike2.pos
+    #         bike2[y2, x2] = 1.0  
 
-        # Stack into CNN input
-        state = np.stack([occ, bike1, bike2], axis=0)
-        assert state.shape == self.observation_space.shape, "Jason! State shape mismatch"
-        return state
+    #     # Stack into CNN input
+    #     state = np.stack([occ, bike1, bike2], axis=0)
+    #     assert state.shape == self.observation_space.shape, "Jason! State shape mismatch"
+    #     return state
     
     
 if __name__ == "__main__":

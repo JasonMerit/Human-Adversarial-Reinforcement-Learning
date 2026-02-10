@@ -1,17 +1,22 @@
 import numpy as np
 from environment.env import TronEnv
 from utils.heuristics import chamber_heuristic
+from gymnasium import spaces
+from utils.helper import bcolors
+from agents.base import Agent
 
-class HeuristicAgent():
+class HeuristicAgent(Agent):
     """
     Tron agent that selects moves by evaluating the chamber_heuristic
     for all possible actions and picking the one with highest score.
     """
 
-    def __call__(self, walls : np.ndarray, player : np.ndarray, opponent : np.ndarray):
+    def __call__(self, state : tuple):
         """
         Returns the action that maximizes chamber_heuristic.
         """
+        walls, player, opponent = state
+
         best_score = -np.inf
         best_action = None
 
@@ -20,11 +25,9 @@ class HeuristicAgent():
             new_pos = player + dir
 
             # Skip invalid moves (into walls or out of bounds)
-            if not(0 <= new_pos[0] < walls.shape[1]):
-                continue
-            if not(0 <= new_pos[1] < walls.shape[0]):
-                continue
-            if walls[new_pos[1], new_pos[0]] != 0:
+            if not(0 <= new_pos[0] < walls.shape[1]) or \
+               not(0 <= new_pos[1] < walls.shape[0]) or \
+               walls[new_pos[1], new_pos[0]] != 0:
                 continue
 
             # Evaluate heuristic
@@ -39,3 +42,7 @@ class HeuristicAgent():
             # If no valid moves, just pick up (or any default)
             return 0
         return best_action
+    
+    def _check_env(self, env):
+        if not isinstance(env.observation_space, spaces.Tuple):
+            raise ValueError(f"{bcolors.FAIL}HeuristicAgent requires an environment with a tuple observation space. Try removing wrappers.{bcolors.ENDC}")    

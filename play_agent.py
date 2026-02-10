@@ -4,37 +4,29 @@ import torch
 from agents.dqn import QNet
 
 from environment.env import TronEnv
-from environment.wrappers import TronView, TronEgo
-from agents import DeterministicAgent, RandomAgent, HeuristicAgent
+from environment.wrappers import TronView, TronEgo, TronTorch, TronImage
+from agents import DeterministicAgent, RandomAgent, HeuristicAgent, DQNAgent
 from utils.heuristics import chamber_heuristic
 
 q_net = QNet.load("q_net.pth")
 
-env = TronEnv(DeterministicAgent(start_left=False), width=10, height=10)
-# env = TronEgo(env)
+env = TronEnv(DeterministicAgent(is_opponent=False), width=10, height=10)
+# env = TronImage(env)
+env = TronEgo(env)
+# env = TronTorch(env)
 env = TronView(env, 10, 70)
-tron = env.unwrapped.tron
 
 state, _ = env.reset()
-# state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-# agent = DeterministicAgent(start_left=False)
-agent = HeuristicAgent()
+agent = DeterministicAgent(is_opponent=False)
+# agent = HeuristicAgent()
+# agent = DQNAgent("q_net.pth")
 # agent = RandomAgent(env.action_space)
+agent.bind_env(env)
 
 while True:
-    # with torch.no_grad():
-    #     q_values = q_net(state)
-    #     action = q_values.argmax().item()
-    
-    # action = env.action_space.sample()
-    action = agent(tron.walls, tron.bike1.pos, tron.bike2.pos)
-    # action = agent(state)
-
+    action = agent(state)
     state, reward, done, _, _ = env.step(action)
-
     if done:
         state, _ = env.reset()
 
-    # chamber = chamber_heuristic(tron.walls, tron.bike1.pos, tron.bike2.pos)
-    # print(chamber)
         

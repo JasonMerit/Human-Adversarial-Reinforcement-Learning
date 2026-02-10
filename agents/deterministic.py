@@ -1,10 +1,11 @@
 import numpy as np
+from agents.base import Agent
 
-class DeterministicAgent:
+class DeterministicAgent(Agent):
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
 
-    def __init__(self, start_left=True):
-        self.last_action = self.first_action = 3 if start_left else 1
+    def __init__(self, is_opponent=True):
+        self.last_action = self.first_action = 3 if is_opponent else 1
         self.np_random = np.random.RandomState()
 
     def reset(self, seed=None):
@@ -30,6 +31,9 @@ class DeterministicAgent:
 
         self.last_action = action
         return action
+    
+    # def _check_env(self, env):
+    #     pass
 
     def __call__(self, state):
         walls = state[0]
@@ -47,13 +51,5 @@ class DeterministicAgent:
         x, y = new_pos
         return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
 
-class Random:
-
-    def __init__(self, env):
-        self.action_space = env.action_space
-
-    def compute_single_action(self, state):
-        return self.action_space.sample()
-
-    def reset(self, seed=None):
-        self.np_random = np.random.RandomState(seed)
+    def _check_env(self, env):
+        return super()._check_env(env)

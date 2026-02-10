@@ -1,6 +1,8 @@
 import gymnasium as gym
 import numpy as np
 
+from utils.helper import has_wrapper, bcolors
+
 class TronView(gym.Wrapper):
 
     blue = (34, 49, 63)
@@ -13,13 +15,14 @@ class TronView(gym.Wrapper):
     def __init__(self, env, fps=10, scale=70):
         super().__init__(env)
         import pygame
+        self.tron = self.env.unwrapped.tron
         
         self.pg = pygame
         self.pg.init()
 
         self.scale = scale
-        width = env.unwrapped.tron.width
-        height = env.unwrapped.tron.height
+        width = self.tron.width
+        height = self.tron.height
         self.window_size = (width * self.scale, height * self.scale)
         self.screen = self.pg.display.set_mode(self.window_size)
         self.trails_screen = self.pg.Surface((width, height), flags=self.pg.SRCALPHA)
@@ -113,7 +116,7 @@ class TronView(gym.Wrapper):
         self.trails_screen.fill((0, 0, 0, 0))  # Clear trails with transparency
 
         # Fill in walls (neccesary after first move is made before env starts)
-        walls = self.env.unwrapped.tron.walls
+        walls = self.tron.walls
         for y, row in enumerate(walls):
             for x, cell in enumerate(row):
                 if cell == 0: continue
@@ -122,22 +125,22 @@ class TronView(gym.Wrapper):
                 
         self._render()
     
-        self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()
-        self.prev2 = self.env.unwrapped.tron.bike2.pos.copy()
+        self.prev1 = self.tron.bike1.pos.copy()
+        self.prev2 = self.tron.bike2.pos.copy()
         return state, info
     
     def step(self, action):
         state, reward, done, _, info = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
-        self.trails_screen.set_at((self.env.unwrapped.tron.bike1.pos[0], self.env.unwrapped.tron.bike1.pos[1]), self.green_alt)
-        self.trails_screen.set_at((self.env.unwrapped.tron.bike2.pos[0], self.env.unwrapped.tron.bike2.pos[1]), self.red_alt)
+        self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)
+        self.trails_screen.set_at((self.tron.bike2.pos[0], self.tron.bike2.pos[1]), self.red_alt)
         self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
         self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
         self._render()
 
-        self.prev1 = self.env.unwrapped.tron.bike1.pos.copy()
-        self.prev2 = self.env.unwrapped.tron.bike2.pos.copy()
+        self.prev1 = self.tron.bike1.pos.copy()
+        self.prev2 = self.tron.bike2.pos.copy()
 
         # Input
         for event in self.pg.event.get():
@@ -161,6 +164,38 @@ class TronView(gym.Wrapper):
         self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
         self.pg.display.flip()
 
+class TronImage(gym.ObservationWrapper):
+    """
+    Transforms the state representation to an image ready for a CNN.
+    Used by TronEgo by default.
+    """
+
+    def __init__(self, env):
+        super().__init__(env)
+        self.tron = env.unwrapped.tron
+        height, width = self.tron.height, self.tron.width
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=np.float32)
+    
+    def observation(self, obs):
+        walls, bike1, bike2 = obs
+        occ = (walls > 0).astype(np.float32)
+
+        bike1 = np.zeros_like(occ)
+        bike2 = np.zeros_like(occ)
+
+        try:
+            x1, y1 = self.tron.bike1.pos
+            bike1[y1, x1] = 1.0
+
+            x2, y2 = self.tron.bike2.pos
+            bike2[y2, x2] = 1.0  
+        except IndexError:  # Terminal state (out of bounds)
+            pass
+
+        # Stack into CNN input
+        obs = np.stack([occ, bike1, bike2], axis=0)
+        assert obs.shape == self.observation_space.shape, "Jason! Obs shape mismatch"
+        return obs
 
 class TronEgo(gym.Wrapper):
     """
@@ -171,8 +206,10 @@ class TronEgo(gym.Wrapper):
     """
 
     def __init__(self, env):
+        if not has_wrapper(env, TronImage):
+            print(f"{bcolors.WARNING}TronEgo wrapper requires TronImage wrapper. Automatically adding TronImage wrapper.{bcolors.ENDC}")
+            env = TronImage(env)
         super().__init__(env)
-        self.original_action_space = env.action_space
         self.action_space = gym.spaces.Discrete(3)
 
     def reset(self, **kwargs):
@@ -181,7 +218,8 @@ class TronEgo(gym.Wrapper):
         return self.observation(state), info
 
     def step(self, action):
-        assert self.action_space.contains(action), "Jason! Invalid action"
+        if not self.action_space.contains(action):
+            raise ValueError(f"{bcolors.FAIL}Invalid action!{bcolors.ENDC}")
         self.orientation = (self.orientation + (action - 1)) % 4  # Because (left, forward, right)
         state, reward, done, _, info = self.env.step(self.orientation)
         return self.observation(state), reward, done, _, info
@@ -199,6 +237,8 @@ class TronTorch(gym.ObservationWrapper):
         super().__init__(env)
         import torch
         self.torch = torch
+        if not has_wrapper(env, TronImage):
+            raise ValueError(f"{bcolors.FAIL}TronTorch wrapper requires TronImage wrapper{bcolors.ENDC}")
 
     def observation(self, obs):
         return self.torch.tensor(obs, dtype=self.torch.float32).unsqueeze(0)

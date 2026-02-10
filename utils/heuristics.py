@@ -109,6 +109,7 @@ if __name__ == '__main__':
     tron = Tron(*SIZE)
     tron.reset()
     tron.tick((-1, 0), (1, 0))
-
+    print(tron.bike1.pos.shape)
+    print(tron.walls.dtype, tron.bike1.pos.dtype, tron.bike2.pos.dtype)
     chamber = chamber_heuristic(tron.walls, tron.bike1.pos, tron.bike2.pos)
     print(chamber)
