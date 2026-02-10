@@ -8,17 +8,19 @@ from agents import DeterministicAgent, RandomAgent, HeuristicAgent, DQNAgent
 
 q_net = QNet.load("q_net.pth")
 
-env = TronEnv(HeuristicAgent(), width=10, height=10)
+opp = RandomAgent()
+env = TronEnv(opp, width=10, height=10)
+env = TronEgo(env)
+opp.bind_env(env)
 # env = TronImage(env)
-# env = TronEgo(env)
 # env = TronTorch(env)
 env = TronView(env, 10, 70)
 
 state, _ = env.reset()
-agent = DeterministicAgent()
+# agent = DeterministicAgent()
 # agent = HeuristicAgent()
 # agent = DQNAgent("q_net.pth")
-# agent = RandomAgent(env.action_space)
+agent = RandomAgent()
 agent.bind_env(env)
 
 while True:
