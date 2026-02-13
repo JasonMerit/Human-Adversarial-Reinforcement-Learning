@@ -1,3 +1,5 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import numpy as np
 import gymnasium as gym
 
@@ -46,14 +48,15 @@ class TronEnv(gym.Env):
     
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo
-    from agents.deterministic import DeterministicAgent, Random
+    from agents import DeterministicAgent, RandomAgent
 
-    env = TronEnv(DeterministicAgent(start_left=True), width=10, height=10)
+    env = TronEnv(DeterministicAgent(), width=10, height=10)
     env = TronEgo(env)
     env = TronView(env, fps=100, scale=70)
     state, _ = env.reset()
 
-    agent = Random(env)
+    agent = RandomAgent()
+    agent.bind_env(env)
     # agent = DeterministicAgent(1)
 
     done = False
@@ -62,8 +65,6 @@ if __name__ == "__main__":
     while True:
         TronView.view(state, scale=70)
         action = TronView.wait_for_keypress()
-        # action = agent.compute_single_action(state)
-        # action = 1 
 
         state, reward, done, _, info = env.step(action)
         if done:
