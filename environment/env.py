@@ -59,7 +59,7 @@ class TronDualEnv(gym.Env):
         you_ = np.array([self.width - 1 - you[0], you[1]])
         opp_ = np.array([self.width - 1 - opp[0], opp[1]])
         a = np.fliplr(walls).copy()
-        a[a != 0] = 3 - a[a != 0]
+        a[a != 0] = 3 - a[a != 0]  # Map (1, 2) -> (2, 1)
         return (walls, you, opp), (a, opp_, you_)
     
 if __name__ == "__main__":
@@ -80,9 +80,10 @@ if __name__ == "__main__":
     episodes = 1
     while True:
         # TronView.view(state[0], scale=70)
-        # TronView.view_dual(state, scale=70)
+        TronView.view_dual(state, scale=70)
+        action = TronView.wait_for_both_inputs()
         # action = TronView.wait_for_keypress()
-        action = env.action_space.sample()
+        # action = env.action_space.sample()
 
         state, reward, done, _, info = env.step(action)
         if done:

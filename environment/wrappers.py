@@ -39,8 +39,64 @@ class TronView(gym.Wrapper):
         self.pg.display.set_caption("Tron Game")
         
         self.clock = self.pg.time.Clock()
-        self.fps = fps
+        self.fps = fps        
 
+    def reset(self, seed=None, options=None):
+        state, info = self.env.reset(seed=seed, options=options)
+
+        self.screen.blit(self.background, (0, 0))
+        self.trails_screen.fill((0, 0, 0, 0))  # Clear trails with transparency
+
+        # Fill in walls (neccesary after first move is made before env starts)
+        walls = self.tron.walls
+        for y, row in enumerate(walls):
+            for x, cell in enumerate(row):
+                if cell == 0: continue
+                color = self.green if cell == 1 else self.red
+                self.trails_screen.set_at((x, y), color)
+                
+        self._render()
+    
+        self.prev1 = self.tron.bike1.pos.copy()
+        self.prev2 = self.tron.bike2.pos.copy()
+        return state, info
+    
+    def step(self, action):
+        state, reward, done, _, info = self.env.step(action)
+        assert self.env.unwrapped.observation_space.contains(state), f"Jason! Invalid state {state}"
+        
+        self.screen.blit(self.background, (0, 0))
+        self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)
+        self.trails_screen.set_at((self.tron.bike2.pos[0], self.tron.bike2.pos[1]), self.red_alt)
+        self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
+        self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
+        self._render()
+
+        self.prev1 = self.tron.bike1.pos.copy()
+        self.prev2 = self.tron.bike2.pos.copy()
+
+        # Input
+        for event in self.pg.event.get():
+            if event.type == self.pg.QUIT:
+                self.pg.quit()
+                exit()
+            if event.type == self.pg.KEYDOWN:
+                if event.key == self.pg.K_q or event.key == self.pg.K_ESCAPE:
+                    self.pg.quit()
+                    exit()
+                
+                if event.key == self.pg.K_s:
+                    # Save state as state.npy
+                    np.save("state.npy", state)
+
+        self.clock.tick(self.fps)
+        
+        return state, reward, done, _, info
+
+    def _render(self):
+        self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
+        self.pg.display.flip()
+    
     @staticmethod
     def view(state, scale):
         walls, bike1, bike2 = state
@@ -151,63 +207,31 @@ class TronView(gym.Wrapper):
                         return 3
 
             clock.tick(30)
-        
 
-    def reset(self, seed=None, options=None):
-        state, info = self.env.reset(seed=seed, options=options)
+    @staticmethod
+    def wait_for_both_inputs():
+        import pygame as pg
+        clock = pg.time.Clock()
+        p1_dir = None
+        p2_dir = None
 
-        self.screen.blit(self.background, (0, 0))
-        self.trails_screen.fill((0, 0, 0, 0))  # Clear trails with transparency
+        player1_keys = [pg.K_w, pg.K_d, pg.K_s, pg.K_a]
+        player2_keys = [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]
 
-        # Fill in walls (neccesary after first move is made before env starts)
-        walls = self.tron.walls
-        for y, row in enumerate(walls):
-            for x, cell in enumerate(row):
-                if cell == 0: continue
-                color = self.green if cell == 1 else self.red
-                self.trails_screen.set_at((x, y), color)
-                
-        self._render()
-    
-        self.prev1 = self.tron.bike1.pos.copy()
-        self.prev2 = self.tron.bike2.pos.copy()
-        return state, info
-    
-    def step(self, action):
-        state, reward, done, _, info = self.env.step(action)
-        assert self.env.unwrapped.observation_space.contains(state), f"Jason! Invalid state {state}"
-        
-        self.screen.blit(self.background, (0, 0))
-        self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)
-        self.trails_screen.set_at((self.tron.bike2.pos[0], self.tron.bike2.pos[1]), self.red_alt)
-        self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
-        self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
-        self._render()
-
-        self.prev1 = self.tron.bike1.pos.copy()
-        self.prev2 = self.tron.bike2.pos.copy()
-
-        # Input
-        for event in self.pg.event.get():
-            if event.type == self.pg.QUIT:
-                self.pg.quit()
-                exit()
-            if event.type == self.pg.KEYDOWN:
-                if event.key == self.pg.K_q or event.key == self.pg.K_ESCAPE:
-                    self.pg.quit()
+        while p1_dir is None or p2_dir is None:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
                     exit()
+                elif event.type == pg.KEYDOWN:
+                    if event.key in player1_keys:
+                        p1_dir = player1_keys.index(event.key)
+                    elif event.key in player2_keys:
+                        p2_dir = player2_keys.index(event.key)
                 
-                if event.key == self.pg.K_s:
-                    # Save state as state.npy
-                    np.save("state.npy", state)
+                clock.tick(30)
 
-        self.clock.tick(self.fps)
-        
-        return state, reward, done, _, info
-
-    def _render(self):
-        self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
-        self.pg.display.flip()
+        return p1_dir, p2_dir
 
 class TronImage(gym.ObservationWrapper):
     """
