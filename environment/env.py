@@ -10,7 +10,7 @@ from environment.tron import Tron
 class TronDualEnv(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
-    reward_mapping = [0.0, -1.0, 1, 0.5]  # playing, lose, win, draw
+    reward_mapping = [0, -1, 1, 0]  # playing, lose, win, draw
 
     def __init__(self, opponent, width, height):
         self.tron = Tron(width, height)
@@ -40,7 +40,6 @@ class TronDualEnv(gym.Env):
     
     def step(self, joint_action : tuple):
         assert self.action_space.contains(joint_action), f"Jason! Invalid Action {joint_action}"
-        # opp_action = self.opponent(self._get_state())
         
         dir1 = self.action_mapping[joint_action[0]]
         dir2 = self.action_mapping[joint_action[1]]
@@ -73,7 +72,8 @@ if __name__ == "__main__":
     total_reward = 0.0
     episodes = 1
     while True:
-        TronView.view(state[0], scale=70)
+        # TronView.view(state[0], scale=70)
+        TronView.view_dual(state, scale=70)
         action = TronView.wait_for_keypress()
         action = env.action_space.sample()
 
