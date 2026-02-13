@@ -6,7 +6,7 @@ import numpy as np
 import gymnasium as gym
 
 from environment.tron import Tron
-from agents import Agent
+from agents import Agent, DQNAgent
 
 class TronDualEnv(gym.Env):
 
@@ -73,6 +73,9 @@ class TronSingleEnv(gym.Env):
         self.observation_space, _ = self.dual_env.observation_space.spaces
 
         self.opponent = opponent
+        if isinstance(opponent, DQNAgent):
+            opponent.eval()
+            # APPLY IMAGE WRAPPER AND STUFF
         opponent.bind_env(self)
 
     def reset(self, seed=None, options=None):
@@ -97,13 +100,17 @@ if __name__ == "__main__":
     from agents import DeterministicAgent, RandomAgent, SemiDeterministicAgent, HeuristicAgent, DQNAgent
 
     # env = TronDualEnv(width=10, height=10)
-    env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
-    env = TronEgo(env)
+    env = TronSingleEnv(DQNAgent("q_net.pth"), width=10, height=10)
+    # env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
+    # env = TronEgo(env)
     env = TronView(env, fps=10, scale=70)
 
-    env = TronTorch(env)
-    agent = DQNAgent("q_net.pth")
-    agent.eval()
+    # env = TronTorch(env)
+    # agent = DQNAgent("q_net.pth")
+    # agent.eval()
+
+    agent = SemiDeterministicAgent(.6)
+    # agent = HeuristicAgent()
     # agent = RandomAgent()
     agent.bind_env(env)
 
