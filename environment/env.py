@@ -116,8 +116,9 @@ class TronSingleEnv(gym.Env):
         
         opp_state, _, _, _, _ = self.oppenv.step(0)
         opponent_action = self.opponent(opp_state)
-        (state, opponent_state), reward, done, _, info = self.dual_env.step((action, opponent_action))
-        self._base_oppenv.set_state(opponent_state)
+        
+        (state, opp_state), reward, done, _, info = self.dual_env.step((action, opponent_action))
+        self._base_oppenv.set_state(opp_state)
 
         # TronView.view(state, scale=70)
         # TronView.view_dual((state, opponent_state), scale=70)
@@ -127,21 +128,25 @@ class TronSingleEnv(gym.Env):
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo, TronTorch
     from agents import DeterministicAgent, RandomAgent, SemiDeterministicAgent, HeuristicAgent, DQNAgent
+    from utils import StateViewer
 
     # env = TronDualEnv(width=10, height=10)
-    # env = TronSingleEnv(DQNAgent("q_net.pth"), width=10, height=10)
-    env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
-    env = TronEgo(env)
+    env = TronSingleEnv(DQNAgent("q_net.pth"), width=10, height=10)
+    # env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
+    # env = TronEgo(env)
     # env = TronView(env, fps=10, scale=70)
 
-    env = TronTorch(env)
-    agent = DQNAgent("q_net.pth")
-    agent.eval()
+    sv = StateViewer((10, 10), fps=2)
+
+    # env = TronTorch(env)
+    # agent = DQNAgent("q_net.pth")
+    # agent.eval()
 
     # agent = SemiDeterministicAgent(.6)
-    # agent = HeuristicAgent()
+    agent = HeuristicAgent()
     # agent = RandomAgent()
     agent.bind_env(env)
+
 
     state, _ = env.reset()
 
@@ -152,7 +157,7 @@ if __name__ == "__main__":
     while True:
         # TronView.view(state[0], scale=70)
         # TronView.view_dual(state, scale=70)
-        TronView.view_image(state, scale=70)
+        sv.view(state)
         action = agent(state)
         # action = TronView.wait_for_both_inputs()
         # action = TronView.wait_for_keypress()

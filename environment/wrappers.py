@@ -99,39 +99,6 @@ class TronView(gym.Wrapper):
         self.pg.display.flip()
     
     @staticmethod
-    def view(state, scale):
-        walls, bike1, bike2 = state
-
-        import pygame as pg
-        pg.init()
-
-        # _, height, width = state.shape
-        height, width = walls.shape
-        window_size = (width * scale, height * scale)
-        screen = pg.display.set_mode(window_size)
-        pg.display.set_caption("Tron Game (State view)")
-
-        surface = pg.Surface((width, height))
-        for x in range(width):
-            for y in range(height):
-                if walls[y, x]:
-                    color = TronView.green if walls[y, x] == 1 else TronView.red
-                else:
-                    color = TronView.blue if (x + y) % 2 else TronView.blue_alt
-                surface.set_at((x, y), color)
-
-        # Heads
-        x, y = bike1
-        surface.set_at((x, y), TronView.green_alt)
-        x, y = bike2
-        surface.set_at((x, y), TronView.red_alt)
-
-        screen.blit(pg.transform.scale(surface, window_size), (0, 0))
-        pg.display.flip()
-
-        TronView.wait()
-    
-    @staticmethod
     def view_dual(state, scale):
         walls, bike1, bike2 = state[0]
 
@@ -179,53 +146,6 @@ class TronView(gym.Wrapper):
         pg.display.flip()
 
         TronView.wait()
-
-    @staticmethod 
-    def view_image(image, scale):
-        image = image.squeeze(0)
-        walls, bike1, bike2 = image
-
-        import pygame as pg
-        pg.init()
-
-        _, height, width = image.shape
-        window_size = (width * scale, height * scale)
-        screen = pg.display.set_mode(window_size)
-        pg.display.set_caption("Tron Game (State view)")
-
-        surface = pg.Surface((width, height))
-        for x in range(width):
-            for y in range(height):
-                if walls[y, x]:
-                    color = TronView.green if walls[y, x] == 1 else TronView.red
-                else:
-                    color = TronView.blue if (x + y) % 2 else TronView.blue_alt
-                surface.set_at((x, y), color)
-
-        # Heads
-        y, x = np.argwhere(bike1 == 1)
-        surface.set_at((x, y), TronView.green_alt)
-        y, x = np.argwhere(bike2 == 1)
-        surface.set_at((x, y), TronView.red_alt)
-
-        screen.blit(pg.transform.scale(surface, window_size), (0, 0))
-        pg.display.flip()
-
-        TronView.wait()
-    @staticmethod
-    def wait():
-        import pygame as pg
-        # Input
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                pg.quit()
-                exit()
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_q or event.key == pg.K_ESCAPE:
-                    pg.quit()
-                    exit()
-
-        time.sleep(.1)
 
     @staticmethod
     def wait_for_keypress():
