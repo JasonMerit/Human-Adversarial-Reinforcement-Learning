@@ -114,16 +114,17 @@ class TronSingleEnv(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action), f"Jason! Invalid Action {action}"
         
-        opp_state, _, _, _, _ = self.oppenv.step(0)
-        opponent_action = self.opponent(opp_state)
-        
+        opp_view_state, _, _, _, _ = self.oppenv.step(0)
+        opponent_action = self.opponent(opp_view_state)
+        print(opponent_action)
+
         (state, opp_state), reward, done, _, info = self.dual_env.step((action, opponent_action))
         self._base_oppenv.set_state(opp_state)
 
         # TronView.view(state, scale=70)
         # TronView.view_dual((state, opponent_state), scale=70)
         
-        return state, reward, done, False, info
+        return state, reward, done, False, opp_view_state
 
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo, TronTorch
@@ -131,19 +132,19 @@ if __name__ == "__main__":
     from utils import StateViewer
 
     # env = TronDualEnv(width=10, height=10)
-    env = TronSingleEnv(DQNAgent("q_net.pth"), width=10, height=10)
-    # env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
+    # env = TronSingleEnv(DQNAgent("q_net.pth"), width=10, height=10)
+    env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
     # env = TronEgo(env)
     # env = TronView(env, fps=10, scale=70)
 
     sv = StateViewer((10, 10), fps=2)
 
-    # env = TronTorch(env)
-    # agent = DQNAgent("q_net.pth")
-    # agent.eval()
+    env = TronTorch(env)
+    agent = DQNAgent("q_net.pth")
+    agent.eval()
 
     # agent = SemiDeterministicAgent(.6)
-    agent = HeuristicAgent()
+    # agent = HeuristicAgent()
     # agent = RandomAgent()
     agent.bind_env(env)
 
@@ -157,7 +158,6 @@ if __name__ == "__main__":
     while True:
         # TronView.view(state[0], scale=70)
         # TronView.view_dual(state, scale=70)
-        sv.view(state)
         action = agent(state)
         # action = TronView.wait_for_both_inputs()
         # action = TronView.wait_for_keypress()
@@ -166,6 +166,7 @@ if __name__ == "__main__":
         kek = 1
 
         state, reward, done, _, info = env.step(action)
+        sv.view_image(state)
         if done:
             kek = 2
             if reward > 0.9:
