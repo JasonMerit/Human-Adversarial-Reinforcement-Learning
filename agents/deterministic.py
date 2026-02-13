@@ -2,7 +2,7 @@ import numpy as np
 from agents.base import Agent
 from utils.helper import bcolors
 from gymnasium import spaces
-from environment.env import TronEnv
+from environment.env import TronDualEnv
 
 class DeterministicAgent(Agent):
     def __init__(self):
@@ -32,7 +32,7 @@ class DeterministicAgent(Agent):
         return self._get_action(walls, pos)
 
     def _is_valid_action(self, action, walls, pos):
-        new_pos = pos + TronEnv.action_mapping[action]
+        new_pos = pos + TronDualEnv.action_mapping[action]
         x, y = new_pos
         return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
 

@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pygame.pkgdata")
 import gymnasium as gym
 import numpy as np
 
@@ -46,7 +48,8 @@ class TronView(gym.Wrapper):
         import pygame as pg
         pg.init()
 
-        _, height, width = state.shape
+        # _, height, width = state.shape
+        height, width = walls.shape
         window_size = (width * scale, height * scale)
         screen = pg.display.set_mode(window_size)
         pg.display.set_caption("Tron Game (State view)")
@@ -61,16 +64,20 @@ class TronView(gym.Wrapper):
                 surface.set_at((x, y), color)
 
         # Heads
-        try:
-            y, x = np.argwhere(bike1 == 1)[0]  # Flipped coordinates
-            surface.set_at((x, y), TronView.green_alt)
-        except IndexError:
-            pass
-        try:
-            y, x = np.argwhere(bike2 == 1)[0]  # Flipped coordinates
-            surface.set_at((x, y), TronView.red_alt)
-        except IndexError:
-            pass
+        # try:
+        #     x, y = bike1
+        #     surface.set_at((x, y), TronView.green_alt)
+        # except IndexError:
+        #     pass
+        # try:
+        #     x, y = bike2
+        #     surface.set_at((x, y), TronView.red_alt)
+        # except IndexError:
+        #     pass
+        x, y = bike1
+        surface.set_at((x, y), TronView.green_alt)
+        x, y = bike2
+        surface.set_at((x, y), TronView.red_alt)
 
         screen.blit(pg.transform.scale(surface, window_size), (0, 0))
         pg.display.flip()
@@ -131,6 +138,7 @@ class TronView(gym.Wrapper):
     
     def step(self, action):
         state, reward, done, _, info = self.env.step(action)
+        assert self.env.unwrapped.observation_space.contains(state), f"Jason! Invalid state {type(state)}"
         
         self.screen.blit(self.background, (0, 0))
         self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)

@@ -1,5 +1,5 @@
 import numpy as np
-from environment.env import TronEnv
+from environment.env import TronDualEnv
 from utils.heuristics import chamber_heuristic
 from gymnasium import spaces
 from utils.helper import bcolors
@@ -27,7 +27,7 @@ class HeuristicAgent(Agent):
         best_score = -np.inf
         best_action = None
 
-        for action, dir in enumerate(TronEnv.action_mapping):
+        for action, dir in enumerate(TronDualEnv.action_mapping):
             # Simulate the move
             new_pos = player + dir
 

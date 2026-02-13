@@ -4,7 +4,7 @@ from utils.helper import bcolors
 class Bike:
     
     def __init__(self, pos):
-        self.pos = np.array(pos, dtype=int)
+        self.pos = np.array(pos, dtype=np.int8)
 
     def move(self, vel):
         self.pos += vel
@@ -21,7 +21,7 @@ class Tron:
 
 
     def reset(self):
-        self.walls = np.zeros((self.height, self.width), dtype=int)
+        self.walls = np.zeros((self.height, self.width), dtype=np.int8)
         self.bike1 = Bike([1, self.height // 2])
         self.bike2 = Bike([self.width - 2, self.height // 2])
 

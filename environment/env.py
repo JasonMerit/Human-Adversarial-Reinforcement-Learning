@@ -1,22 +1,31 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+
 import numpy as np
 import gymnasium as gym
 
 from environment.tron import Tron
 
-class TronEnv(gym.Env):
+class TronDualEnv(gym.Env):
 
-    action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=int)  # up, right, down, left
+    action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
     reward_mapping = [0.0, -1.0, 1, 0.5]  # playing, lose, win, draw
 
     def __init__(self, opponent, width, height):
         self.tron = Tron(width, height)
-        self.action_space = gym.spaces.Discrete(4)
+        self.action_space = gym.spaces.Tuple((gym.spaces.Discrete(4), gym.spaces.Discrete(4)))
         self.observation_space = gym.spaces.Tuple((
-            gym.spaces.Box(low=0, high=1, shape=(height, width), dtype=np.int64),
-            gym.spaces.Box(low=0, high=1, shape=(2,), dtype=np.int64),
-            gym.spaces.Box(low=0, high=1, shape=(2,), dtype=np.int64)
+            gym.spaces.Tuple((
+                gym.spaces.Box(low=0, high=2, shape=(height, width), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8)
+            )),
+            gym.spaces.Tuple((
+                gym.spaces.Box(low=0, high=2, shape=(height, width), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8)
+            ))
         ))
 
         self.opponent = opponent
@@ -29,12 +38,12 @@ class TronEnv(gym.Env):
             
         return self._get_state(), {'result': 0}
     
-    def step(self, action):
-        assert self.action_space.contains(action), "Jason! Invalid Action"
-        opp_action = self.opponent(self._get_state())
+    def step(self, joint_action : tuple):
+        assert self.action_space.contains(joint_action), f"Jason! Invalid Action {joint_action}"
+        # opp_action = self.opponent(self._get_state())
         
-        dir1 = self.action_mapping[action]
-        dir2 = self.action_mapping[opp_action]
+        dir1 = self.action_mapping[joint_action[0]]
+        dir2 = self.action_mapping[joint_action[1]]
     
         result = self.tron.tick(dir1, dir2)
         done = result != 0
@@ -44,14 +53,15 @@ class TronEnv(gym.Env):
         return state, reward, done, False, info
     
     def _get_state(self):
-        return self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
+        walls, you, opp = self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
+        return (walls, you, opp), (walls, opp, you)
     
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo
     from agents import DeterministicAgent, RandomAgent
 
-    env = TronEnv(DeterministicAgent(), width=10, height=10)
-    env = TronEgo(env)
+    env = TronDualEnv(DeterministicAgent(), width=10, height=10)
+    # env = TronEgo(env)
     env = TronView(env, fps=100, scale=70)
     state, _ = env.reset()
 
@@ -63,8 +73,9 @@ if __name__ == "__main__":
     total_reward = 0.0
     episodes = 1
     while True:
-        TronView.view(state, scale=70)
+        TronView.view(state[0], scale=70)
         action = TronView.wait_for_keypress()
+        action = env.action_space.sample()
 
         state, reward, done, _, info = env.step(action)
         if done:
