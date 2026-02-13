@@ -2,7 +2,6 @@ import numpy as np
 from agents.base import Agent
 from utils.helper import bcolors
 from gymnasium import spaces
-from environment.env import TronDualEnv
 
 class DeterministicAgent(Agent):
     def __init__(self):
@@ -30,7 +29,8 @@ class DeterministicAgent(Agent):
         return self._get_action(walls, you)
 
     def _is_valid_action(self, action, walls, pos):
-        new_pos = pos + TronDualEnv.action_mapping[action]
+        action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)
+        new_pos = pos + action_mapping[action]
         x, y = new_pos
         return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
 
@@ -40,8 +40,12 @@ class DeterministicAgent(Agent):
 
 
 class SemiDeterministicAgent(DeterministicAgent):
+    def __init__(self, random_prob):
+        super().__init__()
+        self.random_prob = random_prob
+
     def _get_action(self, walls, pos):
-        if self.np_random.random() < 0.25:  # 10% chance to be random
+        if self.np_random.random() < self.random_prob:  # 10% chance to be random
             action = self.np_random.choice(range(4))
             possible_actions = set(range(4)) - {action}
         else:

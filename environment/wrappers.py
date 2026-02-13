@@ -300,11 +300,12 @@ class TronTorch(gym.ObservationWrapper):
     """
 
     def __init__(self, env):
-        super().__init__(env)
         import torch
         self.torch = torch
         if not has_wrapper(env, TronImage):
-            raise ValueError(f"{bcolors.FAIL}TronTorch wrapper requires TronImage wrapper{bcolors.ENDC}")
+            print(f"{bcolors.WARNING}TronTorch wrapper requires TronImage wrapper. Automatically adding TronImage wrapper.{bcolors.ENDC}")
+            env = TronImage(env)
+        super().__init__(env)
 
     def observation(self, obs):
         return self.torch.tensor(obs, dtype=self.torch.float32).unsqueeze(0)

@@ -6,6 +6,7 @@ import numpy as np
 import gymnasium as gym
 
 from environment.tron import Tron
+from agents import Agent
 
 class TronDualEnv(gym.Env):
 
@@ -64,13 +65,15 @@ class TronSingleEnv(gym.Env):
 
     reward_mapping = [0, -1, 1, .5]  # playing, lose, win, draw
 
-    def __init__(self, opponent, width, height):
-        self.opponent = opponent
+    def __init__(self, opponent : Agent, width, height):
         self.dual_env = TronDualEnv(width, height)
         self.tron = self.dual_env.tron
 
         self.action_space = gym.spaces.Discrete(4)
         self.observation_space, _ = self.dual_env.observation_space.spaces
+
+        self.opponent = opponent
+        opponent.bind_env(self)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -90,18 +93,21 @@ class TronSingleEnv(gym.Env):
         return state, reward, done, False, info
 
 if __name__ == "__main__":
-    from environment.wrappers import TronView, TronEgo
-    from agents import DeterministicAgent, RandomAgent, SemiDeterministicAgent
+    from environment.wrappers import TronView, TronEgo, TronTorch
+    from agents import DeterministicAgent, RandomAgent, SemiDeterministicAgent, HeuristicAgent, DQNAgent
 
     # env = TronDualEnv(width=10, height=10)
-    env = TronSingleEnv(DeterministicAgent(), width=10, height=10)
-    # env = TronEgo(env)
+    env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
+    env = TronEgo(env)
     env = TronView(env, fps=10, scale=70)
-    state, _ = env.reset()
 
-    agent = SemiDeterministicAgent()
+    env = TronTorch(env)
+    agent = DQNAgent("q_net.pth")
+    agent.eval()
+    # agent = RandomAgent()
     agent.bind_env(env)
-    # agent = DeterministicAgent(1)
+
+    state, _ = env.reset()
 
     done = False
     total_reward = 0.0
@@ -110,7 +116,6 @@ if __name__ == "__main__":
     while True:
         # TronView.view(state[0], scale=70)
         # TronView.view_dual(state, scale=70)
-
         action = agent(state)
         # action = TronView.wait_for_both_inputs()
         # action = TronView.wait_for_keypress()

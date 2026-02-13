@@ -36,12 +36,18 @@ class QNet(nn.Module):
 class DQNAgent(Agent):
     def __init__(self, qnet_path: str):
         self.qnet = QNet.load(qnet_path)
+    
+    def eval(self):
+        self.qnet.eval()
 
     def __call__(self, state):
         with torch.no_grad():
             q_values = self.qnet(state)
             return q_values.argmax().item()
     
+    def reset(self):
+        pass
+
     def _check_env(self, env):
         if not has_wrapper(env, TronTorch):
             raise ValueError(f"{bcolors.FAIL}DQNAgent requires TronTorch wrapper{bcolors.ENDC}")
