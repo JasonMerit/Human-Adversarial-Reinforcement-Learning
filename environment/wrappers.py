@@ -64,16 +64,6 @@ class TronView(gym.Wrapper):
                 surface.set_at((x, y), color)
 
         # Heads
-        # try:
-        #     x, y = bike1
-        #     surface.set_at((x, y), TronView.green_alt)
-        # except IndexError:
-        #     pass
-        # try:
-        #     x, y = bike2
-        #     surface.set_at((x, y), TronView.red_alt)
-        # except IndexError:
-        #     pass
         x, y = bike1
         surface.set_at((x, y), TronView.green_alt)
         x, y = bike2
@@ -109,18 +99,20 @@ class TronView(gym.Wrapper):
         x, y = bike2
         you_surface.set_at((x, y), TronView.red_alt)
 
+        # ======= MIRROR =======
+        walls, bike1, bike2 = state[1]
         opp_surface = pg.Surface((width, height))
         for x in range(width):
             for y in range(height):
                 if walls[y, x]:
-                    color = TronView.green if walls[y, x] == 1 else TronView.red
+                    color = TronView.green if walls[y, x] == 2 else TronView.red
                 else:
                     color = TronView.blue if (x + y) % 2 else TronView.blue_alt
                 opp_surface.set_at((x, y), color)
 
-        x, y = bike1
-        opp_surface.set_at((x, y), TronView.green_alt)
         x, y = bike2
+        opp_surface.set_at((x, y), TronView.green_alt)
+        x, y = bike1
         opp_surface.set_at((x, y), TronView.red_alt)
 
         screen.blit(pg.transform.scale(you_surface, scale_size), (0, 0))
@@ -183,7 +175,7 @@ class TronView(gym.Wrapper):
     
     def step(self, action):
         state, reward, done, _, info = self.env.step(action)
-        assert self.env.unwrapped.observation_space.contains(state), f"Jason! Invalid state {type(state)}"
+        assert self.env.unwrapped.observation_space.contains(state), f"Jason! Invalid state {state}"
         
         self.screen.blit(self.background, (0, 0))
         self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)
@@ -236,14 +228,11 @@ class TronImage(gym.ObservationWrapper):
         bike1 = np.zeros_like(occ)
         bike2 = np.zeros_like(occ)
 
-        try:
-            x1, y1 = self.tron.bike1.pos
-            bike1[y1, x1] = 1.0
+        x1, y1 = self.tron.bike1.pos
+        bike1[y1, x1] = 1.0
 
-            x2, y2 = self.tron.bike2.pos
-            bike2[y2, x2] = 1.0  
-        except IndexError:  # Terminal state (out of bounds)
-            pass
+        x2, y2 = self.tron.bike2.pos
+        bike2[y2, x2] = 1.0  
 
         # Stack into CNN input
         obs = np.stack([occ, bike1, bike2], axis=0)

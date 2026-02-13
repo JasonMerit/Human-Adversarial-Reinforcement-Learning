@@ -10,10 +10,13 @@ from environment.tron import Tron
 class TronDualEnv(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
+    action_flipped = [0, 3, 2, 1]  # Flipping opponent action horizontally
     reward_mapping = [0, -1, 1, 0]  # playing, lose, win, draw
 
     def __init__(self, opponent, width, height):
         self.tron = Tron(width, height)
+        self.width = width
+
         self.action_space = gym.spaces.Tuple((gym.spaces.Discrete(4), gym.spaces.Discrete(4)))
         self.observation_space = gym.spaces.Tuple((
             gym.spaces.Tuple((
@@ -42,7 +45,7 @@ class TronDualEnv(gym.Env):
         assert self.action_space.contains(joint_action), f"Jason! Invalid Action {joint_action}"
         
         dir1 = self.action_mapping[joint_action[0]]
-        dir2 = self.action_mapping[joint_action[1]]
+        dir2 = self.action_mapping[self.action_flipped[joint_action[1]]]
     
         result = self.tron.tick(dir1, dir2)
         done = result != 0
@@ -53,7 +56,11 @@ class TronDualEnv(gym.Env):
     
     def _get_state(self):
         walls, you, opp = self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
-        return (walls, you, opp), (walls, opp, you)
+        you_ = np.array([self.width - 1 - you[0], you[1]])
+        opp_ = np.array([self.width - 1 - opp[0], opp[1]])
+        a = np.fliplr(walls).copy()
+        a[a != 0] = 3 - a[a != 0]
+        return (walls, you, opp), (a, opp_, you_)
     
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo
@@ -73,15 +80,16 @@ if __name__ == "__main__":
     episodes = 1
     while True:
         # TronView.view(state[0], scale=70)
-        TronView.view_dual(state, scale=70)
-        action = TronView.wait_for_keypress()
+        # TronView.view_dual(state, scale=70)
+        # action = TronView.wait_for_keypress()
         action = env.action_space.sample()
 
         state, reward, done, _, info = env.step(action)
         if done:
+            kek = 0
             if reward > 0.9:
                 total_reward += reward
-            print(f"{episodes}: Avg reward = {round(total_reward / episodes, 2)}", end='\r')
+            # print(f"{episodes}: Avg reward = {round(total_reward / episodes, 2)}", end='\r')
             env.reset()
             agent.reset()
             episodes += 1
