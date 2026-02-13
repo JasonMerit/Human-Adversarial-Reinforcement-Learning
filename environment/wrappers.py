@@ -63,7 +63,7 @@ class TronView(gym.Wrapper):
     
     def step(self, action):
         state, reward, done, _, info = self.env.step(action)
-        assert self.env.unwrapped.observation_space.contains(state), f"Jason! Invalid state {state}"
+        assert self.env.observation_space.contains(state), f"Jason! Invalid state {state}"
         
         self.screen.blit(self.background, (0, 0))
         self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)

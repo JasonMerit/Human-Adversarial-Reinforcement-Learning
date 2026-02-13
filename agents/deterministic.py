@@ -6,7 +6,7 @@ from environment.env import TronDualEnv
 
 class DeterministicAgent(Agent):
     def __init__(self):
-        self.last_action = self.first_action = 3
+        self.last_action = self.first_action = 1
         self.is_opponent = True
         self.np_random = np.random.RandomState()
 
@@ -26,10 +26,8 @@ class DeterministicAgent(Agent):
         return action
     
     def __call__(self, state):
-        """Assumed call from player"""
-        walls, player, opp = state
-        pos = player if not self.is_opponent else opp
-        return self._get_action(walls, pos)
+        walls, you, _ = state
+        return self._get_action(walls, you)
 
     def _is_valid_action(self, action, walls, pos):
         new_pos = pos + TronDualEnv.action_mapping[action]
@@ -37,9 +35,22 @@ class DeterministicAgent(Agent):
         return not (not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0)
 
     def _check_env(self, env):
-        # Hack done to distinguish player from opponent
-        self.last_action = self.first_action = 3  
-        self.is_opponent = False
-
         if not isinstance(env.observation_space, spaces.Tuple):
             raise ValueError(f"{bcolors.FAIL}DeterministicAgent requires an environment with a tuple observation space. Try removing wrappers.{bcolors.ENDC}")    
+
+
+class SemiDeterministicAgent(DeterministicAgent):
+    def _get_action(self, walls, pos):
+        if self.np_random.random() < 0.25:  # 10% chance to be random
+            action = self.np_random.choice(range(4))
+            possible_actions = set(range(4)) - {action}
+        else:
+            action = self.last_action
+            possible_actions = set(range(4)) - {action, (action + 2) % 4}
+
+        while not self._is_valid_action(action, walls, pos) and len(possible_actions) > 0:
+            action = self.np_random.choice(list(possible_actions))
+            possible_actions.remove(action)
+
+        self.last_action = action
+        return action

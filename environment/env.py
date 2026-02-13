@@ -13,7 +13,7 @@ class TronDualEnv(gym.Env):
     action_flipped = [0, 3, 2, 1]  # Flipping opponent action horizontally
     reward_mapping = [0, -1, 1, 0]  # playing, lose, win, draw
 
-    def __init__(self, opponent, width, height):
+    def __init__(self, width, height):
         self.tron = Tron(width, height)
         self.width = width
 
@@ -31,13 +31,10 @@ class TronDualEnv(gym.Env):
             ))
         ))
 
-        self.opponent = opponent
-
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.tron.reset()
         self.tron.tick(self.action_mapping[1], self.action_mapping[3])  # First facing
-        self.opponent.reset(seed=seed)
             
         return self._get_state(), {'result': 0}
     
@@ -62,35 +59,73 @@ class TronDualEnv(gym.Env):
         a[a != 0] = 3 - a[a != 0]  # Map (1, 2) -> (2, 1)
         return (walls, you, opp), (a, opp_, you_)
     
+
+class TronSingleEnv(gym.Env):
+
+    reward_mapping = [0, -1, 1, .5]  # playing, lose, win, draw
+
+    def __init__(self, opponent, width, height):
+        self.opponent = opponent
+        self.dual_env = TronDualEnv(width, height)
+        self.tron = self.dual_env.tron
+
+        self.action_space = gym.spaces.Discrete(4)
+        self.observation_space, _ = self.dual_env.observation_space.spaces
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        (state, opponent_state), info = self.dual_env.reset(seed=seed)
+        self.opponent.reset()
+        self.opponent_state = opponent_state
+
+        return state, info
+    
+    def step(self, action):
+        assert self.action_space.contains(action), f"Jason! Invalid Action {action}"
+        
+        opponent_action = self.opponent(self.opponent_state)
+        (state, opponent_state), reward, done, _, info = self.dual_env.step((action, opponent_action))
+        self.opponent_state = opponent_state
+        
+        return state, reward, done, False, info
+
 if __name__ == "__main__":
     from environment.wrappers import TronView, TronEgo
-    from agents import DeterministicAgent, RandomAgent
+    from agents import DeterministicAgent, RandomAgent, SemiDeterministicAgent
 
-    env = TronDualEnv(DeterministicAgent(), width=10, height=10)
+    # env = TronDualEnv(width=10, height=10)
+    env = TronSingleEnv(DeterministicAgent(), width=10, height=10)
     # env = TronEgo(env)
-    env = TronView(env, fps=100, scale=70)
+    env = TronView(env, fps=10, scale=70)
     state, _ = env.reset()
 
-    agent = RandomAgent()
+    agent = SemiDeterministicAgent()
     agent.bind_env(env)
     # agent = DeterministicAgent(1)
 
     done = False
     total_reward = 0.0
     episodes = 1
+    kek = 2
     while True:
         # TronView.view(state[0], scale=70)
-        TronView.view_dual(state, scale=70)
-        action = TronView.wait_for_both_inputs()
+        # TronView.view_dual(state, scale=70)
+
+        action = agent(state)
+        # action = TronView.wait_for_both_inputs()
         # action = TronView.wait_for_keypress()
         # action = env.action_space.sample()
+        # action = kek
+        kek = 1
 
         state, reward, done, _, info = env.step(action)
         if done:
-            kek = 0
+            kek = 2
             if reward > 0.9:
                 total_reward += reward
             # print(f"{episodes}: Avg reward = {round(total_reward / episodes, 2)}", end='\r')
-            env.reset()
+            state, _ = env.reset()
             agent.reset()
             episodes += 1
+
+        # TronView.wait_for_keypress()
