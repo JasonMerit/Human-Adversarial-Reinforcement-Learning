@@ -2,6 +2,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pygame.pkgdata")
 import gymnasium as gym
 import numpy as np
+import time
 
 from utils.helper import has_wrapper, bcolors
 
@@ -127,6 +128,8 @@ class TronView(gym.Wrapper):
 
         screen.blit(pg.transform.scale(surface, window_size), (0, 0))
         pg.display.flip()
+
+        TronView.wait()
     
     @staticmethod
     def view_dual(state, scale):
@@ -174,6 +177,55 @@ class TronView(gym.Wrapper):
         screen.blit(pg.transform.scale(you_surface, scale_size), (0, 0))
         screen.blit(pg.transform.scale(opp_surface, scale_size), (width * scale + scale, 0))
         pg.display.flip()
+
+        TronView.wait()
+
+    @staticmethod 
+    def view_image(image, scale):
+        image = image.squeeze(0)
+        walls, bike1, bike2 = image
+
+        import pygame as pg
+        pg.init()
+
+        _, height, width = image.shape
+        window_size = (width * scale, height * scale)
+        screen = pg.display.set_mode(window_size)
+        pg.display.set_caption("Tron Game (State view)")
+
+        surface = pg.Surface((width, height))
+        for x in range(width):
+            for y in range(height):
+                if walls[y, x]:
+                    color = TronView.green if walls[y, x] == 1 else TronView.red
+                else:
+                    color = TronView.blue if (x + y) % 2 else TronView.blue_alt
+                surface.set_at((x, y), color)
+
+        # Heads
+        y, x = np.argwhere(bike1 == 1)
+        surface.set_at((x, y), TronView.green_alt)
+        y, x = np.argwhere(bike2 == 1)
+        surface.set_at((x, y), TronView.red_alt)
+
+        screen.blit(pg.transform.scale(surface, window_size), (0, 0))
+        pg.display.flip()
+
+        TronView.wait()
+    @staticmethod
+    def wait():
+        import pygame as pg
+        # Input
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                exit()
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_q or event.key == pg.K_ESCAPE:
+                    pg.quit()
+                    exit()
+
+        time.sleep(.1)
 
     @staticmethod
     def wait_for_keypress():
@@ -241,25 +293,25 @@ class TronImage(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.tron = env.unwrapped.tron
-        height, width = self.tron.height, self.tron.width
+        tron = env.unwrapped.tron
+        height, width = tron.height, tron.width
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=np.float32)
     
     def observation(self, obs):
         walls, bike1, bike2 = obs
         occ = (walls > 0).astype(np.float32)
 
-        bike1 = np.zeros_like(occ)
-        bike2 = np.zeros_like(occ)
+        you = np.zeros_like(occ)
+        other = np.zeros_like(occ)
 
-        x1, y1 = self.tron.bike1.pos
-        bike1[y1, x1] = 1.0
+        x, y = bike1
+        you[y, x] = 1.0
 
-        x2, y2 = self.tron.bike2.pos
-        bike2[y2, x2] = 1.0  
+        x, y = bike2
+        other[y, x] = 1.0  
 
         # Stack into CNN input
-        obs = np.stack([occ, bike1, bike2], axis=0)
+        obs = np.stack([occ, you, other], axis=0)
         assert obs.shape == self.observation_space.shape, "Jason! Obs shape mismatch"
         return obs
 
@@ -292,7 +344,6 @@ class TronEgo(gym.Wrapper):
 
     def observation(self, obs):
         return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
-
 
 class TronTorch(gym.ObservationWrapper):
     """
