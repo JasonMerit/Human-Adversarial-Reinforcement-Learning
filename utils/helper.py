@@ -1,4 +1,6 @@
 import numpy as np
+from colorama import init
+init()
 
 from .constants import Color
 
@@ -57,21 +59,25 @@ class StateViewer:
         self.wait()
     
     def view_image(self, image):
-        image = image.squeeze(0)
         walls, bike1, bike2 = image
         
         self.draw_walls(walls)
 
         # Heads
-        y, x = np.argwhere(bike1 == 1)
+        y, x = np.argwhere(bike1 == 1)[0]
         self.surface.set_at((x, y), Color.GREEN_ALT)
-        y, x = np.argwhere(bike2 == 1)
+        y, x = np.argwhere(bike2 == 1)[0]
         self.surface.set_at((x, y), Color.RED_ALT)
 
         self.screen.blit(self.pg.transform.scale(self.surface, self.window_size), (0, 0))
         self.pg.display.flip()
 
         self.wait()
+    
+    def view_dual(self, image):
+        image1, image2 = image
+        self.view_image(image1)
+        self.view_image(image2)
 
     def draw_walls(self, walls):
         for x in range(self.width):

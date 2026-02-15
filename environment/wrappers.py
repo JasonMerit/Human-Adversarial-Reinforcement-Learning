@@ -205,6 +205,20 @@ class TronView(gym.Wrapper):
 
         return p1_dir, p2_dir
 
+def encode_observation(walls, bike_self, bike_other):
+    occ = (walls > 0).astype(np.float32)
+
+    you = np.zeros_like(occ)
+    other = np.zeros_like(occ)
+
+    x, y = bike_self
+    you[y, x] = 1.0
+
+    x, y = bike_other
+    other[y, x] = 1.0
+
+    return np.stack([occ, you, other], axis=0)
+
 class TronImage(gym.ObservationWrapper):
     """
     Transforms the state representation to an image ready for a CNN.
@@ -218,22 +232,30 @@ class TronImage(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=np.float32)
     
     def observation(self, obs):
-        walls, bike1, bike2 = obs
-        occ = (walls > 0).astype(np.float32)
+        obs_img = encode_observation(*obs)
+        assert obs_img.shape == self.observation_space.shape, "Jason! Obs shape mismatch"
+        return obs_img
 
-        you = np.zeros_like(occ)
-        other = np.zeros_like(occ)
+class TronDualImage(gym.ObservationWrapper):
+    """
+    Transforms the dual state representation to an image ready for a CNN.
+    """
 
-        x, y = bike1
-        you[y, x] = 1.0
-
-        x, y = bike2
-        other[y, x] = 1.0  
-
-        # Stack into CNN input
-        obs = np.stack([occ, you, other], axis=0)
-        assert obs.shape == self.observation_space.shape, "Jason! Obs shape mismatch"
-        return obs
+    def __init__(self, env):
+        super().__init__(env)
+        tron = env.unwrapped.tron
+        height, width = tron.height, tron.width
+        self.observation_space = gym.spaces.Tuple((
+            gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=np.float32),
+            gym.spaces.Box(low=0, high=1, shape=(3, height, width), dtype=np.float32)
+        ))
+    
+    def observation(self, obs):
+        obs1, obs2 = obs
+        obs_img = encode_observation(*obs1), encode_observation(*obs2)
+        assert obs_img[0].shape == self.observation_space.spaces[0].shape, f"Jason! Obs shape mismatch {obs_img[0].shape} vs {self.observation_space.spaces[0].shape}"
+        assert obs_img[1].shape == self.observation_space.spaces[1].shape, f"Jason! Obs shape mismatch {obs_img[1].shape} vs {self.observation_space.spaces[1].shape}"
+        return obs_img
 
 class TronEgo(gym.Wrapper):
     """
@@ -245,8 +267,7 @@ class TronEgo(gym.Wrapper):
 
     def __init__(self, env):
         if not has_wrapper(env, TronImage):
-            print(f"{bcolors.WARNING}TronEgo wrapper requires TronImage wrapper. Automatically adding TronImage wrapper.{bcolors.ENDC}")
-            env = TronImage(env)
+            raise ValueError(f"{bcolors.FAIL}TronEgo wrapper requires TronImage wrapper.{bcolors.ENDC}")
         super().__init__(env)
         self.action_space = gym.spaces.Discrete(3)
 
@@ -265,18 +286,67 @@ class TronEgo(gym.Wrapper):
     def observation(self, obs):
         return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
 
-class TronTorch(gym.ObservationWrapper):
+class TronDualEgo(gym.Wrapper):
     """
-    Transforms observation space to PyTorch tensor.
+    Transforms observation space to rotate view such that agent always heads upwards.
+    Also reduces action space to [left, forward, right] relative to agent's perspective.
+
+    orientation in [up, right, down, left]
     """
 
     def __init__(self, env):
-        import torch
-        self.torch = torch
-        if not has_wrapper(env, TronImage):
-            print(f"{bcolors.WARNING}TronTorch wrapper requires TronImage wrapper. Automatically adding TronImage wrapper.{bcolors.ENDC}")
-            env = TronImage(env)
+        if not has_wrapper(env, TronDualImage):
+            raise ValueError(f"{bcolors.FAIL}TronDualEgo wrapper requires TronDualImage wrapper.{bcolors.ENDC}")
         super().__init__(env)
+        self.action_space = gym.spaces.Tuple((gym.spaces.Discrete(3), gym.spaces.Discrete(3)))
+
+    def reset(self, **kwargs):
+        state, info = self.env.reset(**kwargs)
+        self.heading1 = self.heading2 = 1  # First facing right and generally equal to absolute direction
+        return self.observation(state), info
+
+    def step(self, action):
+        if not self.action_space.contains(action):
+            raise ValueError(f"{bcolors.FAIL}Invalid action!{bcolors.ENDC}")
+        self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
+        self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
+        state, reward, done, _, info = self.env.step((self.heading1, self.heading2))
+        return self.observation(state), reward, done, _, info
 
     def observation(self, obs):
-        return self.torch.tensor(obs, dtype=self.torch.float32).unsqueeze(0)
+        obs1, obs2 = obs
+        obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
+        obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
+        return (obs1, obs2)
+
+# class TronTorch(gym.ObservationWrapper):
+#     """
+#     Transforms observation space to PyTorch tensor.
+#     """
+
+#     def __init__(self, env):
+#         import torch
+#         self.torch = torch
+#         if not has_wrapper(env, TronImage):
+#             raise ValueError(f"{bcolors.FAIL}TronTorch wrapper requires TronImage wrapper.{bcolors.ENDC}")
+#         super().__init__(env)
+
+#     def observation(self, obs):
+#         return self.torch.from_numpy(obs).float()
+#         return self.torch.tensor(obs, dtype=self.torch.float32)  # Chat said this was better before
+    
+
+# class TronDualTorch(gym.ObservationWrapper):
+#     """
+#     Transforms observation space to PyTorch tensor.
+#     """
+
+#     def __init__(self, env):
+#         import torch
+#         self.torch = torch
+#         if not has_wrapper(env, TronDualImage):
+#             raise ValueError(f"{bcolors.FAIL}TronDualTorch wrapper requires TronDualImage wrapper.{bcolors.ENDC}")
+#         super().__init__(env)
+
+#     def observation(self, obs):
+#         return self.torch.from_numpy(obs[0]).float(), self.torch.from_numpy(obs[1]).float()

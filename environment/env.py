@@ -7,7 +7,7 @@ import gymnasium as gym
 
 from environment.tron import Tron
 from agents import Agent, DQNAgent
-from environment.wrappers import TronImage, TronTorch, TronEgo
+
 
 class TronDualEnv(gym.Env):
 
@@ -97,9 +97,6 @@ class TronSingleEnv(gym.Env):
         self.oppenv = self._base_oppenv
 
         self.opponent = opponent
-        if isinstance(opponent, DQNAgent):
-            opponent.eval()
-            self.oppenv = TronTorch(TronEgo(self.oppenv))
         opponent.bind_env(self.oppenv)
 
     def reset(self, seed=None, options=None):
@@ -116,7 +113,6 @@ class TronSingleEnv(gym.Env):
         
         opp_view_state, _, _, _, _ = self.oppenv.step(0)
         opponent_action = self.opponent(opp_view_state)
-        print(opponent_action)
 
         (state, opp_state), reward, done, _, info = self.dual_env.step((action, opponent_action))
         self._base_oppenv.set_state(opp_state)
@@ -127,51 +123,51 @@ class TronSingleEnv(gym.Env):
         return state, reward, done, False, opp_view_state
 
 if __name__ == "__main__":
-    from environment.wrappers import TronView, TronEgo, TronTorch
+    from environment.wrappers import (TronView, TronDualImage, 
+                                      TronEgo, TronImage, 
+                                      TronDualEgo)
     from agents import DeterministicAgent, RandomAgent, SemiDeterministicAgent, HeuristicAgent, DQNAgent
     from utils import StateViewer
 
-    # env = TronDualEnv(width=10, height=10)
-    # env = TronSingleEnv(DQNAgent("q_net.pth"), width=10, height=10)
-    env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
-    # env = TronEgo(env)
-    # env = TronView(env, fps=10, scale=70)
+    single = False
 
+    if single:
+        env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
+        env = TronEgo(TronImage(env))
+    else:
+        env = TronDualEnv(width=10, height=10)
+        env = TronDualEgo(TronDualImage(env))
+
+    env = TronView(env, fps=10, scale=70)
     sv = StateViewer((10, 10), fps=2)
 
-    env = TronTorch(env)
     agent = DQNAgent("q_net.pth")
     agent.eval()
-
     # agent = SemiDeterministicAgent(.6)
     # agent = HeuristicAgent()
     # agent = RandomAgent()
     agent.bind_env(env)
-
-
     state, _ = env.reset()
 
     done = False
     total_reward = 0.0
     episodes = 1
-    kek = 2
     while True:
         # TronView.view(state[0], scale=70)
-        # TronView.view_dual(state, scale=70)
-        action = agent(state)
+        # sv.view_dual(state)
         # action = TronView.wait_for_both_inputs()
-        # action = TronView.wait_for_keypress()
-        # action = env.action_space.sample()
-        # action = kek
-        kek = 1
+        
+        if single:
+            action = agent(state)
+        else:
+            action = agent(state[0]), agent(state[1])
+
 
         state, reward, done, _, info = env.step(action)
-        sv.view_image(state)
+        # sv.view_image(state)
         if done:
-            kek = 2
             if reward > 0.9:
                 total_reward += reward
-            # print(f"{episodes}: Avg reward = {round(total_reward / episodes, 2)}", end='\r')
             state, _ = env.reset()
             agent.reset()
             episodes += 1

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 from agents.base import Agent
-from environment.wrappers import TronTorch
 from utils.helper import has_wrapper, bcolors
 
 class QNet(nn.Module):
@@ -42,12 +41,11 @@ class DQNAgent(Agent):
 
     def __call__(self, state):
         with torch.no_grad():
-            q_values = self.qnet(state)
+            q_values = self.qnet(torch.tensor(state, dtype=torch.float32).unsqueeze(0))
             return q_values.argmax().item()
     
     def reset(self):
         pass
 
     def _check_env(self, env):
-        if not has_wrapper(env, TronTorch):
-            raise ValueError(f"{bcolors.FAIL}DQNAgent requires TronTorch wrapper{bcolors.ENDC}")
+        pass
