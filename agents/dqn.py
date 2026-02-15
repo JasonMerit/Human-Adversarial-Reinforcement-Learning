@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from agents.base import Agent
 from utils.helper import has_wrapper, bcolors
@@ -49,3 +50,15 @@ class DQNAgent(Agent):
 
     def _check_env(self, env):
         pass
+
+class DQNSoftAgent(DQNAgent):
+    
+    def __call__(self, state, temperature=1.0):
+        with torch.no_grad():
+            state = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
+            q_values = self.qnet(state)
+
+            probs = F.softmax(q_values / temperature, dim=1)
+            action = torch.multinomial(probs, num_samples=1)
+
+            return action.item()
