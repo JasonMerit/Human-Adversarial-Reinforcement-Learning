@@ -98,54 +98,7 @@ class TronView(gym.Wrapper):
         self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
         self.pg.display.flip()
     
-    @staticmethod
-    def view_dual(state, scale):
-        walls, bike1, bike2 = state[0]
 
-        import pygame as pg
-        pg.init()
-
-        height, width = walls.shape
-        window_size = (2 * width * scale + scale, height * scale)
-        scale_size = (width * scale, height * scale)
-        screen = pg.display.set_mode(window_size)
-        pg.display.set_caption("Tron Game (State view)")
-
-        you_surface = pg.Surface((width, height))
-        for x in range(width):
-            for y in range(height):
-                if walls[y, x]:
-                    color = TronView.green if walls[y, x] == 1 else TronView.red
-                else:
-                    color = TronView.blue if (x + y) % 2 else TronView.blue_alt
-                you_surface.set_at((x, y), color)
-
-        x, y = bike1
-        you_surface.set_at((x, y), TronView.green_alt)
-        x, y = bike2
-        you_surface.set_at((x, y), TronView.red_alt)
-
-        # ======= MIRROR =======
-        walls, bike1, bike2 = state[1]
-        opp_surface = pg.Surface((width, height))
-        for x in range(width):
-            for y in range(height):
-                if walls[y, x]:
-                    color = TronView.green if walls[y, x] == 2 else TronView.red
-                else:
-                    color = TronView.blue if (x + y) % 2 else TronView.blue_alt
-                opp_surface.set_at((x, y), color)
-
-        x, y = bike2
-        opp_surface.set_at((x, y), TronView.green_alt)
-        x, y = bike1
-        opp_surface.set_at((x, y), TronView.red_alt)
-
-        screen.blit(pg.transform.scale(you_surface, scale_size), (0, 0))
-        screen.blit(pg.transform.scale(opp_surface, scale_size), (width * scale + scale, 0))
-        pg.display.flip()
-
-        TronView.wait()
 
     @staticmethod
     def wait_for_keypress():

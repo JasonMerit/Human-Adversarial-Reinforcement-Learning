@@ -1,5 +1,6 @@
 import numpy as np
 from colorama import init
+
 init()
 
 from .constants import Color
@@ -30,7 +31,7 @@ def has_wrapper(env, wrapper_class):
 
 class StateViewer:
 
-    def __init__(self, size, scale=70, fps=10):
+    def __init__(self, size, scale=70, fps=10, single=False):
         self.scale = scale
         self.fps = fps
         import pygame
@@ -38,7 +39,7 @@ class StateViewer:
         self.pg.init()
 
         self.width, self.height = size
-        self.window_size = (self.width * scale, self.height * scale)
+        self.window_size = (self.width * scale, self.height * scale) if single else (2 * self.width * scale + scale, self.height * scale)
         self.screen = self.pg.display.set_mode(self.window_size)
         self.pg.display.set_caption("Tron Game (State view)")
         self.surface = self.pg.Surface(size)
@@ -48,7 +49,7 @@ class StateViewer:
     def view(self, state):
         walls, bike1, bike2 = state
 
-        self.draw_walls(walls)
+        self.draw_walls_to_surface(walls, self.surface)
 
         # Heads
         self.surface.set_at(bike1, Color.GREEN_ALT)
@@ -61,7 +62,7 @@ class StateViewer:
     def view_image(self, image):
         walls, bike1, bike2 = image
         
-        self.draw_walls(walls)
+        self.draw_walls_to_surface(walls, self.surface)
 
         # Heads
         y, x = np.argwhere(bike1 == 1)[0]
@@ -74,19 +75,42 @@ class StateViewer:
 
         self.wait()
     
-    def view_dual(self, image):
-        image1, image2 = image
-        self.view_image(image1)
-        self.view_image(image2)
+    def view_dual(self, images):
+        scale_size = (self.width * self.scale, self.height * self.scale)
 
-    def draw_walls(self, walls):
+        walls, bike1, bike2 = images[0]
+
+        self.draw_walls_to_surface(walls, self.surface)
+
+        y, x = np.argwhere(bike1 == 1)[0]
+        self.surface.set_at((x, y), Color.GREEN_ALT)
+        y, x = np.argwhere(bike2 == 1)[0]
+        self.surface.set_at((x, y), Color.RED_ALT)
+
+        # ======= MIRROR =======
+        walls, bike1, bike2 = images[1]
+        
+        opp_surface = self.pg.Surface((self.width, self.height))
+        self.draw_walls_to_surface(walls, opp_surface)
+        y, x = np.argwhere(bike1 == 1)[0]
+        opp_surface.set_at((x, y), Color.GREEN_ALT)
+        y, x = np.argwhere(bike2 == 1)[0]
+        opp_surface.set_at((x, y), Color.RED_ALT)
+
+        self.screen.blit(self.pg.transform.scale(self.surface, scale_size), (0, 0))
+        self.screen.blit(self.pg.transform.scale(opp_surface, scale_size), (self.width * self.scale + self.scale, 0))
+        self.pg.display.flip()
+
+        self.wait()
+
+    def draw_walls_to_surface(self, walls, surface):
         for x in range(self.width):
             for y in range(self.height):
                 if walls[y, x]:
                     color = Color.GREEN if walls[y, x] == 1 else Color.RED
                 else:
                     color = Color.BLUE if (x + y) % 2 else Color.BLUE_ALT
-                self.surface.set_at((x, y), color)
+                surface.set_at((x, y), color)
     
     def wait(self):
         for event in self.pg.event.get():

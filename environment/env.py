@@ -139,7 +139,7 @@ if __name__ == "__main__":
         env = TronDualEgo(TronDualImage(env))
 
     env = TronView(env, fps=10, scale=70)
-    sv = StateViewer((10, 10), fps=2)
+    sv = StateViewer((10, 10), fps=2, single=single)
 
     agent = DQNAgent("q_net.pth")
     agent.eval()
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     episodes = 1
     while True:
         # TronView.view(state[0], scale=70)
-        # sv.view_dual(state)
+        sv.view_dual(state)
         # action = TronView.wait_for_both_inputs()
         
         if single:
