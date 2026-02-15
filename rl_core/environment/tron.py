@@ -19,7 +19,7 @@ class Bike:
 class Tron:
     
     def __init__(self, width, height):
-        self.width = width
+        self.width = widthBike
         self.height = height
 
     def reset(self):

@@ -1,11 +1,16 @@
 extends Node2D
 
+@onready var player = $Player
+@onready var adversary = $Adversary
 
-# Called when the node enters the scene tree for the first time.
-func _ready() -> void:
-	pass # Replace with function body.
+var tron: Tron
+
+func _ready():
+	tron = Tron.new(10, 10)
 
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
+func _process(delta):
+	var result = tron.tick(Vector2i.RIGHT, Vector2i.LEFT)
+	
+	if result != 0:
+		print("Game over:", result)
