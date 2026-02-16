@@ -55,8 +55,8 @@ class TronDualEnv(gym.Env):
     
     def _get_state(self):
         walls, you, opp = self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
-        you_ = np.array([self.width - 1 - you[0], you[1]])
-        opp_ = np.array([self.width - 1 - opp[0], opp[1]])
+        you_ = np.array([self.width - 1 - you[0], you[1]], dtype=np.int8)
+        opp_ = np.array([self.width - 1 - opp[0], opp[1]], dtype=np.int8)
         a = np.fliplr(walls).copy()
         a[a != 0] = 3 - a[a != 0]  # Map (1, 2) -> (2, 1)
         return (walls, you, opp), (a, opp_, you_)
