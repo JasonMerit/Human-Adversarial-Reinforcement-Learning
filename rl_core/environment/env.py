@@ -123,15 +123,18 @@ class TronSingleEnv(gym.Env):
         return state, reward, done, False, opp_view_state
 
 if __name__ == "__main__":
+    import yaml
     from environment.wrappers import (TronView, TronDualImage, 
                                       TronEgo, TronImage, 
                                       TronDualEgo)
     from agents import (DeterministicAgent, RandomAgent, SemiDeterministicAgent, 
                         HeuristicAgent, DQNAgent, DQNSoftAgent)
     from utils import StateViewer
-    
-    single = True
-    size = (11, 11)
+
+    with open("config.yml", "r") as f:
+        config = yaml.safe_load(f)
+    single = config.get("single", True)
+    size = tuple(config.get("grid"))
 
     if single:
         env = TronSingleEnv(SemiDeterministicAgent(.5), size)
