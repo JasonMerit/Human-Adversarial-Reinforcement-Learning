@@ -12,4 +12,6 @@ python -m environment.env
 # Run server
 conda activate harl
 cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning\server
+
 uvicorn app.main:app --port 8000
+python -m app.test

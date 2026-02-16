@@ -1,6 +1,5 @@
 import numpy as np
 from colorama import init
-
 init()
 
 from .constants import Color
