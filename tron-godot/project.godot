@@ -15,6 +15,11 @@ run/main_scene="uid://cuflox51uu3sw"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[display]
+
+window/size/viewport_width=1000
+window/size/viewport_height=1000
+
 [dotnet]
 
 project/assembly_name="Tron-Godot"

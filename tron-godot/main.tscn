@@ -1,16 +1,21 @@
 [gd_scene format=3 uid="uid://cuflox51uu3sw"]
 
 [ext_resource type="Script" uid="uid://qkwegqcmftlq" path="res://scripts/main.gd" id="1_ig7tw"]
-[ext_resource type="Texture2D" uid="uid://cblws5fm8amf7" path="res://icon.svg" id="2_0xm2m"]
+[ext_resource type="Texture2D" uid="uid://badaua1p4u0d6" path="res://sprites/1x1.png" id="2_0xm2m"]
 
 [node name="Main" type="Node2D" unique_id=686026432]
 script = ExtResource("1_ig7tw")
 
-[node name="Player" type="Sprite2D" parent="." unique_id=16846418]
-position = Vector2(207, 318)
+[node name="Player" type="Sprite2D" parent="." unique_id=1754906713]
+modulate = Color(0.09084451, 0.7766674, 0.09084451, 1)
+position = Vector2(61, 57)
+scale = Vector2(100, 100)
 texture = ExtResource("2_0xm2m")
+centered = false
 
-[node name="Adversary" type="Sprite2D" parent="." unique_id=703518586]
-modulate = Color(1, 0, 0, 1)
-position = Vector2(928, 323)
+[node name="Adversary" type="Sprite2D" parent="." unique_id=288686919]
+modulate = Color(0.7058824, 0.078431375, 0.078431375, 1)
+position = Vector2(642, 311)
+scale = Vector2(100, 100)
 texture = ExtResource("2_0xm2m")
+centered = false
