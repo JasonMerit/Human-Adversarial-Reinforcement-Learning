@@ -18,9 +18,8 @@ class Bike:
 
 class Tron:
     
-    def __init__(self, width, height):
-        self.width = widthBike
-        self.height = height
+    def __init__(self, size):
+        self.width, self.height = size
 
     def reset(self):
         self.walls = np.zeros((self.height, self.width), dtype=np.int8)

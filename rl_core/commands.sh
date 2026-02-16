@@ -6,4 +6,5 @@ bsub < HPC/submit.sh
 ## Home
 conda activate harl
 cd C:\Users\PC\Documents\Code\Human-Adversarial-Reinforcement-Learning
+# cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
 python -m environment.env

@@ -36,9 +36,9 @@ var walls: Array
 var bike1: Tron.Bike
 var bike2: Tron.Bike
 
-func _init(w: int, h: int):
-	width = w
-	height = h
+func _init(grid_size: Vector2i):
+	width = grid_size.x
+	height = grid_size.y
 	reset()
 
 

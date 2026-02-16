@@ -5,6 +5,7 @@ extends Node2D
 
 const TICK_RATE = .5  # Seconds
 const CELL_SIZE = 100
+const GRID_SIZE = Vector2i(11, 11)
 
 var tron: Tron
 
@@ -18,7 +19,7 @@ var draw_walls: Array[Vector2i]
 func _ready():
 	# Set viewport clearmode
 	# RenderingServer.viewport_set_clear_mode(get_viewport().get_viewport_rid(), RenderingServer.VIEWPORT_CLEAR_NEVER)
-	tron = Tron.new(10, 10)	
+	tron = Tron.new(GRID_SIZE)	
 	reset()
 
 func reset():
@@ -65,7 +66,6 @@ func tick():
 
 func _draw() -> void:
 	for wall in draw_walls:
-		assert (tron.walls[wall.y][wall.x] != 0)
 		var color = player.modulate if tron.walls[wall.y][wall.x] == 1 else adversary.modulate
 		draw_rect(Rect2(wall.x * CELL_SIZE, wall.y * CELL_SIZE, CELL_SIZE, CELL_SIZE), color)
 		draw_rect(Rect2(wall.x * CELL_SIZE, wall.y * CELL_SIZE, CELL_SIZE, CELL_SIZE), Color.BLACK, false, 5.0)

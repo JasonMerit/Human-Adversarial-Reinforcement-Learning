@@ -15,21 +15,21 @@ class TronDualEnv(gym.Env):
     action_flipped = [0, 3, 2, 1]  # Flipping opponent action horizontally
     reward_mapping = [0, -1, 1, 0]  # playing, lose, win, draw
 
-    def __init__(self, width, height):
-        self.tron = Tron(width, height)
-        self.width = width
+    def __init__(self, size):
+        self.tron = Tron(size)
+        self.width, height = size
 
         self.action_space = gym.spaces.Tuple((gym.spaces.Discrete(4), gym.spaces.Discrete(4)))
         self.observation_space = gym.spaces.Tuple((
             gym.spaces.Tuple((
-                gym.spaces.Box(low=0, high=2, shape=(height, width), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8)
+                gym.spaces.Box(low=0, high=2, shape=(height, self.width), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8)
             )),
             gym.spaces.Tuple((
-                gym.spaces.Box(low=0, high=2, shape=(height, width), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), shape=(2,), dtype=np.int8)
+                gym.spaces.Box(low=0, high=2, shape=(height, self.width), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8)
             ))
         ))
 
@@ -86,8 +86,8 @@ class TronSingleEnv(gym.Env):
 
     reward_mapping = [0, -1, 1, .5]  # playing, lose, win, draw
 
-    def __init__(self, opponent : Agent, width, height):
-        self.dual_env = TronDualEnv(width, height)
+    def __init__(self, opponent : Agent, size):
+        self.dual_env = TronDualEnv(size)
         self.tron = self.dual_env.tron
 
         self.action_space = gym.spaces.Discrete(4)
@@ -129,22 +129,23 @@ if __name__ == "__main__":
     from agents import (DeterministicAgent, RandomAgent, SemiDeterministicAgent, 
                         HeuristicAgent, DQNAgent, DQNSoftAgent)
     from utils import StateViewer
-
-    single = False
+    
+    single = True
+    size = (11, 11)
 
     if single:
-        env = TronSingleEnv(SemiDeterministicAgent(.5), width=10, height=10)
-        env = TronEgo(TronImage(env))
+        env = TronSingleEnv(SemiDeterministicAgent(.5), size)
+        # env = TronEgo(TronImage(env))
     else:
-        env = TronDualEnv(width=10, height=10)
+        env = TronDualEnv(size)
         env = TronDualEgo(TronDualImage(env))
 
     env = TronView(env, fps=10, scale=70)
-    sv = StateViewer((10, 10), fps=1, single=single)
+    sv = StateViewer(size, fps=1, single=single)
 
-    agent = DQNSoftAgent("q_net.pth")
-    agent.eval()
-    # agent = SemiDeterministicAgent(.6)
+    # agent = DQNSoftAgent("q_net.pth")
+    # agent.eval()
+    agent = SemiDeterministicAgent(.6)
     # agent = HeuristicAgent()
     # agent = RandomAgent()
     agent.bind_env(env)
@@ -155,7 +156,7 @@ if __name__ == "__main__":
     episodes = 1
     while True:
         # TronView.view(state[0], scale=70)
-        sv.view_dual(state)
+        # sv.view_dual(state)
         # action = TronView.wait_for_both_inputs()
         
         if single:
