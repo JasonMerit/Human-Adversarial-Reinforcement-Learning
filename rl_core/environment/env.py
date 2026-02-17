@@ -13,7 +13,7 @@ class TronDualEnv(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
     action_flipped = [0, 3, 2, 1]  # Flipping opponent action horizontally
-    reward_mapping = [0, -1, 1, 0]  # playing, lose, win, draw
+    reward_mapping = [1, -1, 0, 0]  # win, lose, draw, playing
 
     def __init__(self, size):
         self.tron = Tron(size)

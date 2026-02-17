@@ -66,15 +66,15 @@ func tick(dir1: Vector2i, dir2: Vector2i) -> int:
 
 	# Both collided or head-on
 	if (bike1_hit and bike2_hit) or bike1.pos == bike2.pos:
-		return 3
+		return 0
 	
 	if bike1_hit:
-		return 1
-	
-	if bike2_hit:
 		return 2
 	
-	return 0
+	if bike2_hit:
+		return 1
+	
+	return -1
 
 
 

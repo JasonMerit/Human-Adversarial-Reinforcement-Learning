@@ -48,10 +48,10 @@ class Tron:
         bike2_hit = self.bike2.move(dir2, self.walls)
 
         if (bike1_hit and bike2_hit) or all(self.bike1.pos == self.bike2.pos):
-            return 3  
+            return 0  
         if bike1_hit:
-            return 1  
-        if bike2_hit:
             return 2  
-        return 0
+        if bike2_hit:
+            return 1  
+        return -1
         
