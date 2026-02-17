@@ -2,9 +2,8 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pygame.pkgdata")
 import gymnasium as gym
 import numpy as np
-import time
 
-from utils.helper import has_wrapper, bcolors
+from rl_core.utils.helper import has_wrapper, bcolors
 
 class TronView(gym.Wrapper):
 
@@ -271,35 +270,3 @@ class TronDualEgo(gym.Wrapper):
         obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
         obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
         return (obs1, obs2)
-
-# class TronTorch(gym.ObservationWrapper):
-#     """
-#     Transforms observation space to PyTorch tensor.
-#     """
-
-#     def __init__(self, env):
-#         import torch
-#         self.torch = torch
-#         if not has_wrapper(env, TronImage):
-#             raise ValueError(f"{bcolors.FAIL}TronTorch wrapper requires TronImage wrapper.{bcolors.ENDC}")
-#         super().__init__(env)
-
-#     def observation(self, obs):
-#         return self.torch.from_numpy(obs).float()
-#         return self.torch.tensor(obs, dtype=self.torch.float32)  # Chat said this was better before
-    
-
-# class TronDualTorch(gym.ObservationWrapper):
-#     """
-#     Transforms observation space to PyTorch tensor.
-#     """
-
-#     def __init__(self, env):
-#         import torch
-#         self.torch = torch
-#         if not has_wrapper(env, TronDualImage):
-#             raise ValueError(f"{bcolors.FAIL}TronDualTorch wrapper requires TronDualImage wrapper.{bcolors.ENDC}")
-#         super().__init__(env)
-
-#     def observation(self, obs):
-#         return self.torch.from_numpy(obs[0]).float(), self.torch.from_numpy(obs[1]).float()

@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from agents.base import Agent
-from utils.helper import has_wrapper, bcolors
+from .base import Agent
+from rl_core.utils.helper import has_wrapper, bcolors
 
 class QNet(nn.Module):
     def __init__(self, input_shape=(3,10,10), num_actions=3):

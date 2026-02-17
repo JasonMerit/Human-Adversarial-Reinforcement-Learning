@@ -1,5 +1,5 @@
 import numpy as np
-from utils.helper import bcolors
+from rl_core.utils.helper import bcolors
 
 class Bike:
     

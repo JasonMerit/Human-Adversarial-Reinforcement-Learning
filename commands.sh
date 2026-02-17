@@ -10,7 +10,7 @@ python -m environment.env
 
 ## Laptop
 conda activate harl
-cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning\rl_core
+cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
 
 # Run environment
 python -m rl_core.environment.env

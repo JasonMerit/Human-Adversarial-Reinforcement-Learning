@@ -5,8 +5,8 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import numpy as np
 import gymnasium as gym
 
-from environment.tron import Tron
-from agents import Agent
+from .tron import Tron
+from rl_core.agents import Agent
 
 
 class TronDualEnv(gym.Env):
@@ -124,14 +124,14 @@ class TronSingleEnv(gym.Env):
 
 if __name__ == "__main__":
     import yaml
-    from environment.wrappers import (TronView, TronDualImage, 
+    from rl_core.environment.wrappers import (TronView, TronDualImage, 
                                       TronEgo, TronImage, 
                                       TronDualEgo)
-    from agents import (DeterministicAgent, RandomAgent, SemiDeterministicAgent, 
+    from rl_core.agents import (DeterministicAgent, RandomAgent, SemiDeterministicAgent, 
                         HeuristicAgent, DQNAgent, DQNSoftAgent)
-    from utils import StateViewer
+    from rl_core.utils import StateViewer
 
-    with open("config.yml", "r") as f:
+    with open("rl_core/config.yml", "r") as f:
         config = yaml.safe_load(f)
     single = config.get("single", True)
     size = tuple(config.get("grid"))

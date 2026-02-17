@@ -1,6 +1,6 @@
 import numpy as np
-from agents.base import Agent
-from utils.helper import bcolors
+from .base import Agent
+from rl_core.utils.helper import bcolors
 from gymnasium import spaces
 
 class DeterministicAgent(Agent):

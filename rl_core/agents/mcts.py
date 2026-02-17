@@ -1,8 +1,8 @@
 import numpy as np
-from utils.heuristics import chamber_heuristic
+from rl_core.utils.heuristics import chamber_heuristic
 from gymnasium import spaces
-from utils.helper import bcolors
-from agents.base import Agent
+from rl_core.utils.helper import bcolors
+from .base import Agent
 
 class HeuristicAgent(Agent):
     """
