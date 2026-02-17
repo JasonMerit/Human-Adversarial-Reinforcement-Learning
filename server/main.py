@@ -22,18 +22,16 @@ class StateRequest(BaseModel):
 class ActionResponse(BaseModel):
     action: int
 
+class Trajectory(BaseModel):
+    actions: List[Tuple[int, int]]
+    winner: int
+
 
 @app.post("/act", response_model=ActionResponse)  # Should be GET
 async def act(request: StateRequest):
     state = (np.array(request.grid), np.array(request.bike1), np.array(request.bike2))
     action = agent(state)  
     return ActionResponse(action=action)
-
-
-
-class Trajectory(BaseModel):
-    actions: List[Tuple[int, int]]
-    winner: int
 
 @app.on_event("startup")
 def startup():

@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://qkwegqcmftlq" path="res://scripts/main.gd" id="1_ig7tw"]
 [ext_resource type="Texture2D" uid="uid://dw8n5oe6uo5vu" path="res://sprites/100x100.png" id="2_0xm2m"]
 [ext_resource type="Texture2D" uid="uid://c8mfe8rxdquhl" path="res://sprites/background.png" id="3_h2yge"]
+[ext_resource type="Script" uid="uid://b27psmv6lptwu" path="res://scripts/trajectory_uploader.gd" id="4_1bvp3"]
 
 [node name="Main" type="Node2D" unique_id=686026432]
 script = ExtResource("1_ig7tw")
@@ -25,3 +26,6 @@ offset_right = 1100.0
 offset_bottom = 1100.0
 texture = ExtResource("3_h2yge")
 stretch_mode = 1
+
+[node name="TrajectoryUploader" type="HTTPRequest" parent="." unique_id=1643712627]
+script = ExtResource("4_1bvp3")
