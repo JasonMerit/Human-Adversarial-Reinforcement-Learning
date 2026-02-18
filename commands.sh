@@ -16,7 +16,7 @@ cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
 python -m rl_core.environment.env
 
 # Run server - visit http://localhost:8000/docs#/ 
-conda activate harl
 uvicorn server.main:app --port 8000
 
 python -m server.client
+
