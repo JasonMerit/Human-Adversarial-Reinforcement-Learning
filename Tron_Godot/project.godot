@@ -20,6 +20,10 @@ window/size/width=500
 window/size/height=550
 window/size/resizable=false
 
+[global]
+
+mono=false
+
 [gui]
 
 common/drop_mouse_on_gui_input_disabled=true
