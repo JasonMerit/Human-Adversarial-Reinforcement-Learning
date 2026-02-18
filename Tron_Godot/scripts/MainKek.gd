@@ -8,7 +8,7 @@ onready var uploader = $TrajectoryUploader
 
 const TICK_RATE = 0.2
 const CELL_SIZE = 50
-const GRID_SIZE = Vector2(10, 11)
+const GRID_SIZE = Vector2(11, 11)
 
 var tron = null
 var time = 0.0

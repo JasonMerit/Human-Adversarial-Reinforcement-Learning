@@ -52,7 +52,7 @@ centered = false
 
 [node name="Background" type="TextureRect" parent="Main"]
 show_behind_parent = true
-margin_right = 500.0
+margin_right = 550.0
 margin_bottom = 550.0
 texture = ExtResource( 4 )
 stretch_mode = 2
