@@ -20,5 +20,9 @@ torch.onnx.export(
     dynamic_axes={'state': {0: 'batch_size'}, 'action': {0: 'batch_size'}}  # allow variable batch sizes
 )
 
-print(f"{bcolors.OKGREEN}Model successfully exported to ONNX format at 'rl_core/agent.onnx'{bcolors.ENDC}")
+print(f"Model {bcolors.OKGREEN}successfully{bcolors.ENDC} exported to ONNX format at {bcolors.OKCYAN}'rl_core/agent.onnx'{bcolors.ENDC}")
 
+
+from onnx import onnx
+onnx_model = onnx.load("rl_core/agent.onnx")
+onnx.checker.check_model(onnx_model)
