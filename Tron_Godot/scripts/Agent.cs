@@ -1,39 +1,33 @@
 using Godot;
 using System;
 using System.Linq;
-using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
+// using Microsoft.ML.OnnxRuntime;
+// using Microsoft.ML.OnnxRuntime.Tensors;
 using System.Collections.Generic;
 
 public class Agent : Sprite
 {
-    private InferenceSession session;
+    // private InferenceSession session;
 
     public override void _Ready()
     {
-        session = new InferenceSession("res://agent.onnx");
+        GD.Print("Agent ready.");
+        // try
+        // {
+        //     string path = ProjectSettings.GlobalizePath("res://agent.onnx");
+        //     session = new InferenceSession(path);
+        //     GD.Print("ONNX session created.");
+        // }
+        // catch (Exception e)
+        // {
+        //     GD.PrintErr(e.ToString());
+        // }
+        // session = new InferenceSession(ProjectSettings.GlobalizePath("res://agent.onnx"));
     }
 
-    public float[] Run(float[,,] input)
+    public void Act(Vector2 playerPosition, Vector2 enemyPosition)
     {
-        // Input: [C,H,W], flatten to 1xC,H,W
-        int c = input.GetLength(0);
-        int h = input.GetLength(1);
-        int w = input.GetLength(2);
-
-        var tensor = new DenseTensor<float>(new int[] {1, c, h, w});
-        for (int i = 0; i < c; i++)
-            for (int j = 0; j < h; j++)
-                for (int k = 0; k < w; k++)
-                    tensor[0, i, j, k] = input[i, j, k];
-
-        var inputs = new List<NamedOnnxValue>
-        {
-            NamedOnnxValue.CreateFromTensor("input", tensor)
-        };
-
-        var results = session.Run(inputs);
-
-        return results.First().AsEnumerable<float>().ToArray();
+        
     }
+
 }

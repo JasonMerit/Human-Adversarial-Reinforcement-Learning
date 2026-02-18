@@ -4,7 +4,7 @@
 [ext_resource path="res://sprites/100x100.png" type="Texture" id=2]
 [ext_resource path="res://scripts/TrajectoryUploader.gd" type="Script" id=3]
 [ext_resource path="res://sprites/background100.png" type="Texture" id=4]
-[ext_resource path="res://scripts/Main.cs" type="Script" id=5]
+[ext_resource path="res://scripts/Agent.cs" type="Script" id=6]
 
 [sub_resource type="CSharpScript" id=1]
 resource_name = "Player"
@@ -32,7 +32,6 @@ public class Player : Sprite
 "
 
 [node name="Main" type="Node2D"]
-script = ExtResource( 5 )
 
 [node name="Main" type="Node2D" parent="."]
 script = ExtResource( 1 )
@@ -49,6 +48,13 @@ modulate = Color( 0.705882, 0.0784314, 0.0784314, 1 )
 scale = Vector2( 0.5, 0.5 )
 texture = ExtResource( 2 )
 centered = false
+
+[node name="Agent" type="Sprite" parent="Main"]
+modulate = Color( 0.0784314, 0.705882, 0.705882, 1 )
+scale = Vector2( 0.5, 0.5 )
+texture = ExtResource( 2 )
+centered = false
+script = ExtResource( 6 )
 
 [node name="Background" type="TextureRect" parent="Main"]
 show_behind_parent = true

@@ -3,7 +3,8 @@ extends Node2D
 var Tron = preload("res://scripts/Tron.gd")
 
 onready var player = $Player
-onready var adversary = $Adversary
+onready var agent = $Adversary
+# onready var agent = $Agent
 onready var uploader = $TrajectoryUploader
 
 const TICK_RATE = 0.2
@@ -60,7 +61,7 @@ func _process(delta):
 
 	var alpha = time / TICK_RATE
 	player.position = tron.bike1.last_pos.linear_interpolate(tron.bike1.pos * CELL_SIZE, alpha)
-	adversary.position = tron.bike2.last_pos.linear_interpolate(tron.bike2.pos * CELL_SIZE, alpha)
+	agent.position = tron.bike2.last_pos.linear_interpolate(tron.bike2.pos * CELL_SIZE, alpha)
 
 func tick():
 	tron.bike1.last_pos = tron.bike1.pos * CELL_SIZE
@@ -86,7 +87,7 @@ func tick():
 
 func _draw():
 	for wall in draw_walls:
-		var color = player.modulate if tron.walls[wall.y][wall.x] == 1 else adversary.modulate
+		var color = player.modulate if tron.walls[wall.y][wall.x] == 1 else agent.modulate
 		var rect = Rect2(wall.x * CELL_SIZE, wall.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
 		draw_rect(rect, color)
