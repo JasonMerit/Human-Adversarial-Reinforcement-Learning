@@ -20,91 +20,74 @@ var draw_walls = []
 
 # HACK
 const trajectory = [
-    Vector2(1, 3), Vector2(1, 3), Vector2(0, 2),
-    Vector2(3, 1), Vector2(3, 1), Vector2(3, 1), Vector2(3, 1),
-    Vector2(2, 0), Vector2(2, 0), Vector2(1, 3),
-    Vector2(1, 3), Vector2(1, 3), Vector2(1, 3),
-    Vector2(1, 3), Vector2(0, 2)
+	Vector2(1, 3), Vector2(1, 3), Vector2(0, 2),
+	Vector2(3, 1), Vector2(3, 1), Vector2(3, 1), Vector2(3, 1),
+	Vector2(2, 0), Vector2(2, 0), Vector2(1, 3),
+	Vector2(1, 3), Vector2(1, 3), Vector2(1, 3),
+	Vector2(1, 3), Vector2(0, 2)
 ]
 
 var trajectory_index = 0
 var history = []
 
 func _ready():
-    tron = Tron.new(GRID_SIZE)
-    reset()
+	tron = Tron.new(GRID_SIZE)
+	reset()
 
 func reset():
-    tron.reset()
+	tron.reset()
 
-    draw_walls = [tron.bike1.pos, tron.bike2.pos]
-    tron.tick(Vector2.RIGHT, Vector2.LEFT)
+	draw_walls = [tron.bike1.pos, tron.bike2.pos]
+	tron.tick(Vector2.RIGHT, Vector2.LEFT)
 
-    action_index = Vector2.ZERO
-    trajectory_index = 0
+	action_index = Vector2.ZERO
+	trajectory_index = 0
 
-    tron.bike1.last_pos = (tron.bike1.pos + Vector2.LEFT) * CELL_SIZE
-    tron.bike2.last_pos = (tron.bike2.pos + Vector2.RIGHT) * CELL_SIZE
+	tron.bike1.last_pos = (tron.bike1.pos + Vector2.LEFT) * CELL_SIZE
+	tron.bike2.last_pos = (tron.bike2.pos + Vector2.RIGHT) * CELL_SIZE
 
-    update()
+	update()
 
 func _process(delta):
-    if Input.is_action_just_pressed("ui_cancel"):
-        get_tree().quit()
+	if Input.is_action_just_pressed("ui_cancel"):
+		get_tree().quit()
 
-    time += delta
+	time += delta
 
-    if time >= TICK_RATE:
-        time -= TICK_RATE
-        tick()
+	if time >= TICK_RATE:
+		time -= TICK_RATE
+		tick()
 
-    var alpha = time / TICK_RATE
-
-    player.position = tron.bike1.last_pos.linear_interpolate(
-        tron.bike1.pos * CELL_SIZE, alpha
-    )
-
-    adversary.position = tron.bike2.last_pos.linear_interpolate(
-        tron.bike2.pos * CELL_SIZE, alpha
-    )
+	var alpha = time / TICK_RATE
+	player.position = tron.bike1.last_pos.linear_interpolate(tron.bike1.pos * CELL_SIZE, alpha)
+	adversary.position = tron.bike2.last_pos.linear_interpolate(tron.bike2.pos * CELL_SIZE, alpha)
 
 func tick():
-    tron.bike1.last_pos = tron.bike1.pos * CELL_SIZE
-    tron.bike2.last_pos = tron.bike2.pos * CELL_SIZE
+	tron.bike1.last_pos = tron.bike1.pos * CELL_SIZE
+	tron.bike2.last_pos = tron.bike2.pos * CELL_SIZE
 
-    draw_walls += [tron.bike1.pos, tron.bike2.pos]
+	draw_walls += [tron.bike1.pos, tron.bike2.pos]
 
-    var action = trajectory[trajectory_index]
-    var dir1 = actions[int(action.x)]
-    var dir2 = actions[int(action.y)]
+	var action = trajectory[trajectory_index]
+	var dir1 = actions[int(action.x)]
+	var dir2 = actions[int(action.y)]
 
-    trajectory_index = (trajectory_index + 1) % trajectory.size()
+	trajectory_index = (trajectory_index + 1) % trajectory.size()
 
-    var result = tron.tick(dir1, dir2)
-    history.append(action)
+	var result = tron.tick(dir1, dir2)
+	history.append(action)
 
-    if result != -1:
-        uploader.enqueue_trajectory(history.duplicate(), result)
-        history.clear()
-        reset()
+	if result != -1:
+		# uploader.enqueue_trajectory(history, result)
+		history = []
+		reset()
 
-    update()
+	update()
 
 func _draw():
-    for wall in draw_walls:
-        var wx = int(wall.x)
-        var wy = int(wall.y)
+	for wall in draw_walls:
+		var color = player.modulate if tron.walls[wall.y][wall.x] == 1 else adversary.modulate
+		var rect = Rect2(wall.x * CELL_SIZE, wall.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-        var color = player.modulate if tron.walls[wy][wx] == 1 else adversary.modulate
-
-        draw_rect(
-            Rect2(wx * CELL_SIZE, wy * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-            color
-        )
-
-        draw_rect(
-            Rect2(wx * CELL_SIZE, wy * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-            Color.black,
-            false,
-            5.0
-        )
+		draw_rect(rect, color)
+		draw_rect(rect, Color.black, false, 6.0)  # 6 is thickness of background grid lines

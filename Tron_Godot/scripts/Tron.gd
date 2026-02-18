@@ -1,11 +1,9 @@
 class Bike:
     var pos
-    var dir
     var last_pos  # Used for interpolation (Vector2 in main)
 
     func _init(start_pos):
         pos = start_pos
-        dir = Vector2.ZERO
 
     func move(vel, walls):
         # Returns true if crash
