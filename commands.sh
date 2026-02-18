@@ -18,5 +18,6 @@ python -m rl_core.environment.env
 # Run server - visit http://localhost:8000/docs#/ 
 uvicorn server.main:app --port 8000
 
-python -m server.client
+# Find native .dll here
+cd C:\Users\Jason\.nuget\packages\microsoft.ml.onnxruntime\1.16.0\runtimes\win-x64\native
 
