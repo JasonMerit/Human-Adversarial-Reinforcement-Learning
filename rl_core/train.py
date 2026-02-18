@@ -6,13 +6,19 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import random
+from tqdm import tqdm
 
-
-from environment.env import TronEnv
-from environment.wrappers import TronEgo
-from agents.deterministic import DeterministicAgent
-from agents.dqn import QNet
-from utils.buffer import ReplayBuffer
+import yaml
+from rl_core import TronSingleEnv, TronDualEnv
+from rl_core.environment.wrappers import (TronView, TronDualImage, 
+                                    TronEgo, TronImage, 
+                                    TronDualEgo)
+from rl_core.agents import (DeterministicAgent, RandomAgent, SemiDeterministicAgent, 
+                    HeuristicAgent, DQNAgent, DQNSoftAgent)
+from rl_core.utils import StateViewer
+from rl_core.agents.dqn import QNet
+from rl_core.utils.buffer import ReplayBuffer
+from rl_core.utils.helper import bcolors
 
 if __name__ == "__main__":
     # ---------------------
@@ -31,10 +37,16 @@ if __name__ == "__main__":
     # ---------------------
     # Environment
     # ---------------------
-    env = TronEnv(DeterministicAgent(start_left=True), width=10, height=10)
-    env = TronEgo(env)
+    with open("rl_core/config.yml", "r") as f:
+        config = yaml.safe_load(f)
+    single = config.get("single", True)
+    size = tuple(config.get("grid"))
+
+    env = TronSingleEnv(SemiDeterministicAgent(.5), size)
+    env = TronEgo(TronImage(env))
     num_actions = env.action_space.n
     state_shape = env.observation_space.shape
+    print(f"Defining network with input shape: {bcolors.OKCYAN}{state_shape}{bcolors.ENDC}, and num actions: {bcolors.OKCYAN}{num_actions}{bcolors.ENDC}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     q_net = QNet(input_shape=state_shape, num_actions=num_actions).to(device)
@@ -49,7 +61,8 @@ if __name__ == "__main__":
     # Training Loop
     # ---------------------
     t0 = time()
-    for episode in range(NUM_EPISODES):
+    pbar = tqdm(range(NUM_EPISODES), desc="Training")
+    for episode in pbar:
         state,_ = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         done = False
@@ -71,12 +84,7 @@ if __name__ == "__main__":
             total_reward += reward
 
             if len(buffer) >= BATCH_SIZE:
-                s,a,r,s2,d = buffer.sample(BATCH_SIZE)
-                s = torch.tensor(s, dtype=torch.float32, device=device).squeeze(1)
-                s2 = torch.tensor(s2, dtype=torch.float32, device=device).squeeze(1)
-                a = torch.tensor(a, device=device, dtype=torch.long)
-                r = torch.tensor(r, device=device, dtype=torch.float32)
-                d = torch.tensor(d, device=device, dtype=torch.float32)
+                s, a, r, s2, d = buffer.sample_torch(BATCH_SIZE)
 
                 q_values = q_net(s).gather(1, a.unsqueeze(1)).squeeze(1)
                 with torch.no_grad():
@@ -92,7 +100,8 @@ if __name__ == "__main__":
         if episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(q_net.state_dict())
 
-        print(f"Episode {episode} | Total Reward: {total_reward} | Epsilon: {eps:.3f}", end="\r")
+        pbar.set_postfix({"Episode Reward": total_reward, "Epsilon": eps})
+
 
     # Save the model
     torch.save(q_net.state_dict(), "q_net.pth")
