@@ -6,8 +6,11 @@ from .base import Agent
 from rl_core.utils.helper import has_wrapper, bcolors
 
 class QNet(nn.Module):
-    def __init__(self, input_shape=(3,10,10), num_actions=3):
+    def __init__(self, input_shape, num_actions=3):
         super().__init__()
+        self.input_shape = input_shape
+        self.num_actions = num_actions
+        
         c,h,w = input_shape
         self.conv = nn.Sequential(
             nn.Conv2d(c, 16, kernel_size=3, padding=1),
@@ -29,8 +32,15 @@ class QNet(nn.Module):
     
     @staticmethod
     def load(path):
-        model = QNet()
-        model.load_state_dict(torch.load(path, weights_only=True))
+        weights = torch.load(path, weights_only=True)
+        conv_out = weights['fc.0.weight'].shape[1]  # flattened input to first FC layer
+        size = int((conv_out // 32) ** 0.5)
+        input_shape = (weights['conv.0.weight'].shape[1], size, size)  # Channels, Height, Width
+        num_actions = weights['fc.2.weight'].shape[0]
+        print(f"Loading QNet with input shape: {bcolors.OKGREEN}{input_shape}{bcolors.ENDC} and num actions: {bcolors.OKGREEN}{num_actions}{bcolors.ENDC}")
+        
+        model = QNet(input_shape, num_actions)
+        model.load_state_dict(weights)
         return model
 
 class DQNAgent(Agent):

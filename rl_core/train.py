@@ -104,8 +104,8 @@ if __name__ == "__main__":
 
 
     # Save the model
-    torch.save(q_net.state_dict(), "q_net.pth")
-    torch.save(target_net.state_dict(), "target_net.pth")
+    torch.save(q_net.state_dict(), "rl_core/q_net.pth")
+    torch.save(target_net.state_dict(), "rl_core/target_net.pth")
     print("\nTraining finished and models saved.")
     print("\033[92mDONE\033[0m")
     print(f"Total training time: {time() - t0:.2f} seconds")
