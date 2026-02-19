@@ -41,6 +41,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
     single = config.get("single", True)
     size = tuple(config.get("grid"))
+    
 
     env = TronSingleEnv(SemiDeterministicAgent(.5), size)
     env = TronEgo(TronImage(env))
@@ -48,9 +49,8 @@ if __name__ == "__main__":
     state_shape = env.observation_space.shape
     print(f"Defining network with input shape: {bcolors.OKCYAN}{state_shape}{bcolors.ENDC}, and num actions: {bcolors.OKCYAN}{num_actions}{bcolors.ENDC}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    q_net = QNet(input_shape=state_shape, num_actions=num_actions).to(device)
-    target_net = QNet(input_shape=state_shape, num_actions=num_actions).to(device)
+    q_net = QNet(input_shape=state_shape, num_actions=num_actions)
+    target_net = QNet(input_shape=state_shape, num_actions=num_actions)
     target_net.load_state_dict(q_net.state_dict())
     optimizer = optim.Adam(q_net.parameters(), lr=LR)
     buffer = ReplayBuffer(BUFFER_SIZE)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     pbar = tqdm(range(NUM_EPISODES), desc="Training")
     for episode in pbar:
         state,_ = env.reset()
-        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         done = False
         total_reward = 0
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                     action = q_values.argmax().item()
 
             next_state, reward, done, _, _ = env.step(action)
-            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=device).unsqueeze(0)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
             buffer.push(state.cpu().numpy(), action, reward, next_state_tensor.cpu().numpy(), done)
 
             state = next_state_tensor
