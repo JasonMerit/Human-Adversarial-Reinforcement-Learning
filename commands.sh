@@ -6,7 +6,6 @@ bsub < HPC/submit.sh
 ## Home
 conda activate harl
 cd C:\Users\PC\Documents\Code\Human-Adversarial-Reinforcement-Learning
-python -m environment.env
 
 ## Laptop
 conda activate harl
@@ -14,6 +13,7 @@ cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
 
 # Run environment
 python -m rl_core.environment.env
+python -m rl_core.agents.dqn
 
 # Run server - visit http://localhost:8000/docs#/ 
 uvicorn server.main:app --port 8000

@@ -93,17 +93,22 @@ class DQNSoftAgent(DQNAgent):
             return action.item()
 
 if __name__ == "__main__":
-    model = QNetFlat(input_size=3*11*11)
-    input = torch.randn(1, 3*11*11)
+    shape = (3, 11, 11)
+    model = QNet(input_shape=shape, num_actions=3)
+    # model = QNetFlat(input_size=3*11*11)
+    
+    # input = torch.randn(1, 3*11*11)
+    input = torch.randn(1, *shape)
 
     torch.onnx.export(
     model,                      # your trained PyTorch model
     input,                      # example input
-    "rl_core/agent_flat.onnx",       # output file
+    "rl_core/model_static.onnx",       # output file
     export_params=True,         # store trained weights
     opset_version=17,           # ONNX opset (higher is more compatible with newer features)
     input_names=['state'],      # input tensor name
-    output_names=['action'],    # output tensor name
-    dynamic_axes={'state': {0: 'batch_size'}, 'action': {0: 'batch_size'}}  # allow variable batch sizes
+    output_names=['output'],    # output tensor name
+    dynamic_axes=None
+    # dynamic_axes={'state': {0: 'batch_size'}, 'action': {0: 'batch_size'}}  # allow variable batch sizes
 )
     print(model(input))
