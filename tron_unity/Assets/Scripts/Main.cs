@@ -16,8 +16,8 @@ public class Main : MonoBehaviour
         var model = ModelLoader.Load(modelAsset);
         worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
         
-        RunInference();
-        InvokeRepeating("RunInference", 1f, 1f);
+        // RunInference();
+        // InvokeRepeating("RunInference", 1f, 1f);
     }
 
     void Update()
