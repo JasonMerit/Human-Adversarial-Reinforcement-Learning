@@ -3,11 +3,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 load_dotenv()
-
-url = os.getenv("SUPABASE_URL")
-key = os.getenv("SUPABASE_SERVICE_KEY")
-
-supabase = create_client(url, key)
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SERVICE_ROLE_KEY"))
 
 file_path = "rl_core/model.onnx"
 storage_path = "model_v1.onnx"
