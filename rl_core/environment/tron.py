@@ -33,10 +33,10 @@ class Tron:
         :param dir1: Direction for bike1 as a tuple (dx, dy)
         :param dir2: Direction for bike2 as a tuple (dx, dy)
         :return: An integer indicating the result of the tick:
-                 0 - No collision
-                 1 - Bike1 collided
-                 2 - Bike2 collided
-                 3 - Both bikes collided (draw)
+                 -1 - No collision
+                 2 - Bike1 collided
+                 1 - Bike2 collided
+                 0 - Both bikes collided (draw)
         """
         assert type(dir1) == np.ndarray and type(dir2) == np.ndarray, f"{bcolors.FAIL}Invalid direction type : {type(dir1)}, {type(dir2)}{bcolors.ENDC}"
         assert dir1.shape == (2, ) and dir2.shape == (2, ), f"{bcolors.FAIL}Invalid direction shape : {dir1.shape}, {dir2.shape}{bcolors.ENDC}"

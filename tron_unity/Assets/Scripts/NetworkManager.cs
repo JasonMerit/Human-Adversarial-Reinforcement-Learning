@@ -15,24 +15,14 @@ public class NetworkManager : MonoBehaviour
     private const string EDGE_FUNCTION_URL =
         "https://" + SUPABASE_PROJECT_REF + ".supabase.co/functions/v1/upload-episode";
 
-    private void Start()
+
+    public void SendEpisode(List<Vector2Int> trajectory, int winner)
     {
-        Debug.Log("Sending episode data to server...");
-        StartCoroutine(SendEpisode());
+        StartCoroutine(SendEpisodeInternal(trajectory, winner));
     }
 
-    private IEnumerator SendEpisode()
+    private IEnumerator SendEpisodeInternal(List<Vector2Int> trajectory, int winner)
     {
-        // Example trajectory
-        List<Vector2Int> trajectory = new List<Vector2Int>()
-        {
-            new Vector2Int(3,1),
-            new Vector2Int(2,2),
-            new Vector2Int(1,0)
-        };
-
-        int winner = 1;
-
         var payload = new EpisodePayload()
         {
             trajectory = trajectory,
