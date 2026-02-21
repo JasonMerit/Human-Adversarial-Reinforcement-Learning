@@ -12,3 +12,5 @@ __pycache__/
 export_presets.cfg
 .mono/
 
+# Server
+.env
