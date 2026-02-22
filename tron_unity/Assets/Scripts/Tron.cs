@@ -66,7 +66,7 @@ public class Tron
     // 2 - Bike1 collided
     // 1 - Bike2 collided
     // 0 - Both bikes collided (draw)
-    public int Tick(Vector2Int dir1, Vector2Int dir2)
+    public int Step(Vector2Int dir1, Vector2Int dir2)
     {
         // Mark current positions as walls
         walls[bike1.pos.y, bike1.pos.x] = 1;

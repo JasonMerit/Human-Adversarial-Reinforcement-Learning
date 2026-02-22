@@ -39,46 +39,37 @@ public class Game : MonoBehaviour
     Color playerColor;
     Color adversaryColor;
 
-    void Start()
+    void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
         var model = ModelLoader.Load(modelAsset);
         worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
 
         networkManager = GetComponent<NetworkManager>();
-
-        // InvokeRepeating("RunInference", 0f, 1f);
-
         playerColor = player.GetComponent<SpriteRenderer>().color;
         adversaryColor = adversary.GetComponent<SpriteRenderer>().color;
         tron = new Tron(new Vector2Int(11, 11));
-        Reset();
+        // Reset();
     }
 
-    void Reset()
+    public void Reset()
     {
-        time = 0;
+        time = tickRate; // immediate first tick
         tron.Reset();
         board.Clear();
 
-        board.SetCell(tron.bike1.pos, playerColor);
-        board.SetCell(tron.bike2.pos, adversaryColor);
+        // board.SetCell(tron.bike1.pos, playerColor);
+        // board.SetCell(tron.bike2.pos, adversaryColor);
         playerAction = 1;
-        tron.Tick(DIRS[playerAction], DIRS[3]);
+        // tron.Step(DIRS[playerAction], DIRS[3]);
         
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
 
     }
 
-    void Update()
+    public bool Tick()
     {
-        // Input
-        #if UNITY_EDITOR
-        if (playerInput.actions["Quit"].triggered) { UnityEditor.EditorApplication.isPlaying = false; }
-        if (playerInput.actions["Restart"].triggered) { Reset(); return;}
-        #endif
-
         // Player input
         int newAction = playerAction;
         if (playerInput.actions["Up"].triggered) newAction = 0;
@@ -91,16 +82,16 @@ public class Game : MonoBehaviour
         time += Time.deltaTime;
         if (time >= tickRate) {
             time -= tickRate;
-            Tick();
+            if (Step()) { return true; }
         }
 
         var alpha = time / tickRate;
         player.position = (Vector3)Vector2.Lerp(tron.bike1.lastPos, tron.bike1.pos, alpha);
         adversary.position = (Vector3)Vector2.Lerp(tron.bike2.lastPos, tron.bike2.pos, alpha);
-
+        return false;
     }
 
-    void Tick()
+    bool Step()
     {
         board.SetCell(tron.bike1.pos, playerColor);
         board.SetCell(tron.bike2.pos, adversaryColor);
@@ -109,15 +100,17 @@ public class Game : MonoBehaviour
         history.Add(new (playerAction, advAction));
         lastPlayerAction = playerAction;
 
-        int result = tron.Tick(DIRS[playerAction], DIRS[advAction]);
+        int result = tron.Step(DIRS[playerAction], DIRS[advAction]);
         // Debug.Log("Tick result: " + result);
 
         if (result != -1)
         {
             if (POSTING_ENABLED) { networkManager.SendEpisode(history, result); }
             history = new List<Vector2Int>();
-            Reset();
+            // Reset();
+            return true;
         }
+        return false;
     }
 
     void RunInference()
