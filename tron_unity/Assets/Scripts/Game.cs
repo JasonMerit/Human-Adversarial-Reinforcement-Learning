@@ -5,9 +5,9 @@ using TMPro;
 using UnityEngine.InputSystem;
 
 
-public class Main : MonoBehaviour
+public class Game : MonoBehaviour
 {
-    bool POSTING_ENABLED = false;
+    bool POSTING_ENABLED = true;
 
     public readonly Vector2Int[] DIRS = 
     {

@@ -58,19 +58,10 @@ Deno.serve(async (req) => {
     )
   }
 
-  const allFirstAreOne = trajectory.every(
-    (pair: any) => Array.isArray(pair) && pair[0] === 1
-  )
-
-  if (allFirstAreOne) {
+  if (trajectory.every(pair => pair.x === 1)) {
     return new Response(
-      JSON.stringify({
-        error: "Invalid trajectory: all first actions are 1",
-      }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ error: "Invalid trajectory: all first actions are 1" }),
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     )
   }
 
@@ -84,7 +75,7 @@ Deno.serve(async (req) => {
   const { error } = await supabase
     .from("episodes")
     .insert({
-      trajectory,
+      trajectory: trajectory.map(pair => [pair.x, pair.y]),
       trajectory_length,
       winner,
     })
