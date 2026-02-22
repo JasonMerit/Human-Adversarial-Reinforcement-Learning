@@ -2,12 +2,12 @@ using UnityEngine;
 
 public class Adversary
 {
-    static readonly Vector2Int[] Directions =
+    static readonly Vector2Int[] DIRS = 
     {
-        new Vector2Int(1, 0),   // Right
-        new Vector2Int(-1, 0),  // Left
-        new Vector2Int(0, 1),   // Up
-        new Vector2Int(0, -1)   // Down
+        new Vector2Int(0,1),   // Up
+        new Vector2Int(1,0),   // Right
+        new Vector2Int(0,-1),  // Down
+        new Vector2Int(-1,0)   // Left
     };
 
     public static Vector2Int ChooseMove(
@@ -21,7 +21,7 @@ public class Adversary
         float bestScore = float.NegativeInfinity;
         Vector2Int bestMove = Vector2Int.zero;
 
-        foreach (var dir in Directions)
+        foreach (var dir in DIRS)
         {
             Vector2Int newPos = adversaryPos + dir;
 

@@ -9,7 +9,7 @@ public class Main : MonoBehaviour
 {
     bool POSTING_ENABLED = false;
 
-    List<Vector2Int> DIRS = new()
+    readonly Vector2Int[] DIRS = 
     {
         new Vector2Int(0,1),   // Up
         new Vector2Int(1,0),   // Right
@@ -39,6 +39,9 @@ public class Main : MonoBehaviour
     int step = 0;
     List<Vector2Int> history = new();
 
+    // Player
+    int playerAction = 1;
+
     float time;
     Color playerColor;
     Color adversaryColor;
@@ -51,7 +54,7 @@ public class Main : MonoBehaviour
 
         networkManager = GetComponent<NetworkManager>();
 
-        InvokeRepeating("RunInference", 0f, 1f);
+        // InvokeRepeating("RunInference", 0f, 1f);
 
         playerColor = player.GetComponent<SpriteRenderer>().color;
         adversaryColor = adversary.GetComponent<SpriteRenderer>().color;
@@ -74,12 +77,18 @@ public class Main : MonoBehaviour
 
     void Update()
     {
+        // Input
         #if UNITY_EDITOR
-        if (playerInput.actions["Quit"].triggered)
-        {
-            UnityEditor.EditorApplication.isPlaying = false;
-        }
+        if (playerInput.actions["Quit"].triggered) { UnityEditor.EditorApplication.isPlaying = false; }
         #endif
+
+        int newAction = playerAction;
+        if (playerInput.actions["Up"].triggered) newAction = 0;
+        else if (playerInput.actions["Right"].triggered) newAction = 1;
+        else if (playerInput.actions["Down"].triggered) newAction = 2;
+        else if (playerInput.actions["Left"].triggered) newAction = 3;
+        if ((newAction + 2) % 4 != playerAction) playerAction = newAction; // prevent reversing
+            
 
         time += Time.deltaTime;
         if (time >= tickRate) {
@@ -98,7 +107,7 @@ public class Main : MonoBehaviour
         board.SetCell(tron.bike1.pos, playerColor);
         board.SetCell(tron.bike2.pos, adversaryColor);
         Vector2Int action = trajectory[step];
-        step += 1;
+        step = (step + 1) % trajectory.Count;
 
         history.Add(action);
         
@@ -108,7 +117,10 @@ public class Main : MonoBehaviour
         // Vector2Int dir1 = DIRS[1];
         // Vector2Int dir2 = DIRS[3];
 
-        Vector2Int advDir = Adversary.ChooseMove(tron.walls, tron.bike2.pos, tron.bike1.pos);
+        Vector2Int playerDir = DIRS[playerAction];
+        Vector2Int advDir = Adversary.ChooseMove(tron.walls, tron.bike1.pos, tron.bike2.pos);
+
+        dir1 = playerDir;
         dir2 = advDir;
 
         int result = tron.Tick(dir1, dir2);
