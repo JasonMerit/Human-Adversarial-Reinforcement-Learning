@@ -102,7 +102,9 @@ public class Game : MonoBehaviour
 
     void EndEpisode()
     {
-        camera.Shake();
+        if (State == GameState.Bike2Win) {camera.Shake(DIRS[playerAction]);}
+        else  {camera.Shake();}
+
         if (Main.PostingEnabled) { networkManager.SendEpisode(history, (int)State); }
         history = new();
     }
