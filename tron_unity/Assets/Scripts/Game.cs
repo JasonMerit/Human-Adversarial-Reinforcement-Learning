@@ -20,6 +20,7 @@ public class Game : MonoBehaviour
     [SerializeField] Transform adversary;
     [SerializeField] NNModel modelAsset;
     [SerializeField] TMP_Text outputText;
+    [SerializeField] new CameraShake camera;
  
     PlayerInput playerInput;
     IWorker worker;
@@ -96,13 +97,14 @@ public class Game : MonoBehaviour
         lastPlayerAction = playerAction;
 
         State = tron.Step(DIRS[playerAction], DIRS[advAction]);
-        // Debug.Log("Tick result: " + result);
+        if (State != GameState.Playing) { EndEpisode(); }
+    }
 
-        if (State != GameState.Playing)
-        {
-            if (Main.PostingEnabled) { networkManager.SendEpisode(history, (int)State); }
-            history = new List<Vector2Int>();
-        }
+    void EndEpisode()
+    {
+        camera.Shake();
+        if (Main.PostingEnabled) { networkManager.SendEpisode(history, (int)State); }
+        history = new();
     }
 
     void RunInference()
