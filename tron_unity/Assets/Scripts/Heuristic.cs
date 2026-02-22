@@ -3,31 +3,28 @@ using System.Collections.Generic;
 
 public static class Heuristic
 {
-    const int FRIENDLY = 1;
-    const int OPPONENT = 2;
-    const int ARTICULATION = 3;
+    const int WALL = 1;  // Don't care trail color, just needs to be nonzero
+    const int ARTICULATION = 3;  // 2 Is occupied by adversary color
 
     static int width;
     static int height;
 
-    public static float ChamberHeuristic(int[,] walls, Vector2Int player, Vector2Int opponent)
+    public static float ChamberHeuristic(int[,] walls, Vector2Int you, Vector2Int other)
     {
         height = walls.GetLength(0);
         width  = walls.GetLength(1);
 
-        int[,] state = GetState(walls, player, opponent);
-
+        int[,] state = GetState(walls, you, other);
         HopcroftTarjan(state);
-
-        return ComputeVoronoi(player, opponent, state);
+        return ComputeVoronoi(you, other, state);
     }
 
-    static int[,] GetState(int[,] walls, Vector2Int player, Vector2Int opponent)
+    static int[,] GetState(int[,] walls, Vector2Int you, Vector2Int other)
     {
         int[,] state = (int[,])walls.Clone();
-
-        state[player.y, player.x] = FRIENDLY;
-        state[opponent.y, opponent.x] = OPPONENT;
+        
+        // state[you.y, you.x] = WALL;
+        // state[other.y, other.x] = WALL;
 
         return state;
     }
@@ -129,12 +126,12 @@ public static class Heuristic
             state[r, c] = ARTICULATION;
     }
 
-    static float ComputeVoronoi(Vector2Int player, Vector2Int opponent, int[,] state)
+    static float ComputeVoronoi(Vector2Int you, Vector2Int other, int[,] state)
     {
-        float[,] playerCosts = Dijkstra(state, player);
-        float[,] oppCosts = Dijkstra(state, opponent);
+        float[,] youCosts = Dijkstra(state, you);
+        float[,] oppCosts = Dijkstra(state, other);
 
-        int playerCount = 0;
+        int youCount = 0;
         int oppCount = 0;
 
         int maxCost = width + height;
@@ -143,16 +140,16 @@ public static class Heuristic
         {
             for (int c = 0; c < width; c++)
             {
-                float pc = playerCosts[r, c];
+                float pc = youCosts[r, c];
                 float oc = oppCosts[r, c];
 
                 if (pc < oc && pc <= maxCost)
-                    playerCount++;
+                    youCount++;
                 else if (oc < pc && oc <= maxCost)
                     oppCount++;
             }
         }
 
-        return (float)(playerCount - oppCount) / (width * height);
+        return (float)(youCount - oppCount) / (width * height);
     }
 }

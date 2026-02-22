@@ -100,7 +100,7 @@ def compute_voronoi(player, opponent, state):
     return v
 
 def chamber_heuristic(walls : np.ndarray, player : np.ndarray, opponent : np.ndarray):
-    state = get_state(walls, player, opponent)
+    state =     (walls, player, opponent)
     hopcroft_tarjan(state)
     return compute_voronoi(player, opponent, state)
 

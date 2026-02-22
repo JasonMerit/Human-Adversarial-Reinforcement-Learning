@@ -52,10 +52,10 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Move",
-                    "type": "PassThrough",
-                    "id": "ff1a5810-0393-43db-92d5-e24c51ed1881",
-                    "expectedControlType": "Vector2",
+                    "name": "Restart",
+                    "type": "Button",
+                    "id": "e5b8233a-dfba-4914-bcda-7754f8643fef",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -162,59 +162,15 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "2D Vector",
-                    "id": "b0a3611a-0c14-4bb5-b73a-093a8cba6c83",
-                    "path": "2DVector",
+                    "name": "",
+                    "id": "0e60e44d-54a7-4e7e-b476-38e05b877cbd",
+                    "path": "<Keyboard>/r",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Move",
-                    "isComposite": true,
+                    "action": "Restart",
+                    "isComposite": false,
                     "isPartOfComposite": false
-                },
-                {
-                    "name": "up",
-                    "id": "8d46fd5b-5e31-4046-a00a-93fc2c202967",
-                    "path": "",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "down",
-                    "id": "2652aae7-f317-4a3b-a4b0-2dbba4ebd22f",
-                    "path": "",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "left",
-                    "id": "f4c4ffb2-54ed-49a6-b66f-6e100e526ca0",
-                    "path": "",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "right",
-                    "id": "ebd0b986-cd20-49b0-90d0-f5d5a9db9fff",
-                    "path": "",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
                 }
             ]
         }

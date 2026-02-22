@@ -9,12 +9,12 @@ public class Main : MonoBehaviour
 {
     bool POSTING_ENABLED = false;
 
-    readonly Vector2Int[] DIRS = 
+    public readonly Vector2Int[] DIRS = 
     {
-        new Vector2Int(0,1),   // Up
-        new Vector2Int(1,0),   // Right
-        new Vector2Int(0,-1),  // Down
-        new Vector2Int(-1,0)   // Left
+        new(0,1),   // Up
+        new(1,0),   // Right
+        new(0,-1),  // Down
+        new(-1,0)   // Left
     };
 
     [SerializeField] Board board;
@@ -28,7 +28,7 @@ public class Main : MonoBehaviour
     NetworkManager networkManager;
     Tron tron;
 
-    const float tickRate = 0.5f; // seconds per tick
+    const float tickRate = 0.2f; // seconds per tick
     List<Vector2Int> trajectory = new List<Vector2Int>() {
         new(1, 3), new(1, 3), new(0, 2),
         new(3, 1), new(3, 1), new(3, 1), new(3, 1),
@@ -64,15 +64,18 @@ public class Main : MonoBehaviour
 
     void Reset()
     {
+        time = 0;
         tron.Reset();
         board.Clear();
 
         board.SetCell(tron.bike1.pos, playerColor);
         board.SetCell(tron.bike2.pos, adversaryColor);
-        tron.Tick(DIRS[1], DIRS[3]);
+        playerAction = 1;
+        tron.Tick(DIRS[playerAction], DIRS[3]);
         
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
+
     }
 
     void Update()
@@ -80,6 +83,7 @@ public class Main : MonoBehaviour
         // Input
         #if UNITY_EDITOR
         if (playerInput.actions["Quit"].triggered) { UnityEditor.EditorApplication.isPlaying = false; }
+        if (playerInput.actions["Restart"].triggered) { Reset(); return;}
         #endif
 
         int newAction = playerAction;
@@ -116,9 +120,10 @@ public class Main : MonoBehaviour
         
         // Vector2Int dir1 = DIRS[1];
         // Vector2Int dir2 = DIRS[3];
+        int advAction = Adversary.ChooseMove(tron.walls, tron.bike2.pos, tron.bike1.pos);
 
         Vector2Int playerDir = DIRS[playerAction];
-        Vector2Int advDir = Adversary.ChooseMove(tron.walls, tron.bike1.pos, tron.bike2.pos);
+        Vector2Int advDir = DIRS[advAction];
 
         dir1 = playerDir;
         dir2 = advDir;

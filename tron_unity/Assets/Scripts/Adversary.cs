@@ -1,60 +1,42 @@
 using UnityEngine;
 
+// Assumes player stands still and adversary moves one step.
+// Evaluates the resulting state using a Voronoi heuristic.
+
 public class Adversary
 {
     static readonly Vector2Int[] DIRS = 
     {
-        new Vector2Int(0,1),   // Up
-        new Vector2Int(1,0),   // Right
-        new Vector2Int(0,-1),  // Down
-        new Vector2Int(-1,0)   // Left
+        new(0,1),   // Up
+        new(1,0),   // Right
+        new(0,-1),  // Down
+        new(-1,0)   // Left
     };
 
-    public static Vector2Int ChooseMove(
-        int[,] walls,
-        Vector2Int playerPos,
-        Vector2Int adversaryPos)
-    {
-        int height = walls.GetLength(0);
-        int width  = walls.GetLength(1);
-
+    public static int ChooseMove(int[,] walls, Vector2Int you, Vector2Int other) {
         float bestScore = float.NegativeInfinity;
-        Vector2Int bestMove = Vector2Int.zero;
+        int bestAction = 0;
+        int[,] simWalls = (int[,])walls.Clone();
+        simWalls[you.y, you.x] = 1;  // Mark current position as wall
 
-        foreach (var dir in DIRS)
-        {
-            Vector2Int newPos = adversaryPos + dir;
+        for (int i = 0; i < DIRS.Length; i++) {
+            Vector2Int newPos = you + DIRS[i];;
+            if (!IsLegal(newPos, walls)) continue;
 
-            if (!IsLegal(newPos, walls, width, height))
-                continue;
+            float score = Heuristic.ChamberHeuristic(simWalls, newPos, other);
 
-            int[,] simWalls = (int[,])walls.Clone();
-
-            // Mark current adversary position as wall
-            simWalls[adversaryPos.y, adversaryPos.x] = 2;
-
-            float score = Heuristic.ChamberHeuristic(
-                simWalls,
-                playerPos,
-                newPos
-            );
-
-            if (score > bestScore)
-            {
+            if (score > bestScore) {
                 bestScore = score;
-                bestMove = dir;
+                bestAction = i;
             }
         }
-
-        return bestMove;
+        return bestAction;
     }
 
-    static bool IsLegal(Vector2Int pos, int[,] walls, int width, int height)
-    {
-        if (pos.x < 0 || pos.x >= width) return false;
-        if (pos.y < 0 || pos.y >= height) return false;
+    static bool IsLegal(Vector2Int pos, int[,] walls) {
+        if (pos.x < 0 || pos.x >= walls.GetLength(1)) return false;
+        if (pos.y < 0 || pos.y >= walls.GetLength(0)) return false;
         if (walls[pos.y, pos.x] != 0) return false;
-
         return true;
     }
 }
