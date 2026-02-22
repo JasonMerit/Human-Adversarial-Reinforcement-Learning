@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  const { trajectory, winner } = body
+  const { trajectory, winner, buildVersion } = body
 
   if (!Array.isArray(trajectory)) {
     return new Response(
@@ -65,12 +65,47 @@ Deno.serve(async (req) => {
     )
   }
 
-  const trajectory_length = trajectory.length
+  // Validate buildVersion
+  if (
+    !buildVersion ||
+    typeof buildVersion.x !== "number" ||
+    typeof buildVersion.y !== "number" ||
+    typeof buildVersion.z !== "number"
+  ) {
+    return new Response(
+      JSON.stringify({ error: "Invalid buildVersion" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
+    )
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SERVICE_ROLE_KEY")!
   )
+
+  const trajectory_length = trajectory.length
+  if (trajectory_length < 5) {
+    return new Response(
+      JSON.stringify({ error: "Trajectory too short" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
+    )
+  }
+
+  if (trajectory_length > 100) {
+    return new Response(
+      JSON.stringify({ error: "Trajectory too long" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
+    )
+  }
 
   const { error } = await supabase
     .from("episodes")
@@ -78,6 +113,9 @@ Deno.serve(async (req) => {
       trajectory: trajectory.map(pair => [pair.x, pair.y]),
       trajectory_length,
       winner,
+      version_major: buildVersion.x,
+      version_minor: buildVersion.y,
+      version_patch: buildVersion.z,
     })
 
   if (error) {

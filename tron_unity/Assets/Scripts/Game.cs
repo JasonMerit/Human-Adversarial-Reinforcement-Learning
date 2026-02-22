@@ -7,8 +7,6 @@ using UnityEngine.InputSystem;
 
 public class Game : MonoBehaviour
 {
-    bool POSTING_ENABLED = false;
-
     public readonly Vector2Int[] DIRS = 
     {
         new(0,1),   // Up
@@ -105,7 +103,7 @@ public class Game : MonoBehaviour
 
         if (result != -1)
         {
-            if (POSTING_ENABLED) { networkManager.SendEpisode(history, result); }
+            if (Main.PostingEnabled) { networkManager.SendEpisode(history, result); }
             history = new List<Vector2Int>();
             // Reset();
             return true;

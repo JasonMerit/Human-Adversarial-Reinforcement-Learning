@@ -4,6 +4,10 @@ using UnityEngine.InputSystem;
 
 public class Main : MonoBehaviour
 {
+    public static readonly Vector3Int BuildVersion = new(1, 0, 0);
+    public static readonly bool PostingEnabled = true;
+
+    [SerializeField] TMP_Text versionText;
     [SerializeField] TMP_Text centerText;
     Game game;
 
@@ -14,6 +18,7 @@ public class Main : MonoBehaviour
 
     void Start()
     {
+        versionText.text = $"{BuildVersion.x}.{BuildVersion.y}.{BuildVersion.z}";
         game = GetComponentInChildren<Game>();
         #if UNITY_EDITOR
         countdownTime = 0f;

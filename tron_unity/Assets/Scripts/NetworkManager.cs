@@ -50,7 +50,9 @@ public class NetworkManager : MonoBehaviour
 
             if (response != null && response.ok)
             {
+                #if UNITY_EDITOR
                 Debug.Log("Episode uploaded successfully.");
+                #endif
                 statusText.text = "Upload successful";
             }
             else if (response != null)
@@ -99,6 +101,7 @@ public class EpisodePayload
 {
     public List<Vector2Int> trajectory;
     public int winner;
+    public Vector3Int buildVersion = Main.BuildVersion;
 }
 
 [System.Serializable]
