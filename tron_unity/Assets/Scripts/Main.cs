@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 public class Main : MonoBehaviour
 {
     public static readonly Vector3Int BuildVersion = new(1, 0, 0);
-    public static readonly bool PostingEnabled = false;
+    public static readonly bool PostingEnabled = true;
 
     [SerializeField] TMP_Text versionText;
     [SerializeField] TMP_Text centerText;
@@ -63,6 +63,7 @@ public class Main : MonoBehaviour
         game.Reset();
         state = State.Countdown;
         countdownTimer = countdownTime;
+        centerText.color = Color.cyan;
         centerText.gameObject.SetActive(true);
     }
 
