@@ -551,7 +551,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294954752
-  m_fontColor: {r: 0, g: 0.81229615, b: 1, a: 1}
+  m_fontColor: {r: 0, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1313,6 +1313,9 @@ MonoBehaviour:
   adversary: {fileID: 1129867225}
   modelAsset: {fileID: 5022602860645237092, guid: 884e5d034b5960142afe7bb5adcdd768, type: 3}
   outputText: {fileID: 652400945}
+  State: 0
+  playerColor: {r: 0, g: 0, b: 0, a: 0}
+  adversaryColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!4 &1795881258
 Transform:
   m_ObjectHideFlags: 0

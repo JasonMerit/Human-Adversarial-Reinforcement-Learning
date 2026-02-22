@@ -37,6 +37,7 @@ public class Bike
     }
 }
 
+public enum GameState { Draw, Bike1Win, Bike2Win, Playing }
 public class Tron
 {
     public int width;
@@ -66,7 +67,7 @@ public class Tron
     // 2 - Bike1 collided
     // 1 - Bike2 collided
     // 0 - Both bikes collided (draw)
-    public int Step(Vector2Int dir1, Vector2Int dir2)
+    public GameState Step(Vector2Int dir1, Vector2Int dir2)
     {
         // Mark current positions as walls
         walls[bike1.pos.y, bike1.pos.x] = 1;
@@ -77,14 +78,14 @@ public class Tron
 
         // Head-to-head collision
         if ((bike1Hit && bike2Hit) || bike1.pos == bike2.pos)
-            return 0;
+            return GameState.Draw;
 
         if (bike1Hit)
-            return 2;
+            return GameState.Bike2Win;
 
         if (bike2Hit)
-            return 1;
+            return GameState.Bike1Win;
 
-        return -1;
+        return GameState.Playing;
     }
 }

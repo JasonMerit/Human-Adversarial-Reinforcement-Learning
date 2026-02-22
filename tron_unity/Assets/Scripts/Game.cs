@@ -26,6 +26,7 @@ public class Game : MonoBehaviour
     NetworkManager networkManager;
     Tron tron;
 
+    [HideInInspector] public GameState State;
     const float tickRate = 0.2f; // seconds per tick
     List<Vector2Int> history = new();
 
@@ -34,8 +35,8 @@ public class Game : MonoBehaviour
     int lastPlayerAction = 1;
 
     float time;
-    Color playerColor;
-    Color adversaryColor;
+    [HideInInspector] public Color playerColor;
+    [HideInInspector] public Color adversaryColor;
 
     void Awake()
     {
@@ -47,7 +48,6 @@ public class Game : MonoBehaviour
         playerColor = player.GetComponent<SpriteRenderer>().color;
         adversaryColor = adversary.GetComponent<SpriteRenderer>().color;
         tron = new Tron(new Vector2Int(11, 11));
-        // Reset();
     }
 
     public void Reset()
@@ -56,17 +56,14 @@ public class Game : MonoBehaviour
         tron.Reset();
         board.Clear();
 
-        // board.SetCell(tron.bike1.pos, playerColor);
-        // board.SetCell(tron.bike2.pos, adversaryColor);
         playerAction = 1;
-        // tron.Step(DIRS[playerAction], DIRS[3]);
         
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
 
     }
 
-    public bool Tick()
+    public void Tick()
     {
         // Player input
         int newAction = playerAction;
@@ -80,16 +77,16 @@ public class Game : MonoBehaviour
         time += Time.deltaTime;
         if (time >= tickRate) {
             time -= tickRate;
-            if (Step()) { return true; }
+            Step();
         }
 
         var alpha = time / tickRate;
         player.position = (Vector3)Vector2.Lerp(tron.bike1.lastPos, tron.bike1.pos, alpha);
         adversary.position = (Vector3)Vector2.Lerp(tron.bike2.lastPos, tron.bike2.pos, alpha);
-        return false;
     }
 
-    bool Step()
+    void Step()
+    // Updates State
     {
         board.SetCell(tron.bike1.pos, playerColor);
         board.SetCell(tron.bike2.pos, adversaryColor);
@@ -98,17 +95,14 @@ public class Game : MonoBehaviour
         history.Add(new (playerAction, advAction));
         lastPlayerAction = playerAction;
 
-        int result = tron.Step(DIRS[playerAction], DIRS[advAction]);
+        State = tron.Step(DIRS[playerAction], DIRS[advAction]);
         // Debug.Log("Tick result: " + result);
 
-        if (result != -1)
+        if (State != GameState.Playing)
         {
-            if (Main.PostingEnabled) { networkManager.SendEpisode(history, result); }
+            if (Main.PostingEnabled) { networkManager.SendEpisode(history, (int)State); }
             history = new List<Vector2Int>();
-            // Reset();
-            return true;
         }
-        return false;
     }
 
     void RunInference()

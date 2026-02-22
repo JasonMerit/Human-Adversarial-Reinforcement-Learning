@@ -5,14 +5,14 @@ using UnityEngine.InputSystem;
 public class Main : MonoBehaviour
 {
     public static readonly Vector3Int BuildVersion = new(1, 0, 0);
-    public static readonly bool PostingEnabled = true;
+    public static readonly bool PostingEnabled = false;
 
     [SerializeField] TMP_Text versionText;
     [SerializeField] TMP_Text centerText;
     Game game;
 
-    enum GameState { WaitingToStart, Countdown, Playing, GameOver }
-    GameState state = GameState.WaitingToStart;
+    enum State { WaitingToStart, Countdown, Playing, GameOver }
+    State state = State.WaitingToStart;
     float countdownTime = 3f;
     float countdownTimer = 0f;
 
@@ -35,25 +35,23 @@ public class Main : MonoBehaviour
 
         switch (state)
         {
-            case GameState.WaitingToStart:
+            case State.WaitingToStart:
                 centerText.text = "PRESS SPACE TO START";
                 centerText.gameObject.SetActive(true);
 
                 if (Keyboard.current.spaceKey.wasPressedThisFrame) { StartCountdown();}
                 break;
 
-            case GameState.Countdown:
+            case State.Countdown:
                 RunCountdown();
                 break;
 
-            case GameState.Playing:
-                if (game.Tick()) { state = GameState.GameOver; }
+            case State.Playing:
+                game.Tick();
+                if (game.State != GameState.Playing) { AnnounceWinner(game.State); }
                 break;
 
-            case GameState.GameOver:
-                centerText.text = "GAME OVER\nPRESS SPACE";
-                centerText.gameObject.SetActive(true);
-
+            case State.GameOver:
                 if (Keyboard.current.spaceKey.wasPressedThisFrame) { StartCountdown(); }
                 break;
         }
@@ -63,7 +61,7 @@ public class Main : MonoBehaviour
     {
         countdownTimer = 0f;
         game.Reset();
-        state = GameState.Countdown;
+        state = State.Countdown;
         countdownTimer = countdownTime;
         centerText.gameObject.SetActive(true);
     }
@@ -73,12 +71,34 @@ public class Main : MonoBehaviour
         countdownTimer -= Time.deltaTime;
         if (countdownTimer <= 0f)
         {
-            state = GameState.Playing;
+            state = State.Playing;
             centerText.gameObject.SetActive(false);
         }
         else
         {
             centerText.text = Mathf.Ceil(countdownTimer).ToString();
         }
+    }
+
+    void AnnounceWinner(GameState result)
+    {
+        if (result == GameState.Bike1Win) { 
+            centerText.text = "YOU WIN!";
+            centerText.color = game.playerColor;
+        }
+        else if (result == GameState.Bike2Win) { 
+            centerText.text = "YOU LOSE!";
+            centerText.color = game.adversaryColor;
+        }
+        else { 
+            centerText.text = "DRAW!"; 
+            centerText.color = Color.cyan;
+        }
+        
+        // Color
+        centerText.text += "\nPRESS SPACE";
+        centerText.gameObject.SetActive(true);
+
+        state = State.GameOver;
     }
 }
