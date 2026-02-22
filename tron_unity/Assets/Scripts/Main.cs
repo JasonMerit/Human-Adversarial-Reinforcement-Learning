@@ -29,14 +29,6 @@ public class Main : MonoBehaviour
     Tron tron;
 
     const float tickRate = 0.2f; // seconds per tick
-    List<Vector2Int> trajectory = new List<Vector2Int>() {
-        new(1, 3), new(1, 3), new(0, 2),
-        new(3, 1), new(3, 1), new(3, 1), new(3, 1),
-        new(2, 0), new(2, 0), new(1, 3),
-        new(1, 3), new(1, 3), new(1, 3),
-        new(1, 3), new(0, 2)
-    };
-    int step = 0;
     List<Vector2Int> history = new();
 
     // Player
@@ -110,25 +102,11 @@ public class Main : MonoBehaviour
     {
         board.SetCell(tron.bike1.pos, playerColor);
         board.SetCell(tron.bike2.pos, adversaryColor);
-        Vector2Int action = trajectory[step];
-        step = (step + 1) % trajectory.Count;
-
-        history.Add(action);
         
-        Vector2Int dir1 = DIRS[action.x];
-        Vector2Int dir2 = DIRS[action.y];
-        
-        // Vector2Int dir1 = DIRS[1];
-        // Vector2Int dir2 = DIRS[3];
         int advAction = Adversary.ChooseMove(tron.walls, tron.bike2.pos, tron.bike1.pos);
+        history.Add(new (playerAction, advAction));
 
-        Vector2Int playerDir = DIRS[playerAction];
-        Vector2Int advDir = DIRS[advAction];
-
-        dir1 = playerDir;
-        dir2 = advDir;
-
-        int result = tron.Tick(dir1, dir2);
+        int result = tron.Tick(DIRS[playerAction], DIRS[advAction]);
         // Debug.Log("Tick result: " + result);
 
         if (result != -1)
@@ -136,7 +114,6 @@ public class Main : MonoBehaviour
             if (POSTING_ENABLED) { networkManager.SendEpisode(history, result); }
             history = new List<Vector2Int>();
             Reset();
-            step = 0;
         }
     }
 
