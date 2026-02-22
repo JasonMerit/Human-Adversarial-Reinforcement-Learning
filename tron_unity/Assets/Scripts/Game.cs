@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 
 public class Game : MonoBehaviour
 {
-    bool POSTING_ENABLED = true;
+    bool POSTING_ENABLED = false;
 
     public readonly Vector2Int[] DIRS = 
     {
@@ -33,6 +33,7 @@ public class Game : MonoBehaviour
 
     // Player
     int playerAction = 1;
+    int lastPlayerAction = 1;
 
     float time;
     Color playerColor;
@@ -78,12 +79,13 @@ public class Game : MonoBehaviour
         if (playerInput.actions["Restart"].triggered) { Reset(); return;}
         #endif
 
+        // Player input
         int newAction = playerAction;
         if (playerInput.actions["Up"].triggered) newAction = 0;
         else if (playerInput.actions["Right"].triggered) newAction = 1;
         else if (playerInput.actions["Down"].triggered) newAction = 2;
         else if (playerInput.actions["Left"].triggered) newAction = 3;
-        if ((newAction + 2) % 4 != playerAction) playerAction = newAction; // prevent reversing
+        if ((newAction + 2) % 4 != lastPlayerAction) playerAction = newAction; // prevent reversing
             
 
         time += Time.deltaTime;
@@ -105,6 +107,7 @@ public class Game : MonoBehaviour
         
         int advAction = Adversary.ChooseMove(tron.walls, tron.bike2.pos, tron.bike1.pos);
         history.Add(new (playerAction, advAction));
+        lastPlayerAction = playerAction;
 
         int result = tron.Tick(DIRS[playerAction], DIRS[advAction]);
         // Debug.Log("Tick result: " + result);
