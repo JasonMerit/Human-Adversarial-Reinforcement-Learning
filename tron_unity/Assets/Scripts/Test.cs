@@ -105,6 +105,7 @@ public class Test : MonoBehaviour
                 }
             }
             // outputText.text = "Player: " + playerScore + "\nAdversary: " + adversaryScore;
+            // outputText.text = "Score: " + score;
          }
     }
 

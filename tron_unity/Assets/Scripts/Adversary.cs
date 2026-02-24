@@ -13,17 +13,17 @@ public class Adversary
         new(-1,0)   // Left
     };
 
-    public static int ChooseMove(int[,] walls, Vector2Int you, Vector2Int other) {
+    public static int ChooseMove(int[,] trails, Vector2Int you, Vector2Int other) {
         float bestScore = float.NegativeInfinity;
         int bestAction = 0;
-        int[,] simWalls = (int[,])walls.Clone();
-        simWalls[you.y, you.x] = 1;  // Mark current position as wall
+        // simWalls[you.y, you.x] = 1;  // Mark current position as wall
 
         for (int i = 0; i < DIRS.Length; i++) {
             Vector2Int newPos = you + DIRS[i];;
-            if (!IsLegal(newPos, walls)) continue;
+            if (!IsLegal(newPos, trails)) continue;
 
-            float score = Heuristic.ChamberHeuristic(simWalls, newPos, other);
+            // float score = Heuristic.Chamber(trails, newPos, other);
+            float score = Heuristic.Voronoi(trails, newPos, other);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -33,10 +33,10 @@ public class Adversary
         return bestAction;
     }
 
-    static bool IsLegal(Vector2Int pos, int[,] walls) {
-        if (pos.x < 0 || pos.x >= walls.GetLength(1)) return false;
-        if (pos.y < 0 || pos.y >= walls.GetLength(0)) return false;
-        if (walls[pos.y, pos.x] != 0) return false;
+    static bool IsLegal(Vector2Int pos, int[,] trails) {
+        if (pos.x < 0 || pos.x >= trails.GetLength(1)) return false;
+        if (pos.y < 0 || pos.y >= trails.GetLength(0)) return false;
+        if (trails[pos.x, pos.y] != 0) return false;
         return true;
     }
 }
