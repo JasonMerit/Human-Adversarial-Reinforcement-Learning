@@ -1,155 +1,160 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
 public static class Heuristic
 {
-    const int WALL = 1;  // Don't care trail color, just needs to be nonzero
-    const int ARTICULATION = 3;  // 2 Is occupied by adversary color
-
-    static int width;
-    static int height;
+    public static readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     public static float ChamberHeuristic(int[,] walls, Vector2Int you, Vector2Int other)
     {
-        height = walls.GetLength(0);
-        width  = walls.GetLength(1);
-
-        int[,] state = GetState(walls, you, other);
-        HopcroftTarjan(state);
-        return ComputeVoronoi(you, other, state);
+        return 0f; // placeholder for testing
     }
 
-    static int[,] GetState(int[,] walls, Vector2Int you, Vector2Int other)
+    public static int[,] FillBoard(int[,] board, Vector2Int p1, Vector2Int p2)
     {
-        int[,] state = (int[,])walls.Clone();
-        
-        // state[you.y, you.x] = WALL;
-        // state[other.y, other.x] = WALL;
+        int width = board.GetLength(0);
+        int height = board.GetLength(1);
 
-        return state;
-    }
+        int[,] ownership = new int[width, height];
+        int[,] dist1 = new int[width, height];
+        int[,] dist2 = new int[width, height];
 
-    static IEnumerable<Vector2Int> GridNeighbors(int r, int c)
-    {
-        if (r + 1 < height) yield return new Vector2Int(c, r + 1);
-        if (r - 1 >= 0)     yield return new Vector2Int(c, r - 1);
-        if (c + 1 < width)  yield return new Vector2Int(c + 1, r);
-        if (c - 1 >= 0)     yield return new Vector2Int(c - 1, r);
-    }
+        const int INF = int.MaxValue;
 
-    static float[,] Dijkstra(int[,] state, Vector2Int head)
-    {
-        float[,] dists = new float[height, width];
-
-        for (int r = 0; r < height; r++)
-            for (int c = 0; c < width; c++)
-                dists[r, c] = float.PositiveInfinity;
-
-        Queue<(int r, int c, int dist)> q = new Queue<(int, int, int)>();
-
-        q.Enqueue((head.y, head.x, 0));
-        dists[head.y, head.x] = 0;
-
-        while (q.Count > 0)
+        // Initialize distances
+        for (int x = 0; x < width; x++)
         {
-            var (cr, cc, dist) = q.Dequeue();
-
-            foreach (var n in GridNeighbors(cr, cc))
+            for (int y = 0; y < height; y++)
             {
-                int nr = n.y;
-                int nc = n.x;
-
-                if (state[nr, nc] != 0) continue;
-                if (dists[nr, nc] < float.PositiveInfinity) continue;
-
-                dists[nr, nc] = dist + 1;
-                q.Enqueue((nr, nc, dist + 1));
+                dist1[x, y] = INF;
+                dist2[x, y] = INF;
             }
         }
 
-        return dists;
-    }
+        // BFS for Player 1
+        FloodFill(board, p1, dist1);
 
-    static void HopcroftTarjan(int[,] state)
-    {
-        int[,] parents = new int[height, width];
-        bool[,] visited = new bool[height, width];
-        int[,] depth = new int[height, width];
-        int[,] low = new int[height, width];
+        // BFS for Player 2
+        FloodFill(board, p2, dist2);
 
-        for (int r = 0; r < height; r++)
-            for (int c = 0; c < width; c++)
-            {
-                parents[r, c] = -1;
-                depth[r, c] = -1;
-                low[r, c] = -1;
-            }
+        int region1 = 0;
+        int region2 = 0;
 
-        RecHT(state, 0, 0, 0, parents, visited, depth, low);
-    }
-
-    static void RecHT(int[,] state, int r, int c, int d,
-        int[,] parents, bool[,] visited, int[,] depth, int[,] low)
-    {
-        visited[r, c] = true;
-        depth[r, c] = d;
-        low[r, c] = d;
-        int children = 0;
-
-        foreach (var n in GridNeighbors(r, c))
+        for (int x = 0; x < width; x++)
         {
-            int nr = n.y;
-            int nc = n.x;
-
-            if (state[nr, nc] != 0 && state[nr, nc] != ARTICULATION)
-                continue;
-
-            if (!visited[nr, nc])
+            for (int y = 0; y < height; y++)
             {
-                parents[nr, nc] = r * width + c;
-                children++;
+                if (board[x, y] != 0)
+                    continue;
 
-                RecHT(state, nr, nc, d + 1, parents, visited, depth, low);
+                int d1 = dist1[x, y];
+                int d2 = dist2[x, y];
 
-                if (low[nr, nc] >= depth[r, c] && parents[r, c] != -1)
-                    state[r, c] = ARTICULATION;
+                if (d1 == INF && d2 == INF) {
+                    // Debug.Log($"Unreachable free cell at {x},{y}");
+                    continue;
+                }
 
-                low[r, c] = Mathf.Min(low[r, c], low[nr, nc]);
-            }
-            else if (parents[r, c] != nr * width + nc)
-            {
-                low[r, c] = Mathf.Min(low[r, c], depth[nr, nc]);
+                if (d1 < d2) {
+                    region1++;
+                    ownership[x, y] = 1;
+                }
+                else if (d2 < d1) {
+                    region2++;
+                    ownership[x, y] = 2;
+                }
+                else {
+                    ownership[x, y] = 3; // battlefront
+                }
             }
         }
 
-        if (parents[r, c] == -1 && children >= 2)
-            state[r, c] = ARTICULATION;
+        return ownership;
     }
-
-    static float ComputeVoronoi(Vector2Int you, Vector2Int other, int[,] state)
+    
+    public static int ComputeVoronoiScore(int[,] board, Vector2Int p1, Vector2Int p2)
     {
-        float[,] youCosts = Dijkstra(state, you);
-        float[,] oppCosts = Dijkstra(state, other);
+        int width = board.GetLength(0);
+        int height = board.GetLength(1);
 
-        int youCount = 0;
-        int oppCount = 0;
+        int[,] dist1 = new int[width, height];
+        int[,] dist2 = new int[width, height];
 
-        int maxCost = width + height;
+        const int INF = int.MaxValue;
 
-        for (int r = 0; r < height; r++)
+        // Initialize distances
+        for (int x = 0; x < width; x++)
         {
-            for (int c = 0; c < width; c++)
+            for (int y = 0; y < height; y++)
             {
-                float pc = youCosts[r, c];
-                float oc = oppCosts[r, c];
-
-                if (pc < oc && pc <= maxCost)
-                    youCount++;
-                else if (oc < pc && oc <= maxCost)
-                    oppCount++;
+                dist1[x, y] = INF;
+                dist2[x, y] = INF;
             }
         }
 
-        return (float)(youCount - oppCount) / (width * height);
+        // BFS for Player 1
+        FloodFill(board, p1, dist1);
+
+        // BFS for Player 2
+        FloodFill(board, p2, dist2);
+
+        int region1 = 0;
+        int region2 = 0;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (board[x, y] != 0)
+                    continue;
+
+                int d1 = dist1[x, y];
+                int d2 = dist2[x, y];
+
+                if (d1 == INF && d2 == INF)
+                    continue;
+
+                if (d1 < d2)
+                    region1++;
+                else if (d2 < d1)
+                    region2++;
+                // equal distance = battlefront → ignored
+            }
+        }
+
+        return region1 - region2;
+    }
+
+    static void FloodFill(int[,] board, Vector2Int start, int[,] dist)
+    {
+        int width = board.GetLength(0);
+        int height = board.GetLength(1);
+
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+
+        dist[start.x, start.y] = 0;
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            Vector2Int current = queue.Dequeue();
+            foreach (var dir in DIRS)
+            {
+                Vector2Int next = current + dir;
+
+                if (next.x < 0 || next.x >= width ||
+                    next.y < 0 || next.y >= height)
+                    continue;
+
+                if (board[next.x, next.y] != 0)
+                    continue;
+
+                if (dist[next.x, next.y] != int.MaxValue)
+                    continue;
+
+                dist[next.x, next.y] = dist[current.x, current.y] + 1;
+                queue.Enqueue(next);
+            }
+        }
     }
 }

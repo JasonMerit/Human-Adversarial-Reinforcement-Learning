@@ -12,11 +12,11 @@ public class Bike
     }
 
     // Returns true if crash
-    public bool Move(Vector2Int vel, int[,] walls)
+    public bool Move(Vector2Int vel, int[,] trails)
     {
         Vector2Int newPos = pos + vel;
 
-        if (IsHit(walls, newPos.x, newPos.y))
+        if (IsHit(trails, newPos.x, newPos.y))
             return true;
         
         lastPos = pos;
@@ -24,14 +24,20 @@ public class Bike
         return false;
     }
 
-    public bool IsHit(int[,] walls, int x, int y)
+    public bool IsHitInDir(int[,] trails, Vector2Int dir)
     {
-        int height = walls.GetLength(0);
-        int width  = walls.GetLength(1);
+        Vector2Int newPos = pos + dir;
+        return IsHit(trails, newPos.x, newPos.y);
+    }
+
+    public bool IsHit(int[,] trails, int x, int y)
+    {
+        int height = trails.GetLength(0);
+        int width  = trails.GetLength(1);
 
         if (y < 0 || y >= height) return true;
         if (x < 0 || x >= width)  return true;
-        if (walls[y, x] != 0)     return true;
+        if (trails[x, y] != 0)     return true;
 
         return false;
     }
@@ -43,7 +49,7 @@ public class Tron
     public int width;
     public int height;
 
-    public int[,] walls;
+    public int[,] trails;
 
     public Bike bike1;
     public Bike bike2;
@@ -56,10 +62,13 @@ public class Tron
 
     public void Reset()
     {
-        walls = new int[height, width];
+        trails = new int[width, height];
 
         bike1 = new Bike(new Vector2Int(1, height / 2));
         bike2 = new Bike(new Vector2Int(width - 2, height / 2));
+        trails[bike1.pos.x, bike1.pos.y] = 1;
+        trails[bike2.pos.x, bike2.pos.y] = 2;
+
     }
 
     // Returns:
@@ -69,12 +78,10 @@ public class Tron
     // 0 - Both bikes collided (draw)
     public GameState Step(Vector2Int dir1, Vector2Int dir2)
     {
-        // Mark current positions as walls
-        walls[bike1.pos.y, bike1.pos.x] = 1;
-        walls[bike2.pos.y, bike2.pos.x] = 2;
+        // Mark current positions as trails
 
-        bool bike1Hit = bike1.Move(dir1, walls);
-        bool bike2Hit = bike2.Move(dir2, walls);
+        bool bike1Hit = bike1.Move(dir1, trails);
+        bool bike2Hit = bike2.Move(dir2, trails);
 
         // Head-to-head collision
         if ((bike1Hit && bike2Hit) || bike1.pos == bike2.pos)
@@ -85,6 +92,9 @@ public class Tron
 
         if (bike2Hit)
             return GameState.Bike1Win;
+
+        trails[bike1.pos.x, bike1.pos.y] = 1;
+        trails[bike2.pos.x, bike2.pos.y] = 2;
 
         return GameState.Playing;
     }

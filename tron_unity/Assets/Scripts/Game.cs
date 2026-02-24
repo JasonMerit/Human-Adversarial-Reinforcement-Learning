@@ -7,13 +7,7 @@ using UnityEngine.InputSystem;
 
 public class Game : MonoBehaviour
 {
-    public readonly Vector2Int[] DIRS = 
-    {
-        new(0,1),   // Up
-        new(1,0),   // Right
-        new(0,-1),  // Down
-        new(-1,0)   // Left
-    };
+    public readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     [SerializeField] Board board;
     [SerializeField] Transform player;
@@ -92,7 +86,7 @@ public class Game : MonoBehaviour
         board.SetCell(tron.bike1.pos, playerColor);
         board.SetCell(tron.bike2.pos, adversaryColor);
         
-        int advAction = Adversary.ChooseMove(tron.walls, tron.bike2.pos, tron.bike1.pos);
+        int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
         history.Add(new (playerAction, advAction));
         lastPlayerAction = playerAction;
 

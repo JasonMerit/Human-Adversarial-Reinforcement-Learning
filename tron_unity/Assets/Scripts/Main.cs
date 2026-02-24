@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 public class Main : MonoBehaviour
 {
     public static readonly Vector3Int BuildVersion = new(1, 0, 0);
-    public static readonly bool PostingEnabled = true;
+    public static bool PostingEnabled = true;
 
     [SerializeField] TMP_Text versionText;
     [SerializeField] TMP_Text centerText;
@@ -22,6 +22,7 @@ public class Main : MonoBehaviour
         game = GetComponentInChildren<Game>();
         #if UNITY_EDITOR
         countdownTime = 0f;
+        PostingEnabled = false;
         #endif
     }
 

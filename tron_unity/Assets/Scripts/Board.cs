@@ -6,7 +6,7 @@ public class Board : MonoBehaviour
     [SerializeField] TileBase tile;
     Tilemap tilemap;
 
-    void Start()
+    void Awake()
     {
         tilemap = GetComponentInChildren<Tilemap>();
     }
