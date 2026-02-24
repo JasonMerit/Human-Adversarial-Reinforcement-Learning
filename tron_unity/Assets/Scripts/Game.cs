@@ -22,7 +22,7 @@ public class Game : MonoBehaviour
     Tron tron;
 
     [HideInInspector] public GameState State;
-    const float tickRate = 0.2f; // seconds per tick
+    const float tickRate = 0.3f; // seconds per tick
     List<Vector2Int> history = new();
 
     // Player
@@ -99,8 +99,16 @@ public class Game : MonoBehaviour
         if (State == GameState.Bike2Win) {camera.Shake(DIRS[playerAction]);}
         else  {camera.Shake();}
 
-        if (Main.PostingEnabled) { networkManager.SendEpisode(history, (int)State); }
+        bool trapped = IsTrapped(tron.bike1);
+
+        if (Main.PostingEnabled) { networkManager.SendEpisode(history, (int)State, trapped); }
         history = new();
+    }
+
+    bool IsTrapped(Bike bike)
+    {
+        foreach (var dir in DIRS) { if (!bike.IsHitInDir(tron.trails, dir)) return false; }
+        return true;
     }
 
     void RunInference()

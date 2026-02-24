@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 public class Main : MonoBehaviour
 {
-    public static readonly Vector3Int BuildVersion = new(1, 0, 0);
+    public static Vector3Int BuildVersion = new(1, 1, 0);
     public static bool PostingEnabled = true;
 
     [SerializeField] TMP_Text versionText;
@@ -20,9 +20,14 @@ public class Main : MonoBehaviour
     {
         versionText.text = $"{BuildVersion.x}.{BuildVersion.y}.{BuildVersion.z}";
         game = GetComponentInChildren<Game>();
+        
+        //////////////////////////////////////////////////////////
+        ///////// HACK: Disable posting in editor ////////////////
+        //////////////////////////////////////////////////////////
         #if UNITY_EDITOR
         countdownTime = 0f;
-        PostingEnabled = false;
+        PostingEnabled = true;
+        BuildVersion = new(-1, -1, -1);
         #endif
     }
 
