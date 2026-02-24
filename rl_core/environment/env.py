@@ -137,7 +137,8 @@ if __name__ == "__main__":
     size = tuple(config.get("grid"))
 
     if single:
-        env = TronSingleEnv(SemiDeterministicAgent(.5), size)
+        env = TronSingleEnv(HeuristicAgent(), size)
+        # env = TronSingleEnv(SemiDeterministicAgent(.5), size)
         # env = TronEgo(TronImage(env))
     else:
         env = TronDualEnv(size)
