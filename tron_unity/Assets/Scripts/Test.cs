@@ -1,9 +1,6 @@
 using UnityEngine;
-using Unity.Barracuda;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine.InputSystem;
-
 
 public class Test : MonoBehaviour
 {
@@ -47,8 +44,10 @@ public class Test : MonoBehaviour
     Vector2Int action = new(-1,-1);
     void Update()
     {
+        #if UNITY_EDITOR
         if (Keyboard.current.escapeKey.wasPressedThisFrame) { UnityEditor.EditorApplication.isPlaying = false; }
         if (Keyboard.current.rKey.wasPressedThisFrame) { Reset(); }
+        #endif
 
         Vector2Int newAction = action;
         // Player input

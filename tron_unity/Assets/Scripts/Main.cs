@@ -26,7 +26,7 @@ public class Main : MonoBehaviour
         //////////////////////////////////////////////////////////
         #if UNITY_EDITOR
         countdownTime = 0f;
-        PostingEnabled = true;
+        PostingEnabled = false;
         BuildVersion = new(-1, -1, -1);
         #endif
     }

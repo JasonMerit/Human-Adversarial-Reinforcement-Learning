@@ -12,10 +12,22 @@ public class NetworkManager : MonoBehaviour
     private const string EDGE_FUNCTION_URL =
         "https://" + SUPABASE_PROJECT_REF + ".supabase.co/functions/v1/upload-episode";
 
-
     public void SendEpisode(List<Vector2Int> trajectory, int winner, bool trapped)
     {
         StartCoroutine(SendEpisodeInternal(trajectory, winner, trapped));
+    }
+
+    public static string GetOrCreatePlayerToken()
+    {
+        string PLAYER_TOKEN_KEY = "playerToken";
+        if (PlayerPrefs.HasKey(PLAYER_TOKEN_KEY)) return PlayerPrefs.GetString(PLAYER_TOKEN_KEY);
+        else
+        {
+            string newToken = System.Guid.NewGuid().ToString("N").Substring(0, 12);
+            PlayerPrefs.SetString(PLAYER_TOKEN_KEY, newToken);
+            PlayerPrefs.Save(); // Ensure it's written immediately
+            return newToken;
+        }
     }
 
     private IEnumerator SendEpisodeInternal(List<Vector2Int> trajectory, int winner, bool trapped)
@@ -95,6 +107,7 @@ public class EpisodePayload
     public int winner;
     public bool trapped;
     public Vector3Int buildVersion = Main.BuildVersion;
+    public string playerToken = NetworkManager.GetOrCreatePlayerToken();
 }
 
 [System.Serializable]

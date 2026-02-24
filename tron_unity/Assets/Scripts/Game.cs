@@ -14,7 +14,7 @@ public class Game : MonoBehaviour
     [SerializeField] Transform adversary;
     [SerializeField] NNModel modelAsset;
     [SerializeField] TMP_Text outputText;
-    [SerializeField] new CameraShake camera;
+    [SerializeField] CameraShake cameraShake;
  
     PlayerInput playerInput;
     IWorker worker;
@@ -96,8 +96,8 @@ public class Game : MonoBehaviour
 
     void EndEpisode()
     {
-        if (State == GameState.Bike2Win) {camera.Shake(DIRS[playerAction]);}
-        else  {camera.Shake();}
+        if (State == GameState.Bike2Win) {cameraShake.Shake(DIRS[playerAction]);}
+        else  {cameraShake.Shake();}
 
         bool trapped = IsTrapped(tron.bike1);
 

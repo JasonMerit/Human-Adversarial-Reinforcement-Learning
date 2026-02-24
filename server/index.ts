@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  const { trajectory, winner, buildVersion } = body
+  const { trajectory, winner, trapped, playerToken, buildVersion } = body
 
   if (!Array.isArray(trajectory)) {
     return new Response(
@@ -62,6 +62,17 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ error: "Invalid trajectory: all first actions are 1" }),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    )
+  }
+
+  // ---- Validate trapped ----
+  if (typeof trapped !== "boolean") {
+    return new Response(
+      JSON.stringify({ error: "Invalid trapped flag" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
     )
   }
 
@@ -113,6 +124,8 @@ Deno.serve(async (req) => {
       trajectory: trajectory.map(pair => [pair.x, pair.y]),
       trajectory_length,
       winner,
+      trapped,
+      player_token: playerToken,
       version_major: buildVersion.x,
       version_minor: buildVersion.y,
       version_patch: buildVersion.z,
