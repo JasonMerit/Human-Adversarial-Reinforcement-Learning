@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 public class Main : MonoBehaviour
 {
-    public static Vector3Int BuildVersion = new(1, 1, 0);
+    public static Vector3Int BuildVersion;
     public static bool PostingEnabled = true;
 
     [SerializeField] TMP_Text versionText;
@@ -18,8 +18,11 @@ public class Main : MonoBehaviour
 
     void Start()
     {
-        versionText.text = $"{BuildVersion.x}.{BuildVersion.y}.{BuildVersion.z}";
         game = GetComponentInChildren<Game>();
+
+        var parts = Application.version.Split('.');
+        BuildVersion = new Vector3Int( int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]) );
+        versionText.text = $"{BuildVersion.x}.{BuildVersion.y}.{BuildVersion.z}";
         
         //////////////////////////////////////////////////////////
         ///////// HACK: Disable posting in editor ////////////////
