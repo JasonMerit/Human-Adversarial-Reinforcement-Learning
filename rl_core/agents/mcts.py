@@ -33,7 +33,7 @@ class HeuristicAgent(Agent):
             if score > best_score:
                 best_score = score
                 best_action = action
-            
+
         if best_action is None:
             return 0  # If no valid moves, just pick up (or any default)
         return best_action
@@ -47,7 +47,6 @@ if __name__ == "__main__":
     import yaml
     from rl_core.environment.env import TronDualEnv, TronSingleEnv
     from rl_core.environment.wrappers import TronView
-    from rl_core.agents import HeuristicAgent
     from rl_core.utils import StateViewer
     from rl_core.utils.heuristics import get_territories
 
@@ -61,21 +60,56 @@ if __name__ == "__main__":
     if single:
         env = TronSingleEnv(HeuristicAgent(), size)
     else:
-        adv = HeuristicAgent()
         env = TronDualEnv(size)
 
-    # env = TronView(env, fps=5, scale=50)
 
-    state, _ = env.reset()
-    sv.view_heuristic(state, get_territories(*state))
-    while True:
-        action = TronView.wait_for_keypress() if single else TronView.wait_for_both_inputs()
-        state, reward, done, _, info = env.step(action)
+    territorry = False
 
-        if done:
-            state, _ = env.reset()
-            print(f"{reward=}")
+    if territorry:
+        state, _ = env.reset()
         sv.view_heuristic(state, get_territories(*state))
+        while True:
+            action = TronView.wait_for_keypress() if single else TronView.wait_for_both_inputs()
+            state, reward, done, _, info = env.step(action)
+
+            if done:
+                state, _ = env.reset()
+                print(f"{reward=}")
+            sv.view_heuristic(state, get_territories(*state))
+            TronView.wait_for_keypress()
+    
+    else:
+        from rl_core.utils.heuristics import voronoi
+
+        coords1 = [(1, 3), (2, 2), (3, 3), (2, 2), (1, 3), (2, 0), (2, 0), (1, 3), (0, 2), (0, 2), (0, 3), (1, 2), (0, 1), (0, 1), (1, 1)]
+        scores1 = [0, 0, -36, -22, -22, -21, -32, -38, -27, 1, -9, 27, 29, 32, 29]
+        arr = np.array([[coord, score] for coord, score in zip(coords1, scores1)], dtype=object)
+
+        coords2 = [(1, 3), (1, 3), (2, 2), (2, 2), (1, 2), (2, 3), (1, 0), (0, 0), (0, 0), (3, 0), (0, 3), (0, 0), (3, 1), (0, 0), (1, 3), (0, 0), (3, 1), (3, 1), (3, 1), (2, 2), (3, 1), (2, 2)]
+        scores2 = [0, 0, 0, 0, 31, -22, 12, -48, -46, -50, -46, -18, -1, -1, -42, -8, 1, 1, 1, 1, 1, -20]
+        arr2 = np.array([[coord, score] for coord, score in zip(coords2, scores2)], dtype=object)
+
+        state, _ = env.reset()
+        sv.view_heuristic(state, get_territories(*state))
+
+        indx = 0
+        while True:
+            action = arr[indx][0] 
+            state, _, _, _, _ = env.step(action)
+            
+            print(voronoi(*state), " ~ ", arr[indx][1])
+
+            sv.view_heuristic(state, get_territories(*state))
+            indx += 1
+            if indx == len(arr2):  # arr2 is longer
+                quit()
+            if indx == len(arr):
+                arr = arr2
+                state, _ = env.reset()
+                indx = 0
+                print("============")
+                
+            TronView.wait_for_keypress()
 
 
 
