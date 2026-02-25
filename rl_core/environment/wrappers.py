@@ -214,6 +214,7 @@ class TronDualImage(gym.ObservationWrapper):
 
 class TronEgo(gym.Wrapper):
     """
+    Assumes perspective of bike2 (agent)
     Transforms observation space to rotate view such that agent always heads upwards.
     Also reduces action space to [left, forward, right] relative to agent's perspective.
 
@@ -228,7 +229,7 @@ class TronEgo(gym.Wrapper):
 
     def reset(self, **kwargs):
         state, info = self.env.reset(**kwargs)
-        self.orientation = 1  # First facing right and generally equal to absolute direction
+        self.orientation = 3  # First facing right and generally equal to absolute direction
         return self.observation(state), info
 
     def step(self, action):
@@ -273,3 +274,31 @@ class TronDualEgo(gym.Wrapper):
         obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
         obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
         return (obs1, obs2)
+
+
+if __name__ == "__main__":
+    import yaml
+    from rl_core.environment.env import TronSingleEnv
+    from rl_core.agents import HeuristicAgent
+    from rl_core.utils import StateViewer
+
+    with open("rl_core/config.yml", "r") as f:
+        config = yaml.safe_load(f)
+    # single = config.get("single", True)
+    size = tuple(config.get("grid"))
+
+    env = TronSingleEnv(HeuristicAgent(), size)
+    env = TronEgo(TronImage(env))
+
+    sv = StateViewer(size, 50, 5, True)
+    # env = TronView(env, fps=5)
+
+    state, _ = env.reset()
+    while True:
+        action = TronView.wait_for_keypress()
+        state, reward, done, _, info = env.step(action)
+
+        if done:
+            state, _ = env.reset()
+            print(f"{reward=}")
+        sv.view_image(state)
