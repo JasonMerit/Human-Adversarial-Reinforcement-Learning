@@ -85,9 +85,9 @@ class TronView(gym.Wrapper):
                     self.pg.quit()
                     exit()
                 
-                if event.key == self.pg.K_s:
-                    # Save state as state.npy
-                    np.save("state.npy", state)
+                # if event.key == self.pg.K_s:
+                #     # Save state as state.npy
+                #     np.save("state.npy", state)
 
         self.clock.tick(self.fps)
         

@@ -47,7 +47,7 @@ class TronDualEnv(gym.Env):
         dir2 = self.action_mapping[self.action_flipped[joint_action[1]]]
     
         result = self.tron.tick(dir1, dir2)
-        done = result != 0
+        done = result != -1
         state = self._get_state()
         reward = self.reward_mapping[result]
         info = {'result': result}

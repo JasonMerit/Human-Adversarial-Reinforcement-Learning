@@ -1,5 +1,5 @@
 import numpy as np
-from rl_core.utils.heuristics import chamber_heuristic
+from rl_core.utils.heuristics import voronoi
 from gymnasium import spaces
 from rl_core.utils.helper import bcolors
 from .base import Agent
@@ -37,7 +37,7 @@ class HeuristicAgent(Agent):
                 continue
 
             # Evaluate heuristic
-            score = chamber_heuristic(walls, new_pos, opp)
+            score = voronoi(walls, new_pos, opp)
 
             if score > best_score:
                 best_score = score
