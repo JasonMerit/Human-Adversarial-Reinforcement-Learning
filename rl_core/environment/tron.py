@@ -4,7 +4,7 @@ from rl_core.utils.helper import bcolors
 class Bike:
     
     def __init__(self, pos):
-        self.pos = np.array(pos, dtype=np.int8)
+        self.pos = np.array(pos, dtype=np.int8)  # (x, y) !!!!
 
     def move(self, vel, walls):
         """Move bike if success and return True if crash"""
@@ -25,6 +25,8 @@ class Tron:
         self.walls = np.zeros((self.height, self.width), dtype=np.int8)
         self.bike1 = Bike([1, self.height // 2])
         self.bike2 = Bike([self.width - 2, self.height // 2])
+        self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
+        self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
 
     def tick(self, dir1, dir2):
         """
@@ -42,8 +44,6 @@ class Tron:
         assert dir1.shape == (2, ) and dir2.shape == (2, ), f"{bcolors.FAIL}Invalid direction shape : {dir1.shape}, {dir2.shape}{bcolors.ENDC}"
         
         # Move bikes
-        self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
-        self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
         bike1_hit = self.bike1.move(dir1, self.walls)
         bike2_hit = self.bike2.move(dir2, self.walls)
 
@@ -53,5 +53,8 @@ class Tron:
             return 2  
         if bike2_hit:
             return 1  
+
+        self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
+        self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
         return -1
         

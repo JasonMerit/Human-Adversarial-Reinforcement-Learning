@@ -12,8 +12,7 @@ from rl_core.agents import Agent
 class TronDualEnv(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
-    action_flipped = [0, 3, 2, 1]  # Flipping opponent action horizontally
-    reward_mapping = [1, -1, 0, 0]  # win, lose, draw, playing
+    reward_mapping = [0, 1, -1, 0]  # draw, bike2 crash, bike1 crash, playing
 
     def __init__(self, size):
         self.tron = Tron(size)
@@ -21,22 +20,14 @@ class TronDualEnv(gym.Env):
 
         self.action_space = gym.spaces.Tuple((gym.spaces.Discrete(4), gym.spaces.Discrete(4)))
         self.observation_space = gym.spaces.Tuple((
-            gym.spaces.Tuple((
-                gym.spaces.Box(low=0, high=2, shape=(height, self.width), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8)
-            )),
-            gym.spaces.Tuple((
                 gym.spaces.Box(low=0, high=2, shape=(height, self.width), dtype=np.int8),
                 gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8),
                 gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8)
             ))
-        ))
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.tron.reset()
-        self.tron.tick(self.action_mapping[1], self.action_mapping[3])  # First facing
             
         return self._get_state(), {'result': 0}
     
@@ -44,7 +35,7 @@ class TronDualEnv(gym.Env):
         assert self.action_space.contains(joint_action), f"Jason! Invalid Action {joint_action}"
         
         dir1 = self.action_mapping[joint_action[0]]
-        dir2 = self.action_mapping[self.action_flipped[joint_action[1]]]
+        dir2 = self.action_mapping[joint_action[1]]
     
         result = self.tron.tick(dir1, dir2)
         done = result != -1
@@ -55,11 +46,7 @@ class TronDualEnv(gym.Env):
     
     def _get_state(self):
         walls, you, opp = self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
-        you_ = np.array([self.width - 1 - you[0], you[1]], dtype=np.int8)
-        opp_ = np.array([self.width - 1 - opp[0], opp[1]], dtype=np.int8)
-        a = np.fliplr(walls).copy()
-        a[a != 0] = 3 - a[a != 0]  # Map (1, 2) -> (2, 1)
-        return (walls, you, opp), (a, opp_, you_)
+        return walls, you, opp
     
 class TronOppEnv(gym.Env):
 
@@ -84,43 +71,35 @@ class TronOppEnv(gym.Env):
     
 class TronSingleEnv(gym.Env):
 
-    reward_mapping = [0, -1, 1, .5]  # playing, lose, win, draw
-
-    def __init__(self, opponent : Agent, size):
+    def __init__(self, human : Agent, size):
         self.dual_env = TronDualEnv(size)
         self.tron = self.dual_env.tron
 
         self.action_space = gym.spaces.Discrete(4)
-        self.observation_space, opp_observation_space = self.dual_env.observation_space.spaces
+        self.observation_space = self.dual_env.observation_space
 
-        self._base_oppenv = TronOppEnv(self.tron, opp_observation_space)
-        self.oppenv = self._base_oppenv
-
-        self.opponent = opponent
-        opponent.bind_env(self.oppenv)
+        self.human = human
+        human.bind_env(self)
+        self.last_state = None  # For human to observe the state before its action in step()
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        (state, opponent_state), info = self.dual_env.reset(seed=seed)
-        self.opponent.reset()
-        self._base_oppenv.set_state(opponent_state)
-        self.oppenv.reset(seed=seed)
+        state, info = self.dual_env.reset(seed=seed)
+        
+        self.human.reset()
+        self.last_state = state
 
         return state, info
     
     def step(self, action):
         assert self.action_space.contains(action), f"Jason! Invalid Action {action}"
         
-        opp_view_state, _, _, _, _ = self.oppenv.step(0)
-        opponent_action = self.opponent(opp_view_state)
+        human_action = self.human(self.last_state)
 
-        (state, opp_state), reward, done, _, info = self.dual_env.step((action, opponent_action))
-        self._base_oppenv.set_state(opp_state)
-
-        # TronView.view(state, scale=70)
-        # TronView.view_dual((state, opponent_state), scale=70)
+        state, reward, done, _, info = self.dual_env.step((human_action, action))
         
-        return state, reward, done, False, opp_view_state
+        self.last_state = state  # Flip state for opponent
+        return state, reward, done, False, info
 
 if __name__ == "__main__":
     import yaml

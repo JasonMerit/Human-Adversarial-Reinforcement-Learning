@@ -148,6 +148,9 @@ class TronView(gym.Wrapper):
                     pg.quit()
                     exit()
                 elif event.type == pg.KEYDOWN:
+                    if event.key == pg.K_q or event.key == pg.K_ESCAPE:
+                        pg.quit()
+                        exit()
                     if event.key in player1_keys:
                         p1_dir = player1_keys.index(event.key)
                     elif event.key in player2_keys:

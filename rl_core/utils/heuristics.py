@@ -3,23 +3,18 @@ import numpy as np
 
 INF = float("inf")
 
-DIRS = [
-    (1, 0),
-    (-1, 0),
-    (0, 1),
-    (0, -1),
-]
+DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]  # up, right, down, left
 
 
 def flood_fill(trails, start, dist):
     height, width = trails.shape
     queue = deque()
 
-    y0, x0 = start
+    x0, y0 = start
     dist[y0, x0] = 0
     queue.append((y0, x0))
 
-    while queue:
+    while queue:    
         y, x = queue.popleft()
 
         for dx, dy in DIRS:
@@ -36,6 +31,38 @@ def flood_fill(trails, start, dist):
 
             dist[ny, nx] = dist[y, x] + 1
             queue.append((ny, nx))
+
+def get_territories(trails, p1, p2):
+    height, width = trails.shape
+
+    dist1 = np.full((height, width), INF)
+    dist2 = np.full((height, width), INF)
+    territories = np.zeros((height, width), dtype=np.int8)
+
+    flood_fill(trails, p1, dist1)
+    flood_fill(trails, p2, dist2)
+
+    for y in range(height):
+        for x in range(width):
+
+            if trails[y, x] != 0:
+                continue
+
+            d1 = dist1[y, x]
+            d2 = dist2[y, x]
+
+            if d1 == INF and d2 == INF:
+                continue
+
+            if d1 < d2:
+                territories[y, x] = 1
+            elif d2 < d1:
+                territories[y, x] = 2
+            else:
+                territories[y, x] = 3  # Battlefront
+            
+
+    return territories
 
 
 def voronoi(trails, p1, p2):

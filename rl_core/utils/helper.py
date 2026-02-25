@@ -42,8 +42,32 @@ class StateViewer:
         self.screen = self.pg.display.set_mode(self.window_size)
         self.pg.display.set_caption("Tron Game (State view)")
         self.surface = self.pg.Surface(size)
+        self.transparent_surface = self.pg.Surface(size, self.pg.SRCALPHA)
 
         self.clock = self.pg.time.Clock()
+    
+    def view_heuristic(self, state, territories):
+        walls, bike1, bike2 = state
+        self.draw_walls_to_surface(walls, self.surface)
+
+        # Heads
+        self.surface.set_at(bike1, Color.GREEN_ALT)
+        self.surface.set_at(bike2, Color.RED_ALT)
+        self.screen.blit(self.pg.transform.scale(self.surface, self.window_size), (0, 0))
+        # self.pg.display.flip()
+
+        # Clear transparent surface
+        self.transparent_surface.fill((0, 0, 0, 0))
+        for y in range(self.height):
+            for x in range(self.width):
+                if territories[y, x] == 1:
+                    self.transparent_surface.set_at((x, y), Color.GREEN_TRANSPARENT)
+                elif territories[y, x] == 2:
+                    self.transparent_surface.set_at((x, y), Color.RED_TRANSPARENT)
+                elif territories[y, x] == 3:
+                    self.transparent_surface.set_at((x, y), Color.YELLOW_TRANSPARENT)  
+        self.screen.blit(self.pg.transform.scale(self.transparent_surface, self.window_size), (0, 0))
+        self.pg.display.flip()
     
     def view(self, state):
         walls, bike1, bike2 = state
