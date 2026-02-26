@@ -10,9 +10,27 @@ from .heuristic import get_best_action
 # from rl_core.agents import Agent
 
 class TronEnv(gym.Env):
+    """Wraps TronEnvBase with all the wrappers"""
+
+    def __init__(self, size=(11, 11)):
+        super().__init__()
+        from .wrappers import TronImage, TronEgo
+        env = TronEgo(TronImage(TronEnvBase(size)))
+        self.env = env
+        self.tron = env.unwrapped.tron
+        self.action_space = env.action_space
+        self.observation_space = env.observation_space
+
+    def reset(self, seed=None, options=None):
+        return self.env.reset(seed=seed, options=options)
+
+    def step(self, action):
+        return self.env.step(action)
+
+class TronEnvBase(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
-    reward_dict = { Result.DRAW: .5, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: 0 }
+    reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: 0 }
 
     def __init__(self, size=(11, 11)):
         self.tron = Tron(size)

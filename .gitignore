@@ -8,6 +8,8 @@ __pycache__/
 .venv/
 .vscode/
 *.egg-info/
+build/
+dist/
 
 # Godot 3
 .import/
