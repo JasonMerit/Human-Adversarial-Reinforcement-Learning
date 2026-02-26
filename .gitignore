@@ -5,6 +5,9 @@ __pycache__/
 *.pkl
 *.db
 *.onnx
+.venv/
+.vscode/
+*.egg-info/
 
 # Godot 3
 .import/
