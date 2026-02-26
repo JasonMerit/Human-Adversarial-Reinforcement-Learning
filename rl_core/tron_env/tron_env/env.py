@@ -6,6 +6,7 @@ import gymnasium as gym
 
 from .tron import Tron, Result
 from . import utils
+from .heuristic import get_best_action
 # from rl_core.agents import Agent
 
 class TronEnv(gym.Env):
@@ -33,7 +34,7 @@ class TronEnv(gym.Env):
     def step(self, action : int):
         assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
         
-        dir1 = self.action_mapping[self.action_space.sample()]  # Human takes random action for now
+        dir1 = self.action_mapping[get_best_action(self._get_state())]  # Human's action
         dir2 = self.action_mapping[action]
     
         result = self.tron.tick(dir1, dir2)
