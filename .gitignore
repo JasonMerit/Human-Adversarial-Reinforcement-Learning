@@ -6,10 +6,13 @@ __pycache__/
 *.db
 *.onnx
 .venv/
+# Virtual environment for development
+harl/  
 .vscode/
 *.egg-info/
 build/
 dist/
+.vscode/
 
 # Godot 3
 .import/
