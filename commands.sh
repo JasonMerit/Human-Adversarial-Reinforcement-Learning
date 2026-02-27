@@ -4,12 +4,12 @@ cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
 bsub < HPC/submit.sh
 
 ## Home
-conda activate harl
 cd C:\Users\PC\Documents\Code\Human-Adversarial-Reinforcement-Learning
+harl\Scripts\activate
 
 ## Laptop
-conda activate harl
 cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
+harl\Scripts\activate
 
 # Different modules
 python -m rl_core.environment.env
