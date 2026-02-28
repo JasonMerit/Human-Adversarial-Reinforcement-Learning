@@ -16,12 +16,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tron_env
 
-
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: Optional[int] = None
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -41,13 +40,13 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "Tron-v0"
     """the id of the environment"""
-    total_timesteps: int = 100000
+    total_timesteps: int = 500000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 4
+    num_envs: int = 32
     """the number of parallel game environments"""
-    num_steps: int = 128
+    num_steps: int = 64
     """the number of steps to run in each environment per policy rollout"""
     anneal_lr: bool = True
     """Toggle learning rate annealing for policy and value networks"""
@@ -65,7 +64,7 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.1
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -149,6 +148,15 @@ class Agent(nn.Module):
 
         return action, probs.log_prob(action), probs.entropy(), self.critic(features)
     
+    def __call__(self, state):
+        features = self.cnn(state)
+        logits = self.actor(features)
+        probs = Categorical(logits=logits)
+
+        print(probs.probs)
+
+        return probs.sample().item()
+        
     @staticmethod
     def from_checkpoint(checkpoint_path, obs_shape, n_actions):
         agent = Agent(obs_shape, n_actions)
@@ -161,7 +169,10 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    if args.seed is None:
+        args.seed = np.random.randint(0, 1e6)
+        print(f"Training with seed {args.seed}")
+    run_name = f"{args.exp_name}_{args.seed}"
     if args.track:
         import wandb
 

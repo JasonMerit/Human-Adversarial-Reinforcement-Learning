@@ -3,7 +3,6 @@ from rl_core.cleanrl.cleanrl.ppo_cnn import Agent
 
 import torch
 import gymnasium as gym
-import numpy as np
 
 class TorchObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env, device):
@@ -27,11 +26,11 @@ def play():
     env = TorchObservationWrapper(env, device="cpu")
     state, _ = env.reset()
 
-    agent = load_agent("runs\Tron-v0__ppo_cnn__1__1772283291\ppo_cnn.pth", env)
+    agent = load_agent("runs/ppo_cnn_206425/ppo_cnn.pth", env)
     agent.eval()  # Set the agent to evaluation mode
     
     while True:
-        action = agent.get_action_and_value(state)[0].item()  # Use the loaded model to select an action
+        action = agent(state)  # Use the loaded model to select an action
         state, reward, done, _, info = env.step(action)
 
         if done:

@@ -30,7 +30,7 @@ class TronEnv(gym.Env):
 class TronEnvBase(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
-    reward_dict = { Result.DRAW: -1, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: 0 }
+    reward_dict = { Result.DRAW: -1, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: .01 }
 
     def __init__(self, size=(11, 11)):
         self.tron = Tron(size)
