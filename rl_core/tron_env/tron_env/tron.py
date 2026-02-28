@@ -2,7 +2,7 @@ from enum import Enum
 import numpy as np
 from . import utils
 
-class Result(Enum):
+class Result:
     DRAW = 0
     BIKE2_CRASH = 1
     BIKE1_CRASH = 2

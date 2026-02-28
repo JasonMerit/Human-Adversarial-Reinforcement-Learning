@@ -22,3 +22,5 @@ uvicorn server.main:app --port 8000
 # Find native .dll here
 cd C:\Users\Jason\.nuget\packages\microsoft.ml.onnxruntime\1.16.0\runtimes\win-x64\native
 
+# CleanRL
+python rl_core/cleanrl/cleanrl/ppo_cnn.py --env-id Tron-v0

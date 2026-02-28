@@ -6,6 +6,7 @@ __pycache__/
 *.db
 *.onnx
 .venv/
+runs/
 # Virtual environment for development
 harl/  
 .vscode/
