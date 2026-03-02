@@ -1,5 +1,4 @@
 from tron_env import TronEnv, TronView
-from rl_core.cleanrl.cleanrl.ppo_cnn import Agent
 
 import torch
 import gymnasium as gym
@@ -19,14 +18,25 @@ class TorchObservationWrapper(gym.ObservationWrapper):
 def load_agent(agent_path, env):
     obs_shape = env.observation_space.shape  # (3, H, W)
     n_actions = env.action_space.n           # should be 3
-    return Agent.from_checkpoint(agent_path, obs_shape, n_actions)
+    # Select the appropriate agent class based on the file name
+    if "dqn" in agent_path.lower():
+        from rl_core.cleanrl.cleanrl.dqn import QNetwork as QNetwork
+        return QNetwork.from_checkpoint(agent_path,obs_shape, n_actions)
+    elif "ppo" in agent_path.lower():
+        from rl_core.cleanrl.cleanrl.ppo import Agent
+        return Agent.from_checkpoint(agent_path, obs_shape, n_actions)
+    elif "rainbow" in agent_path.lower():
+        from rl_core.cleanrl.cleanrl.rainbow import NoisyDuelingDistributionalNetwork
+        return NoisyDuelingDistributionalNetwork.from_checkpoint(agent_path, obs_shape, n_actions)
+    else:
+        raise ValueError(f"Unknown agent type in path: {agent_path}")
 
-def play():
+def play(path):
     env = TronView(TronEnv())
     env = TorchObservationWrapper(env, device="cpu")
     state, _ = env.reset()
 
-    agent = load_agent("runs/ppo_cnn_206425/ppo_cnn.pth", env)
+    agent = load_agent(path, env)
     agent.eval()  # Set the agent to evaluation mode
     
     while True:
@@ -35,6 +45,14 @@ def play():
 
         if done:
             state, _ = env.reset()
+            print(info.get("result"))
 
 if __name__ == "__main__":
-    play()
+    # Get args
+    import argparse
+    parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
+    parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
+    args = parser.parse_args()
+    play(args.path)
+    # play("runs/dqn_1/dqn.pth")
+    # play("runs/ppo_cnn_881413/ppo_cnn.pth")

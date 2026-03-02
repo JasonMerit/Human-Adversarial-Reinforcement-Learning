@@ -15,6 +15,7 @@ harl\Scripts\activate
 python -m rl_core.environment.env
 python -m rl_core.agents.dqn
 python -m server.upload_model
+python rl_core/cleanrl/cleanrl/ppo.py
 
 # Run server - visit http://localhost:8000/docs#/ 
 uvicorn server.main:app --port 8000

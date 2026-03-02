@@ -19,18 +19,23 @@
 #         print(round(total_reward / episode, 2), end="\r")
 #         state, _ = env.reset()
 
-import gymnasium as gym
-import tron_env  # REQUIRED — triggers __init__ registration
+# import gymnasium as gym
+# import tron_env  # REQUIRED — triggers __init__ registration
 
-print("Registered envs:")
-print([env_id for env_id in gym.envs.registry.keys() if "Tron" in env_id])
+# print("Registered envs:")
+# print([env_id for env_id in gym.envs.registry.keys() if "Tron" in env_id])
 
-env = gym.make("Tron-v0")
+# env = gym.make("Tron-v0")
 
-obs, info = env.reset()
-print("Reset OK")
+# obs, info = env.reset()
+# print("Reset OK")
 
-action = env.action_space.sample()
-obs, reward, terminated, truncated, info = env.step(action)
+# action = env.action_space.sample()
+# obs, reward, terminated, truncated, info = env.step(action)
 
-print("Step OK")
+# print("Step OK")
+
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
