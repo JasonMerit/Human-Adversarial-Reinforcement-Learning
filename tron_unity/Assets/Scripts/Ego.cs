@@ -55,7 +55,7 @@ public class Ego : MonoBehaviour
         else if (Keyboard.current.wKey.wasPressedThisFrame) action = 1;  // Go straight
         else if (Keyboard.current.dKey.wasPressedThisFrame) action = 2;  // Turn right
         if (action > -1) {
-            int new_orientation = (orientation + action - 1) % 4;
+            int new_orientation = (orientation + action + 4 - 1) % 4;
             if (!tron.bike2.IsHitInDir(tron.trails, DIRS[new_orientation])) {
                 orientation = new_orientation;
                 Step();
@@ -80,8 +80,8 @@ public class Ego : MonoBehaviour
     {
         // Make a copy of tron.trails and rotate it 90 degrees clockwise for correct orientation on the tilemap
         board.Clear();
-        // int[,]  rotatedTrails = RotateMatrix(tron.trails, orientation);
-        int[,]  rotatedTrails = tron.trails;
+        int[,]  rotatedTrails = RotateMatrix(tron.trails, orientation);
+        // int[,]  rotatedTrails = tron.trails;
         for (int x = 0; x < tron.width; x++)
         {
             for (int y = 0; y < tron.height; y++)
@@ -92,35 +92,27 @@ public class Ego : MonoBehaviour
         }
     }
 
-    int[,] RotateMatrix(int[,] matrix, int orientation)
-    {
-        if (orientation == 3) return matrix; // No rotation needed for Left orientation
+    int[,] RotateMatrix(int[,] matrix, int orientation) {
+        if (orientation == 0) return matrix; // No rotation needed for Left orientation
         int width = matrix.GetLength(0);
         int height = matrix.GetLength(1);
         int[,] rotated = new int[height, width];
 
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                switch (orientation)
-                {
-                    case 0: // Up
-                        rotated[y, width - 1 - x] = matrix[x, y];
-                        break;
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                switch (orientation) {
                     case 1: // Right
-                        rotated[height - 1 - x, width - 1 - y] = matrix[x, y];
-                        break;
-                    case 2: // Down
                         rotated[height - 1 - y, x] = matrix[x, y];
                         break;
+                    case 2: // Down
+                        rotated[height - 1 - x, width - 1 - y] = matrix[x, y];
+                        break;
                     case 3: // Left
-                        rotated[x, y] = matrix[x, y];
+                        rotated[y, width - 1 - x] = matrix[x, y];
                         break;
                 }
             }
         }
         return rotated;
     }
-
 }

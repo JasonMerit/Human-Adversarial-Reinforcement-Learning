@@ -101,6 +101,13 @@ def main(GRID_SIZE=40, TICK_RATE=10):
                 dir1 = RIGHT.copy()
                 dir2 = LEFT.copy()
 
+                if result == Result.BIKE1_CRASH:
+                    print("JASON WON!")
+                elif result == Result.BIKE2_CRASH:
+                    print("KAROLINA WON!")
+                else:
+                    print("DRAW!")
+
 
             accumulator -= dt
 
