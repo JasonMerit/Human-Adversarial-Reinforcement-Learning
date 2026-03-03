@@ -24,9 +24,9 @@ public class Main : MonoBehaviour
         BuildVersion = new Vector3Int( int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]) );
         versionText.text = $"{BuildVersion.x}.{BuildVersion.y}.{BuildVersion.z}";
         
-        //////////////////////////////////////////////////////////
-        ///////// HACK: Disable posting in editor ////////////////
-        //////////////////////////////////////////////////////////
+        ///////////////////////////////////////
+        ///////// DEVERLOPER SEETINGS /////////
+        ///////////////////////////////////////
         #if UNITY_EDITOR
         countdownTime = 0f;
         PostingEnabled = false;

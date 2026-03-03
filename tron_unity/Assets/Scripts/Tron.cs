@@ -64,8 +64,8 @@ public class Tron
     {
         trails = new int[width, height];
 
-        bike1 = new Bike(new Vector2Int(1, height / 2));
-        bike2 = new Bike(new Vector2Int(width - 2, height / 2));
+        bike1 = new Bike(new Vector2Int(width / 6, height / 2));
+        bike2 = new Bike(new Vector2Int(5 * width / 6, height / 2));
         trails[bike1.pos.x, bike1.pos.y] = 1;
         trails[bike2.pos.x, bike2.pos.y] = 2;
 
@@ -79,7 +79,6 @@ public class Tron
     public GameState Step(Vector2Int dir1, Vector2Int dir2)
     {
         // Mark current positions as trails
-
         bool bike1Hit = bike1.Move(dir1, trails);
         bool bike2Hit = bike2.Move(dir2, trails);
 
