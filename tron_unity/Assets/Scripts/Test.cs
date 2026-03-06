@@ -102,7 +102,7 @@ public class Test : MonoBehaviour
                     else if (ownership[x, y] == 3) color = Color.yellow; // battlefront
                     else color = Color.gray;
 
-                    color.a = 0.5f;
+                    color.a = 0.2f;
                     boardGhost.SetCell(new Vector2Int(x, y), color);
                 }
             }
