@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class BikeSprite : MonoBehaviour
+public class Bike : MonoBehaviour
 {
     SpriteRenderer sprite;
     LineRenderer trail;
@@ -11,7 +11,6 @@ public class BikeSprite : MonoBehaviour
         trail = GetComponent<LineRenderer>();
         trail.startWidth = 0.5f;
         trail.endWidth = 0.5f;
-
     }
 
     public void Reset(int orientation)

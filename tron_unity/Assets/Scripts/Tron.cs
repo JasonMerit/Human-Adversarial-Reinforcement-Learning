@@ -1,11 +1,11 @@
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class Bike
+public class TronBike
 {
     public Vector2Int pos;
     public Vector2Int lastPos;
-    public Bike(Vector2Int startPos)
+    public TronBike(Vector2Int startPos)
     {
         pos = startPos;
         lastPos = startPos;
@@ -51,8 +51,8 @@ public class Tron
 
     public int[,] trails;
 
-    public Bike bike1;
-    public Bike bike2;
+    public TronBike bike1;
+    public TronBike bike2;
 
     public Tron(Vector2Int size)
     {
@@ -64,8 +64,8 @@ public class Tron
     {
         trails = new int[width, height];
 
-        bike1 = new Bike(new Vector2Int(width / 6, height / 2));
-        bike2 = new Bike(new Vector2Int(5 * width / 6, height / 2));
+        bike1 = new TronBike(new Vector2Int(width / 6, height / 2));
+        bike2 = new TronBike(new Vector2Int(5 * width / 6, height / 2));
         trails[bike1.pos.x, bike1.pos.y] = 1;
         trails[bike2.pos.x, bike2.pos.y] = 2;
 

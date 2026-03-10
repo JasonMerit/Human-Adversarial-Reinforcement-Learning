@@ -9,8 +9,8 @@ public class Game : MonoBehaviour
     public readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     [SerializeField] Board board;
-    [SerializeField] BikeSprite player;
-    [SerializeField] BikeSprite adversary;
+    [SerializeField] Bike player;
+    [SerializeField] Bike adversary;
     [SerializeField] NNModel modelAsset;
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
@@ -99,7 +99,7 @@ public class Game : MonoBehaviour
         history = new();
     }
 
-    bool IsTrapped(Bike bike)
+    bool IsTrapped(TronBike bike)
     {
         foreach (var dir in DIRS) { if (!bike.IsHitInDir(tron.trails, dir)) return false; }
         return true;
