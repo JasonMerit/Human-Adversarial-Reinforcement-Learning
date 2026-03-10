@@ -1,13 +1,16 @@
 using UnityEngine;
+using System.Collections.Generic;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class Controller : MonoBehaviour
 {
     readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     PlayerInput playerInput;
-    int action = 1;
-    int lastAction = 1;
+    int currentAction = 1;
+
+    Queue<int> inputQueue = new Queue<int>(2);
 
     void Awake()
     {
@@ -16,18 +19,32 @@ public class Controller : MonoBehaviour
 
     void Update()
     {
-        int newAction = action;
-        if (playerInput.actions["Up"].triggered) newAction = 0;
-        else if (playerInput.actions["Right"].triggered) newAction = 1;
-        else if (playerInput.actions["Down"].triggered) newAction = 2;
-        else if (playerInput.actions["Left"].triggered) newAction = 3;
-        if ((newAction + 2) % 4 != lastAction) action = newAction; // prevent reversing
+        if (playerInput.actions["Up"].triggered) RegisterInput(0);
+        else if (playerInput.actions["Right"].triggered) RegisterInput(1);
+        else if (playerInput.actions["Down"].triggered) RegisterInput(2);
+        else if (playerInput.actions["Left"].triggered) RegisterInput(3);
+    }
+
+    void RegisterInput(int newAction)
+    {
+        if (inputQueue.Count >= 2)
+            return;
+
+        int last = inputQueue.Count > 0 ? inputQueue.Last() : currentAction;
+        if (newAction == last || (newAction + 2) % 4 == last)
+            return; // prevent duplicate and reverse
+
+        inputQueue.Enqueue(newAction);
+        Debug.Log($"Registered action: {newAction}, Queue: {string.Join(",", inputQueue)}");
     }
 
     // Called every Game.Step
     public int GetAction() 
     {
-        lastAction = action;
-        return action;
+        if (inputQueue.Count > 0)
+            currentAction = inputQueue.Dequeue();
+
+        Debug.Log($"Action: {currentAction}, Queue: {string.Join(",", inputQueue)}");
+        return currentAction;
     }
 }

@@ -21,7 +21,7 @@ public class Game : MonoBehaviour
     Controller controller;
 
     [HideInInspector] public GameState State;
-    const float tickRate = 0.3f; // seconds per tick
+    public float tickRate = 0.2f; // seconds per tick
     List<Vector2Int> history = new();
 
     float time;
@@ -53,7 +53,6 @@ public class Game : MonoBehaviour
 
     public void Tick()
     {
-
         time += Time.deltaTime;
         if (time >= tickRate) {
             time -= tickRate;
