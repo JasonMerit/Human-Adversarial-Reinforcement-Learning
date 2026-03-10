@@ -17,6 +17,12 @@ public class Controller : MonoBehaviour
         playerInput = GetComponent<PlayerInput>();
     }
 
+    public void Reset()
+    {
+        currentAction = 1;
+        inputQueue.Clear();
+    }
+
     void Update()
     {
         if (playerInput.actions["Up"].triggered) RegisterInput(0);
@@ -35,7 +41,6 @@ public class Controller : MonoBehaviour
             return; // prevent duplicate and reverse
 
         inputQueue.Enqueue(newAction);
-        Debug.Log($"Registered action: {newAction}, Queue: {string.Join(",", inputQueue)}");
     }
 
     // Called every Game.Step
@@ -44,7 +49,6 @@ public class Controller : MonoBehaviour
         if (inputQueue.Count > 0)
             currentAction = inputQueue.Dequeue();
 
-        Debug.Log($"Action: {currentAction}, Queue: {string.Join(",", inputQueue)}");
         return currentAction;
     }
 }

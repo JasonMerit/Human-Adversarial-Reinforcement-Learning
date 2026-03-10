@@ -45,6 +45,7 @@ public class Game : MonoBehaviour
         time = tickRate; // immediate first tick
         tron.Reset();
         board.Clear();
+        controller.Reset();
 
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
