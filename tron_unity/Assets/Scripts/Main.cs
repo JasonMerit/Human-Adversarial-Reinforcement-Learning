@@ -27,6 +27,12 @@ public class Main : MonoBehaviour
         ///////////////////////////////////////
         ///////// DEVERLOPER SEETINGS /////////
         ///////////////////////////////////////
+        if (Debug.isDebugBuild)
+        {
+            countdownTime = 1f;
+            PostingEnabled = false;
+            BuildVersion = new(-1, -1, -1);
+        }
         #if UNITY_EDITOR
         countdownTime = 0f;
         PostingEnabled = false;
