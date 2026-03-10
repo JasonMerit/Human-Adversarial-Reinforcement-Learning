@@ -11,8 +11,8 @@ public static class Constants
     };
 
     public static readonly int BOARD_SIZE = 25;
-    public static readonly Color cyan = new Color(0.1f, 0.8f, 0.8f);
-    public static readonly Color magenta = new Color(0.8f, 0.1f, 0.8f);
-    public static readonly Color green = new Color(0.04f, 0.2f, 0.04f);
-    public static readonly Color green_alt = new Color(0.04f, 0.25f, 0.04f);
+    public static readonly Color cyan = new(0f, 0.9f, 0.8f);
+    public static readonly Color orange = new(1f, 0.6f, 0f);
+    public static readonly Color green = new(0.04f, 0.2f, 0.04f);
+    public static readonly Color green_alt = new(0.04f, 0.25f, 0.04f);
 }

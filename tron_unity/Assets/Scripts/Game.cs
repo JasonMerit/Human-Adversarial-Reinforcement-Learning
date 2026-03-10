@@ -9,8 +9,8 @@ public class Game : MonoBehaviour
     public readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     [SerializeField] Board board;
-    [SerializeField] Transform player;
-    [SerializeField] Transform adversary;
+    [SerializeField] BikeSprite player;
+    [SerializeField] BikeSprite adversary;
     [SerializeField] NNModel modelAsset;
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
@@ -35,20 +35,23 @@ public class Game : MonoBehaviour
         worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
 
         networkManager = GetComponent<NetworkManager>();
-        playerColor = player.GetComponent<SpriteRenderer>().color;
-        adversaryColor = adversary.GetComponent<SpriteRenderer>().color;
+        playerColor = Constants.cyan;
+        adversaryColor = Constants.orange;
         tron = new Tron(new Vector2Int(25, 25));
     }
 
+    public float kek = 2f;
     public void Reset()
     {
         time = tickRate; // immediate first tick
         tron.Reset();
         board.Reset();
         controller.Reset();
+        player.Rotate(1);
+        adversary.Rotate(3);
 
-        player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
-        adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
+        player.transform.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
+        adversary.transform.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
 
     }
 
@@ -61,8 +64,8 @@ public class Game : MonoBehaviour
         }
 
         var alpha = time / tickRate;
-        player.position = (Vector3)Vector2.Lerp(tron.bike1.lastPos, tron.bike1.pos, alpha);
-        adversary.position = (Vector3)Vector2.Lerp(tron.bike2.lastPos, tron.bike2.pos, alpha);
+        player.transform.position = (Vector3)Vector2.Lerp(tron.bike1.lastPos, tron.bike1.pos, alpha);
+        adversary.transform.position = (Vector3)Vector2.Lerp(tron.bike2.lastPos, tron.bike2.pos, alpha);
     }
 
     void Step()
@@ -75,8 +78,12 @@ public class Game : MonoBehaviour
         int playerAction = controller.GetAction(); 
         history.Add(new (playerAction, advAction));
 
+        player.Rotate(playerAction);
+        adversary.Rotate(advAction);
+        
         State = tron.Step(DIRS[playerAction], DIRS[advAction]);
         if (State != GameState.Playing) { EndEpisode(playerAction); }
+        
     }
 
     void EndEpisode(int playerAction)

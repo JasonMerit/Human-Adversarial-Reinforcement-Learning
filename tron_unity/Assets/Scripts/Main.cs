@@ -94,11 +94,11 @@ public class Main : MonoBehaviour
     {
         if (result == GameState.Bike1Win) { 
             centerText.text = "YOU WIN!";
-            centerText.color = game.playerColor;
+            centerText.color = Constants.cyan;
         }
         else if (result == GameState.Bike2Win) { 
             centerText.text = "YOU LOSE!";
-            centerText.color = game.adversaryColor;
+            centerText.color = Constants.orange;
         }
         else { 
             centerText.text = "DRAW!"; 
