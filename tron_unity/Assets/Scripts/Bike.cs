@@ -5,10 +5,13 @@ public class Bike : MonoBehaviour
 {
     SpriteRenderer sprite;
     LineRenderer trail;
+    ParticleSystem crashParticles;
+    
     void Awake()
     {
         sprite = GetComponentInChildren<SpriteRenderer>();
         trail = GetComponent<LineRenderer>();
+        crashParticles = GetComponentInChildren<ParticleSystem>();
         trail.startWidth = 0.5f;
         trail.endWidth = 0.5f;
     }
@@ -17,6 +20,9 @@ public class Bike : MonoBehaviour
     {
         Rotate(orientation);
         trail.positionCount = 0;
+        sprite.enabled = true;
+        crashParticles.Clear();
+        crashParticles.Stop();
     }
 
     public void Rotate(int action)
@@ -31,6 +37,12 @@ public class Bike : MonoBehaviour
     {
         trail.positionCount += 1;
         trail.SetPosition(trail.positionCount - 1, position + new Vector3(0.5f, 0.5f, 0));
+    }
+
+    public void Crash()
+    {
+        sprite.enabled = false;
+        crashParticles.Play();
     }
 
 }

@@ -90,8 +90,20 @@ public class Game : MonoBehaviour
 
     void EndEpisode(int playerAction)
     {
-        if (State == GameState.Bike2Win) {cameraShake.Shake(DIRS[playerAction]);}
-        else  {cameraShake.Shake();}
+        if (State == GameState.Bike2Win) {
+            cameraShake.Shake(DIRS[playerAction]);
+            player.Crash();
+        }
+        else if (State == GameState.Bike1Win) {
+            cameraShake.Shake();
+            adversary.Crash();
+        }
+        else
+        {
+            cameraShake.Shake();
+            player.Crash();
+            adversary.Crash();
+        }
 
         bool trapped = IsTrapped(tron.bike1);
 
