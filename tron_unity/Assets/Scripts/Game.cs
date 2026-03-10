@@ -2,7 +2,6 @@ using UnityEngine;
 using Unity.Barracuda;
 using System.Collections.Generic;
 using TMPro;
-using UnityEngine.InputSystem;
 
 
 public class Game : MonoBehaviour
@@ -16,18 +15,14 @@ public class Game : MonoBehaviour
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
  
-    PlayerInput playerInput;
     IWorker worker;
     NetworkManager networkManager;
     Tron tron;
+    Controller controller;
 
     [HideInInspector] public GameState State;
     const float tickRate = 0.3f; // seconds per tick
     List<Vector2Int> history = new();
-
-    // Player
-    int playerAction = 1;
-    int lastPlayerAction = 1;
 
     float time;
     [HideInInspector] public Color playerColor;
@@ -35,7 +30,7 @@ public class Game : MonoBehaviour
 
     void Awake()
     {
-        playerInput = GetComponent<PlayerInput>();
+        controller = GetComponent<Controller>();
         var model = ModelLoader.Load(modelAsset);
         worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
 
@@ -51,8 +46,6 @@ public class Game : MonoBehaviour
         tron.Reset();
         board.Clear();
 
-        playerAction = 1;
-        
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
 
@@ -60,14 +53,6 @@ public class Game : MonoBehaviour
 
     public void Tick()
     {
-        // Player input
-        int newAction = playerAction;
-        if (playerInput.actions["Up"].triggered) newAction = 0;
-        else if (playerInput.actions["Right"].triggered) newAction = 1;
-        else if (playerInput.actions["Down"].triggered) newAction = 2;
-        else if (playerInput.actions["Left"].triggered) newAction = 3;
-        if ((newAction + 2) % 4 != lastPlayerAction) playerAction = newAction; // prevent reversing
-            
 
         time += Time.deltaTime;
         if (time >= tickRate) {
@@ -87,14 +72,14 @@ public class Game : MonoBehaviour
         board.SetCell(tron.bike2.pos, adversaryColor);
         
         int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
+        int playerAction = controller.GetAction(); 
         history.Add(new (playerAction, advAction));
-        lastPlayerAction = playerAction;
 
         State = tron.Step(DIRS[playerAction], DIRS[advAction]);
-        if (State != GameState.Playing) { EndEpisode(); }
+        if (State != GameState.Playing) { EndEpisode(playerAction); }
     }
 
-    void EndEpisode()
+    void EndEpisode(int playerAction)
     {
         if (State == GameState.Bike2Win) {cameraShake.Shake(DIRS[playerAction]);}
         else  {cameraShake.Shake();}
