@@ -47,7 +47,8 @@ public class GridRenderer : MonoBehaviour
         lr.SetPosition(0, start);
         lr.SetPosition(1, end);
         
-        lr.sortingLayerName = "Actors";
+        lr.sortingLayerName = "Background";
+        lr.sortingOrder = 1;  // Infront of tilemap
 
         lr.useWorldSpace = false;
     }

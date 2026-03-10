@@ -40,15 +40,14 @@ public class Game : MonoBehaviour
         tron = new Tron(new Vector2Int(25, 25));
     }
 
-    public float kek = 2f;
     public void Reset()
     {
         time = tickRate; // immediate first tick
         tron.Reset();
         board.Reset();
         controller.Reset();
-        player.Rotate(1);
-        adversary.Rotate(3);
+        player.Reset(1);
+        adversary.Reset(3);
 
         player.transform.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.transform.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
@@ -66,13 +65,16 @@ public class Game : MonoBehaviour
         var alpha = time / tickRate;
         player.transform.position = (Vector3)Vector2.Lerp(tron.bike1.lastPos, tron.bike1.pos, alpha);
         adversary.transform.position = (Vector3)Vector2.Lerp(tron.bike2.lastPos, tron.bike2.pos, alpha);
+
+        player.AddTrail(player.transform.position);
+        adversary.AddTrail(adversary.transform.position);
     }
 
     void Step()
     // Updates State
     {
-        board.SetCell(tron.bike1.pos, playerColor);
-        board.SetCell(tron.bike2.pos, adversaryColor);
+        // board.SetCell(tron.bike1.pos, playerColor);
+        // board.SetCell(tron.bike2.pos, adversaryColor);
         
         int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
         int playerAction = controller.GetAction(); 
