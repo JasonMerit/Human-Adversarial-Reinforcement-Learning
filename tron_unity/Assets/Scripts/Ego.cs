@@ -36,7 +36,7 @@ public class Ego : MonoBehaviour
     public void Reset()
     {
         tron.Reset();
-        board.Clear();
+        board.Reset();
         orientation = 3;
         DrawBoard();
 
@@ -79,7 +79,7 @@ public class Ego : MonoBehaviour
     void DrawBoard()
     {
         // Make a copy of tron.trails and rotate it 90 degrees clockwise for correct orientation on the tilemap
-        board.Clear();
+        board.Reset();
         int[,]  rotatedTrails = RotateMatrix(tron.trails, orientation);
         // int[,]  rotatedTrails = tron.trails;
         for (int x = 0; x < tron.width; x++)

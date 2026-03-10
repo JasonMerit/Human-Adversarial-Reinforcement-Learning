@@ -38,8 +38,8 @@ public class Test : MonoBehaviour
     public void Reset()
     {
         tron.Reset();
-        board.Clear();
-        boardGhost.Clear();
+        board.Reset();
+        boardGhost.Reset();
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
         adversary.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
 
@@ -85,7 +85,7 @@ public class Test : MonoBehaviour
             int[,] ownership = Heuristic.FillBoard(tron.trails, tron.bike1.pos, tron.bike2.pos);
             int playerScore = 0;
             int adversaryScore = 0;
-            boardGhost.Clear();
+            boardGhost.Reset();
             for (int x = 0; x < ownership.GetLength(0); x++) {
                 for (int y = 0; y < ownership.GetLength(1); y++) {
                     if (tron.trails[x, y] != 0) continue; // skip trails

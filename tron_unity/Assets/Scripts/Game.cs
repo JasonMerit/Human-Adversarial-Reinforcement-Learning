@@ -21,7 +21,7 @@ public class Game : MonoBehaviour
     Controller controller;
 
     [HideInInspector] public GameState State;
-    public float tickRate = 0.2f; // seconds per tick
+    float tickRate = 0.15f; // seconds per tick
     List<Vector2Int> history = new();
 
     float time;
@@ -37,14 +37,14 @@ public class Game : MonoBehaviour
         networkManager = GetComponent<NetworkManager>();
         playerColor = player.GetComponent<SpriteRenderer>().color;
         adversaryColor = adversary.GetComponent<SpriteRenderer>().color;
-        tron = new Tron(new Vector2Int(11, 11));
+        tron = new Tron(new Vector2Int(25, 25));
     }
 
     public void Reset()
     {
         time = tickRate; // immediate first tick
         tron.Reset();
-        board.Clear();
+        board.Reset();
         controller.Reset();
 
         player.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
