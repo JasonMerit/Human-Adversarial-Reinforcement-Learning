@@ -25,12 +25,12 @@ class Bike:
 class Tron:
     
     def __init__(self, size):
-        self.width, self.height = size
+        self.size = size
 
     def reset(self):
-        self.walls = np.zeros((self.height, self.width), dtype=np.int8)
-        self.bike1 = Bike([self.width // 6, self.height // 2])
-        self.bike2 = Bike([5 * self.width // 6, self.height // 2])
+        self.walls = np.zeros((self.size, self.size), dtype=np.int8)
+        self.bike1 = Bike([self.size // 6, self.size // 2])
+        self.bike2 = Bike([5 * self.size // 6, self.size // 2])
         self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
         self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
 

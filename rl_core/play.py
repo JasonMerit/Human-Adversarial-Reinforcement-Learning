@@ -1,4 +1,5 @@
-from tron_env import TronEnv, TronView
+from rl_core.tron_env.tron_env.env import TronEnv
+from rl_core.tron_env.tron_env.wrappers import TronView
 
 import torch
 import gymnasium as gym
@@ -36,11 +37,12 @@ def play(path):
     env = TorchObservationWrapper(env, device="cpu")
     state, _ = env.reset()
 
-    agent = load_agent(path, env)
-    agent.eval()  # Set the agent to evaluation mode
+    # agent = load_agent(path, env)
+    # agent.eval()  # Set the agent to evaluation mode
     
     while True:
-        action = agent(state)  # Use the loaded model to select an action
+        # action = agent(state)  # Use the loaded model to select an action
+        action = env.action_space.sample()
         state, reward, done, _, info = env.step(action)
 
         if done:

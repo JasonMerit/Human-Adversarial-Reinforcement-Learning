@@ -7,12 +7,13 @@ import gymnasium as gym
 from .tron import Tron, Result
 from . import utils
 from .heuristic import get_best_action
+from .wrappers import encode_observation
 # from rl_core.agents import Agent
 
 class TronEnv(gym.Env):
     """Wraps TronEnvBase with all the wrappers"""
 
-    def __init__(self, size=(11, 11)):
+    def __init__(self, size=25):
         super().__init__()
         from .wrappers import TronImage, TronEgo
         env = TronEgo(TronImage(TronEnvBase(size)))
@@ -32,15 +33,15 @@ class TronEnvBase(gym.Env):
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
     reward_dict = { Result.DRAW: -1, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: .01 }
 
-    def __init__(self, size=(11, 11)):
+    def __init__(self, size=25):
         self.tron = Tron(size)
-        self.width, height = size
+        self.size = size
 
         self.action_space = gym.spaces.Discrete(4)
         self.observation_space = gym.spaces.Tuple((
-                gym.spaces.Box(low=0, high=2, shape=(height, self.width), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8),
-                gym.spaces.Box(low=np.array([0, 0]), high=np.array([self.width-1, height-1]), shape=(2,), dtype=np.int8)
+                gym.spaces.Box(low=0, high=2, shape=(size, size), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([size-1, size-1]), shape=(2,), dtype=np.int8),
+                gym.spaces.Box(low=np.array([0, 0]), high=np.array([size-1, size-1]), shape=(2,), dtype=np.int8)
             ))
 
     def reset(self, seed=None, options=None):
@@ -67,4 +68,77 @@ class TronEnvBase(gym.Env):
         return walls, you, opp
 
     
+class TronDuoEnv(gym.Env):
+    """TronEnv with both players controlled by the same agent. Action is a tuple of (action1, action2)"""
 
+    def __init__(self, size=25):
+        super().__init__()
+        self.tron = Tron(size)
+        self.size = size
+
+        self.action_space = gym.spaces.Tuple((
+            gym.spaces.Discrete(3),
+            gym.spaces.Discrete(3)
+        ))
+        
+        self.observation_space = gym.spaces.Tuple((
+            gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32),
+            gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32)
+        ))
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.tron.reset()
+        self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
+            
+        return self._get_state(), {'result': 0}
+    
+    def step(self, action : tuple[int, int]):
+        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+
+        self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
+        self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
+        
+        dir1 = TronEnvBase.action_mapping[self.heading1]
+        dir2 = TronEnvBase.action_mapping[self.heading2]
+    
+        result = self.tron.tick(dir1, dir2)
+        done = result != Result.PLAYING
+        state = self._get_state()
+        reward = TronEnvBase.reward_dict[result]
+        info = {'result': result}
+        return state, reward, done, False, info
+    
+    def _get_state(self):
+        # First encode to one hot image
+        walls, bike1, bike2 = encode_observation(self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos)
+        obs1 = (walls, bike1, bike2)
+        obs2 = (walls, bike2, bike1)
+
+        # Then rotate according to heading so that bikes always face up
+        obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
+        obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
+
+        obs = (obs1, obs2)
+        assert obs1.shape == self.observation_space.spaces[0].shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.spaces[0].shape}")
+        assert obs2.shape == self.observation_space.spaces[1].shape, utils.red(f"Jason! Obs shape mismatch {obs2.shape} vs {self.observation_space.spaces[1].shape}")
+        return obs
+    
+# def observation(self, obs):
+#         obs1, obs2 = obs
+#         obs_img = encode_observation(*obs1), encode_observation(*obs2)
+#         assert obs_img[0].shape == self.observation_space.spaces[0].shape, f"Jason! Obs shape mismatch {obs_img[0].shape} vs {self.observation_space.spaces[0].shape}"
+#         assert obs_img[1].shape == self.observation_space.spaces[1].shape, f"Jason! Obs shape mismatch {obs_img[1].shape} vs {self.observation_space.spaces[1].shape}"
+#         return obs_img
+
+    # def step(self, action):
+    #     self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
+    #     self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
+    #     state, reward, done, _, info = self.env.step((self.heading1, self.heading2))
+    #     return self.observation(state), reward, done, _, info
+
+    # def observation(self, obs):
+    #     obs1, obs2 = obs
+    #     obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
+    #     obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
+    #     return (obs1, obs2)
