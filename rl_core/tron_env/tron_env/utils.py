@@ -27,7 +27,7 @@ def cyan(text: str) -> str:
 class StateViewer:
     """Designed to be ignorant of tron, draw exactly whats provided in the state"""
 
-    def __init__(self, size, scale=70, fps=10, single=False):
+    def __init__(self, size, scale=70, fps=10, single=True):
         self.scale = scale
         self.fps = fps
         import pygame
@@ -56,21 +56,22 @@ class StateViewer:
 
     #     self.wait()
     
-    # def view_image(self, image):
-    #     walls, bike1, bike2 = image
-        
-    #     self.draw_walls_to_surface(walls, self.surface)
+    def view(self, state):
+        walls, bike1, bike2 = state
 
-    #     # Heads
-    #     y, x = np.argwhere(bike1 == 1)[0]
-    #     self.surface.set_at((x, y), Color.GREEN_ALT)
-    #     y, x = np.argwhere(bike2 == 1)[0]
-    #     self.surface.set_at((x, y), Color.RED_ALT)
+        self.draw_walls_to_surface(walls, self.surface)
 
-    #     self.screen.blit(self.pg.transform.scale(self.surface, self.window_size), (0, 0))
-    #     self.pg.display.flip()
+        # Heads
+        y, x = np.argwhere(bike1 == 1)[0]
+        self.surface.set_at((x, y), Color.GREEN_ALT)
+        y, x = np.argwhere(bike2 == 1)[0]
+        self.surface.set_at((x, y), Color.RED_ALT)
 
-    #     self.wait()
+        self.screen.blit(self.pg.transform.scale(self.surface, self.window_size), (0, 0))
+        self.pg.display.flip()
+
+        self.wait()
+
     def get_dual_action(self):
         action1 = None
         action2 = None

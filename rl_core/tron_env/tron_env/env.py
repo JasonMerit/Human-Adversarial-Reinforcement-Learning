@@ -70,6 +70,8 @@ class TronEnvBase(gym.Env):
     
 class TronDuoEnv(gym.Env):
     """TronEnv with both players controlled by the same agent. Action is a tuple of (action1, action2)"""
+    
+    reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: 1, Result.BIKE1_CRASH: -1, Result.PLAYING: 0 }
 
     def __init__(self, size=25):
         super().__init__()
@@ -105,7 +107,7 @@ class TronDuoEnv(gym.Env):
         result = self.tron.tick(dir1, dir2)
         done = result != Result.PLAYING
         state = self._get_state()
-        reward = TronEnvBase.reward_dict[result]
+        reward = self.reward_dict[result]
         info = {'result': result}
         return state, reward, done, False, info
     
@@ -123,22 +125,3 @@ class TronDuoEnv(gym.Env):
         assert obs1.shape == self.observation_space.spaces[0].shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.spaces[0].shape}")
         assert obs2.shape == self.observation_space.spaces[1].shape, utils.red(f"Jason! Obs shape mismatch {obs2.shape} vs {self.observation_space.spaces[1].shape}")
         return obs
-    
-# def observation(self, obs):
-#         obs1, obs2 = obs
-#         obs_img = encode_observation(*obs1), encode_observation(*obs2)
-#         assert obs_img[0].shape == self.observation_space.spaces[0].shape, f"Jason! Obs shape mismatch {obs_img[0].shape} vs {self.observation_space.spaces[0].shape}"
-#         assert obs_img[1].shape == self.observation_space.spaces[1].shape, f"Jason! Obs shape mismatch {obs_img[1].shape} vs {self.observation_space.spaces[1].shape}"
-#         return obs_img
-
-    # def step(self, action):
-    #     self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
-    #     self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
-    #     state, reward, done, _, info = self.env.step((self.heading1, self.heading2))
-    #     return self.observation(state), reward, done, _, info
-
-    # def observation(self, obs):
-    #     obs1, obs2 = obs
-    #     obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
-    #     obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
-    #     return (obs1, obs2)

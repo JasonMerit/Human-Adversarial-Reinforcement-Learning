@@ -282,7 +282,7 @@ class ReplayBuffer(BaseBuffer):
         device: th.device | str = "auto",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
-        handle_timeout_termination: bool = True,
+        handle_timeout_termination: bool = False,
     ):
         super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
 

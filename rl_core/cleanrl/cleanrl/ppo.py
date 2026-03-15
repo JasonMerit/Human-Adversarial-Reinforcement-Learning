@@ -14,7 +14,7 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-import tron_env
+import rl_core.tron_env
 from cleanrl_utils.evaluate_tron import evaluate_policy
 
 
@@ -155,7 +155,8 @@ class Agent(nn.Module):
         logits = self.actor(features)
         probs = Categorical(logits=logits)
 
-        return probs.sample().item()
+        # return probs.probs.argmax(dim=-1).item()
+        return probs.sample()
         
     @staticmethod
     def from_checkpoint(checkpoint_path, obs_shape, n_actions):
