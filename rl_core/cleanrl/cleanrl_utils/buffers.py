@@ -278,7 +278,7 @@ class ReplayBuffer(BaseBuffer):
         self,
         buffer_size: int,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Space = spaces.Discrete(1),
         device: th.device | str = "auto",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,

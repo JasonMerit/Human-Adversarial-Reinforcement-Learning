@@ -78,15 +78,17 @@ class TronDuoEnv(gym.Env):
         self.tron = Tron(size)
         self.size = size
 
-        self.action_space = gym.spaces.Tuple((
-            gym.spaces.Discrete(3),
-            gym.spaces.Discrete(3)
-        ))
+        # self.action_space = gym.spaces.Tuple((
+        #     gym.spaces.Discrete(3),
+        #     gym.spaces.Discrete(3)
+        # ))
+        self.action_space = gym.spaces.MultiDiscrete([3, 3])  # (left, forward, right) for each bike relative to their current heading
         
-        self.observation_space = gym.spaces.Tuple((
-            gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32),
-            gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32)
-        ))
+        # self.observation_space = gym.spaces.Tuple((
+        #     gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32),
+        #     gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32)
+        # ))
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, size, size), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -95,8 +97,10 @@ class TronDuoEnv(gym.Env):
             
         return self._get_state(), {'result': 0}
     
-    def step(self, action : tuple[int, int]):
+    def step(self, action : np.ndarray):
         assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+
+        # a0, a1 = int(action[0]), int(action[1])
 
         self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
         self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
@@ -121,7 +125,11 @@ class TronDuoEnv(gym.Env):
         obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
         obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
 
-        obs = (obs1, obs2)
-        assert obs1.shape == self.observation_space.spaces[0].shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.spaces[0].shape}")
-        assert obs2.shape == self.observation_space.spaces[1].shape, utils.red(f"Jason! Obs shape mismatch {obs2.shape} vs {self.observation_space.spaces[1].shape}")
+        obs = np.stack([obs1, obs2], axis=0)
+        assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
         return obs
+
+if __name__ == "__main__":
+    env = TronDuoEnv()
+    obs, info = env.reset()
+    print(obs.shape)

@@ -8,16 +8,15 @@ from typing import Optional
 import gymnasium as gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from cleanrl_utils.buffers import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent
-from rl_core.tron_env.tron_env import TronView, TronDuoEnv, TronEnv
+from rl_core.tron_env.tron_env import TronView, TronDuoEnv
+from rl_core.utils.helper import StateViewer
 
 
 @dataclass
@@ -46,11 +45,11 @@ class Args:
     """the user or org name of the model repository from the Hugging Face Hub"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 100#1_000_000
+    total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 1#32
+    num_envs: int = 16
     """the number of parallel game environments"""
     buffer_size: int = 100000
     """the replay memory buffer size"""
@@ -76,7 +75,7 @@ class Args:
 
 def make_env(seed, idx, render=False):
     def thunk():
-        env = TronEnv()
+        env = TronDuoEnv()
         if render and idx == 0:
             env = TronView(env)
 
@@ -93,10 +92,8 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
-    assert args.num_envs == 1, "vectorized envs are not supported at the moment"
     if args.seed is None:
         args.seed = np.random.randint(0, 1e6)
-        print(f"Training with seed {args.seed}")
     run_name = f"{args.exp_name}_{args.seed}"
     if args.track:
         import wandb
@@ -123,17 +120,19 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    print(f"===== Training with seed {args.seed} on device {device} =====")
 
     # env setup
     envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i) for i in range(args.num_envs)])
 
-    # action_space = envs.single_action_space.spaces[0]
-    # obs_space = envs.single_observation_space.spaces[0]
     action_space = envs.single_action_space
     obs_space = envs.single_observation_space
 
-    rb = ReplayBuffer(args.buffer_size, obs_space, action_space, device, n_envs=args.num_envs)
-    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=args.learning_rate, rb=rb, batch_size=args.batch_size, gamma=args.gamma, device=device)
+    buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=(3, 25, 25), dtype=np.float32)
+    rb0 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
+    rb1 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
+    human = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[0], lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, gamma=args.gamma, device=device)
+    adversary = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[1], lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, gamma=args.gamma, device=device)
 
     start_time = time.time()
 
@@ -145,47 +144,79 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
 
+    # Handling multiple parallel envs steps
+    learn_every = max(1, args.train_frequency // args.num_envs)
+    target_every = max(1, args.target_network_frequency // args.num_envs)
+    learn_start_loop = args.learning_starts // args.num_envs
+
     try:
-        for global_step in range(args.total_timesteps):
+        total_loops = args.total_timesteps // args.num_envs
+        pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
+        for global_step in pbar:
+            env_step = global_step * args.num_envs
+            obs0, obs1 = obs[:, 0], obs[:, 1]
+
             # ALGO LOGIC: put action logic here
-            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
-            if random.random() < epsilon:
-                actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
-            else:
-                actions = agent.select_action(torch.Tensor(obs).to(device))
+            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, env_step)
+            explore_mask = np.random.rand(args.num_envs) < epsilon
+
+            a0 = human.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
+            a1 = adversary.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
+
+            a0[explore_mask] = np.random.randint(0, action_space.nvec[0], size=explore_mask.sum())
+            a1[explore_mask] = np.random.randint(0, action_space.nvec[1], size=explore_mask.sum())
 
             # TRY NOT TO MODIFY: execute the game and log data.
+            actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
 
             # TRY NOT TO MODIFY: record rewards for plotting purposes
-            if "final_info" in infos:
-                for info in infos["final_info"]:
-                    if info and "episode" in info:
-                        episode_count += 1
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            # if "final_info" in infos:
+            #     for info in infos["final_info"]:
+            #         if info and "episode" in info:
+            #             episode_count += 1
+            #             writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+            #             writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
-                        if episode_count % log_interval == 0:
-                            print(f"{global_step}: r={info['episode']['r']}")
+            #             if episode_count % log_interval == 0:
+            #                 print(f"{global_step}: r={info['episode']['r']}")
 
-            agent.add_to_buffer(obs, next_obs, actions, rewards, terminations, infos)
+            r0, r1 = rewards, -rewards
+            human.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
+            adversary.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
 
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs
 
             # ALGO LOGIC: training.
-            if global_step > args.learning_starts:
-                if global_step % args.train_frequency == 0:
-                    agent.learn()
+            if global_step > learn_start_loop:
+                if global_step % learn_every == 0:
+                    human.learn()
+                    adversary.learn()
 
                 # update target network
-                if global_step % args.target_network_frequency == 0:
-                    agent.update_target_network()
+                if global_step % target_every == 0:
+                    human.update_target_network()
+                    adversary.update_target_network()
+            
+            if global_step % log_interval == 0:
+                sps = int(env_step / (time.time() - start_time))
+                pbar.set_postfix({"SPS": sps})
+                
     finally:
         if args.save_model:
-            model_path = f"runs/{run_name}/{args.exp_name}__{global_step}.pth"
-            agent.save(model_path)
-            print(f"model saved to \n{model_path}")
+            model_path = f"runs/{run_name}/{args.exp_name}__{env_step}_h.pth"
+            human.save(model_path)
+            print(f"Human model saved to \n{model_path}")
+            
+            model_path = f"runs/{run_name}/{args.exp_name}__{env_step}_a.pth"
+            adversary.save(model_path)
+            print(f"Adversary model saved to \n{model_path}")
 
+        # from rl_core.tron_env.tron_env.utils import StateViewer
+        # sv = StateViewer(25, scale=20, fps=5)
+        # batch = rb.sample(32)
+        # for obs in batch.observations:
+        #     sv.view(obs.cpu().numpy())
         envs.close()
         writer.close()

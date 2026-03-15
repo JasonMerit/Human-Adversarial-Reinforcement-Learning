@@ -1,9 +1,4 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqnpy
-import random
-import time
-
-import gymnasium as gym
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -41,6 +36,12 @@ class QNetwork(nn.Module):
         features = self.cnn(x)
         return self.q_head(features)
     
+    def __call__(self, obs):  # Called in play for singular action selection
+        with torch.no_grad():
+            q_values = self.forward(obs)
+            action = torch.argmax(q_values, dim=1)
+        return action.item()
+    
     @staticmethod
     def from_checkpoint(checkpoint_path, obs_shape, n_actions):
         model = QNetwork(obs_shape, n_actions)
@@ -48,7 +49,7 @@ class QNetwork(nn.Module):
         return model
 
 class DQNAgent:
-    def __init__(self, obs_shape, n_actions, lr, rb, device, batch_size, gamma):
+    def __init__(self, obs_shape, n_actions, lr, rb, batch_size, gamma, device):
         self.rb = rb
         self.batch_size = batch_size
         self.gamma = gamma
@@ -60,7 +61,8 @@ class DQNAgent:
         self.target_network.load_state_dict(self.q_network.state_dict())
 
     def select_action(self, obs):
-        q_values = self.q_network.forward(obs)
+        with torch.no_grad():
+            q_values = self.q_network.forward(obs)
         return torch.argmax(q_values, dim=1).cpu().numpy()
     
     def add_to_buffer(self, obs, next_obs, action, reward, done, info):
@@ -96,6 +98,6 @@ if __name__ == "__main__":
     obs_space = env.observation_space  # (3, H, W)
     action_space = env.action_space           # should be 3
     rb = ReplayBuffer(10000, obs_space, action_space, device)
-    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=2.5e-4, rb=rb, device=device, batch_size=32, gamma=0.99)
+    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=2.5e-4, rb=rb, batch_size=32, gamma=0.99, device=device)
 
 

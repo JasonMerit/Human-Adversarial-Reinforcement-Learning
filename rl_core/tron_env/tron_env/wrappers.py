@@ -211,7 +211,7 @@ class TronEgo(gym.Wrapper):
 
     def step(self, action):
         if not self.action_space.contains(action):
-            raise ValueError(utils.red(f"Invalid action!"))
+            raise ValueError(utils.red(f"Invalid action: {action} ") + utils.yellow("Action should be 0 (left), 1 (forward), or 2 (right) relative to the agent's perspective."))
         self.orientation = (self.orientation + (action - 1)) % 4  # Because (left, forward, right)
         state, reward, done, _, info = self.env.step(self.orientation)
         return self.observation(state), reward, done, _, info

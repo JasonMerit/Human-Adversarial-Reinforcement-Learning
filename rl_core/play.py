@@ -20,7 +20,10 @@ def load_agent(agent_path, env):
     obs_shape = env.observation_space.shape  # (3, H, W)
     n_actions = env.action_space.n           # should be 3
     # Select the appropriate agent class based on the file name
-    if "dqn" in agent_path.lower():
+    if "train" in agent_path.lower():
+        from rl_core.agents.dqn import QNetwork
+        return QNetwork.from_checkpoint(agent_path, obs_shape, n_actions)
+    elif "dqn" in agent_path.lower():
         from rl_core.cleanrl.cleanrl.dqn import QNetwork as QNetwork
         return QNetwork.from_checkpoint(agent_path,obs_shape, n_actions)
     elif "ppo" in agent_path.lower():
@@ -37,12 +40,11 @@ def play(path):
     env = TorchObservationWrapper(env, device="cpu")
     state, _ = env.reset()
 
-    # agent = load_agent(path, env)
-    # agent.eval()  # Set the agent to evaluation mode
+    agent = load_agent(path, env)
+    agent.eval()  # Set the agent to evaluation mode
     
     while True:
-        # action = agent(state)  # Use the loaded model to select an action
-        action = env.action_space.sample()
+        action = agent(state)  # Use the loaded model to select an action
         state, reward, done, _, info = env.step(action)
 
         if done:
