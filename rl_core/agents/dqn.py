@@ -1,114 +1,101 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqnpy
+import random
+import time
+
+import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
-from .base import Agent
-from rl_core.utils.helper import has_wrapper, bcolors
+from cleanrl_utils.buffers import ReplayBuffer
 
-class QNet(nn.Module):
-    def __init__(self, input_shape, num_actions=3):
+class QNetwork(nn.Module):
+    def __init__(self, obs_shape, n_actions):
         super().__init__()
-        self.input_shape = input_shape
-        self.num_actions = num_actions
-        
-        c,h,w = input_shape
-        self.conv = nn.Sequential(
-            nn.Conv2d(c, 16, kernel_size=3, padding=1),
+        c, h, w = obs_shape
+
+        # --- CNN Feature Extractor ---
+        self.cnn = nn.Sequential(
+            nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Flatten()
+            nn.Flatten(),
         )
-        conv_out = 32 * h * w
-        self.fc = nn.Sequential(
-            nn.Linear(conv_out, 256),
+
+        # Compute flattened size dynamically
+        with torch.no_grad():
+            dummy = torch.zeros(1, c, h, w)
+            n_flatten = self.cnn(dummy).shape[1]
+
+        # --- Q Head ---
+        self.q_head = nn.Sequential(
+            nn.Linear(n_flatten, 64),
             nn.ReLU(),
-            nn.Linear(256, num_actions)
+            nn.Linear(64, n_actions),
         )
 
     def forward(self, x):
-        x = self.conv(x)
-        return self.fc(x)
+        features = self.cnn(x)
+        return self.q_head(features)
     
     @staticmethod
-    def load(path):
-        weights = torch.load(path, weights_only=True)
-        conv_out = weights['fc.0.weight'].shape[1]  # flattened input to first FC layer
-        size = int((conv_out // 32) ** 0.5)
-        input_shape = (weights['conv.0.weight'].shape[1], size, size)  # Channels, Height, Width
-        num_actions = weights['fc.2.weight'].shape[0]
-        print(f"Loading QNet with input shape: {bcolors.OKGREEN}{input_shape}{bcolors.ENDC} and num actions: {bcolors.OKGREEN}{num_actions}{bcolors.ENDC}")
-        
-        model = QNet(input_shape, num_actions)
-        model.load_state_dict(weights)
+    def from_checkpoint(checkpoint_path, obs_shape, n_actions):
+        model = QNetwork(obs_shape, n_actions)
+        model.load_state_dict(torch.load(checkpoint_path, weights_only=True))
         return model
 
-class QNetFlat(nn.Module):
-    def __init__(self, input_size, num_actions=3):
-        super().__init__()
-        self.input_size = input_size  # Total flattened size: 3*11*11 = 363
-        self.num_actions = num_actions
+class DQNAgent:
+    def __init__(self, obs_shape, n_actions, lr, rb, device, batch_size, gamma):
+        self.rb = rb
+        self.batch_size = batch_size
+        self.gamma = gamma
+        self.device = device
         
-        self.fc = nn.Sequential(
-            nn.Linear(input_size, 256),
-            nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_actions)
-        )
+        self.q_network = QNetwork(obs_shape, n_actions).to(device)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
+        self.target_network = QNetwork(obs_shape, n_actions).to(device)
+        self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def forward(self, x):
-        # x is already flat: [batch, 363]
-        return self.fc(x)
-
-
-class DQNAgent(Agent):
-    def __init__(self, qnet_path: str):
-        self.qnet = QNet.load(qnet_path)
+    def select_action(self, obs):
+        q_values = self.q_network.forward(obs)
+        return torch.argmax(q_values, dim=1).cpu().numpy()
     
-    def eval(self):
-        self.qnet.eval()
-
-    def __call__(self, state):
+    def add_to_buffer(self, obs, next_obs, action, reward, done, info):
+        self.rb.add(obs, next_obs, action, reward, done, info)
+    
+    def learn(self):
+        data = self.rb.sample(self.batch_size)
         with torch.no_grad():
-            q_values = self.qnet(torch.tensor(state, dtype=torch.float32).unsqueeze(0))
-            return q_values.argmax().item()
+            target_max, _ = self.target_network.forward(data.next_observations).max(dim=1)
+            td_target = data.rewards.flatten() + self.gamma * target_max * (1 - data.dones.flatten())
+        old_val = self.q_network.forward(data.observations).gather(1, data.actions).squeeze()
+        loss = F.mse_loss(td_target, old_val)
+
+        # optimize the model
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
     
-    def reset(self):
-        pass
+    def update_target_network(self):
+        self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def _check_env(self, env):
-        pass
-
-class DQNSoftAgent(DQNAgent):
+    def save(self, path):
+        torch.save(self.q_network.state_dict(), path)
     
-    def __call__(self, state, temperature=1.0):
-        with torch.no_grad():
-            state = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
-            q_values = self.qnet(state)
-
-            probs = F.softmax(q_values / temperature, dim=1)
-            action = torch.multinomial(probs, num_samples=1)
-
-            return action.item()
+def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
+    slope = (end_e - start_e) / duration
+    return max(slope * t + start_e, end_e)
 
 if __name__ == "__main__":
-    shape = (3, 11, 11)
-    model = QNet(input_shape=shape, num_actions=3)
-    # model = QNetFlat(input_size=3*11*11)
-    
-    # input = torch.randn(1, 3*11*11)
-    input = torch.randn(1, *shape)
+    from rl_core.tron_env.tron_env import TronEnv
+    env = TronEnv()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    obs_space = env.observation_space  # (3, H, W)
+    action_space = env.action_space           # should be 3
+    rb = ReplayBuffer(10000, obs_space, action_space, device)
+    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=2.5e-4, rb=rb, device=device, batch_size=32, gamma=0.99)
 
-    torch.onnx.export(
-    model,                      # your trained PyTorch model
-    input,                      # example input
-    "rl_core/model_static.onnx",       # output file
-    export_params=True,         # store trained weights
-    opset_version=17,           # ONNX opset (higher is more compatible with newer features)
-    input_names=['state'],      # input tensor name
-    output_names=['output'],    # output tensor name
-    dynamic_axes=None
-    # dynamic_axes={'state': {0: 'batch_size'}, 'action': {0: 'batch_size'}}  # allow variable batch sizes
-)
-    print(model(input))
+
