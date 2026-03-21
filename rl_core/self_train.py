@@ -37,19 +37,21 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_model: bool = True
+    save_model: bool = False
     """whether to save model into the `runs/{run_name}` folder"""
     upload_model: bool = False
     """whether to upload the saved model to huggingface"""
     hf_entity: str = ""
     """the user or org name of the model repository from the Hugging Face Hub"""
+    render: bool = False
+    """whether to render the environment during training (slows down training!)"""
 
     # Algorithm specific arguments
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 16
+    num_envs: int = 4#16
     """the number of parallel game environments"""
     buffer_size: int = 100000
     """the replay memory buffer size"""
@@ -107,11 +109,11 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
+    # writer = SummaryWriter(f"runs/{run_name}")
+    # writer.add_text(
+    #     "hyperparameters",
+    #     "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+    # )
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -120,10 +122,9 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-    print(f"===== Training with seed {args.seed} on device {device} =====")
 
     # env setup
-    envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i) for i in range(args.num_envs)])
+    envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i, render=args.render) for i in range(args.num_envs)])
 
     action_space = envs.single_action_space
     obs_space = envs.single_observation_space
@@ -134,6 +135,7 @@ if __name__ == "__main__":
     human = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[0], lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, gamma=args.gamma, device=device)
     adversary = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[1], lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, gamma=args.gamma, device=device)
 
+    print(f"===== Training with seed {args.seed} on device {device} =====")
     start_time = time.time()
 
     # Jason
@@ -148,6 +150,9 @@ if __name__ == "__main__":
     learn_every = max(1, args.train_frequency // args.num_envs)
     target_every = max(1, args.target_network_frequency // args.num_envs)
     learn_start_loop = args.learning_starts // args.num_envs
+
+    # Logging
+    results = [0, 0, 0]
 
     try:
         total_loops = args.total_timesteps // args.num_envs
@@ -170,6 +175,26 @@ if __name__ == "__main__":
             actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
 
+            # Iterate over terminations to log episode results
+            for i in range(args.num_envs):
+                if terminations[i]:
+                    result = infos["final_info"][i]['result']
+                    results[result] += 1
+                    sps = int(env_step / (time.time() - start_time))
+                    pbar.set_postfix({"Results": results, "SPS": sps})
+
+            # TRY NOT TO MODIFY: record rewards for plotting purposes
+            # if "final_info" in infos:
+            #     for info in infos["final_info"]:
+            #         if info and "episode" in info:
+            #             episode_count += 1
+            #             # writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+            #             # writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            #             results[info["result"]] += 1
+            #             print(results[info["result"]])                        
+
+
+
             r0, r1 = rewards, -rewards
             human.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
             adversary.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
@@ -188,9 +213,9 @@ if __name__ == "__main__":
                     human.update_target_network()
                     adversary.update_target_network()
             
-            if global_step % log_interval == 0:
-                sps = int(env_step / (time.time() - start_time))
-                pbar.set_postfix({"SPS": sps})
+            # if global_step % log_interval == 0:
+            #     sps = int(env_step / (time.time() - start_time))
+            #     pbar.set_postfix({"SPS": sps})
                 
     finally:
         if args.save_model:
@@ -208,4 +233,4 @@ if __name__ == "__main__":
         # for obs in batch.observations:
         #     sv.view(obs.cpu().numpy())
         envs.close()
-        writer.close()
+        # writer.close()

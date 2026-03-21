@@ -102,7 +102,8 @@ class TronDuoEnv(gym.Env):
         done = result != Result.PLAYING
         state = self._get_state()
         reward = self.reward_dict[result]
-        info = {'result': result}
+
+        info = {"result": result} if done else {}
         return state, reward, done, False, info
     
     def _get_state(self):
