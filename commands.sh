@@ -25,3 +25,6 @@ cd C:\Users\Jason\.nuget\packages\microsoft.ml.onnxruntime\1.16.0\runtimes\win-x
 
 # CleanRL
 python rl_core/cleanrl/cleanrl/ppo_cnn.py --env-id Tron-v0
+
+
+runs\self_train_595179

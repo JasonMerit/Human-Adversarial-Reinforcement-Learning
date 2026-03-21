@@ -1,61 +1,80 @@
+from rl_core.tron_env.tron_env.env import TronDuoEnv
+from rl_core.tron_env.tron_env.wrappers import TronView
 
-import gymnasium as gym
 import torch
+import gymnasium as gym
 import numpy as np
+import os
 
-from rl_core.cleanrl.cleanrl_utils.buffers import ReplayBuffer
+class TorchObservationWrapper(gym.ObservationWrapper):
+    def __init__(self, env, device):
+        super().__init__(env)
+        self.device = device
 
-from rl_core.tron_env.tron_env import TronView, TronDuoEnv
-from rl_core.tron_env.tron_env.utils import StateViewer
-from rl_core.cleanrl.cleanrl.ppo import Agent
+    def observation(self, obs):
+        return torch.as_tensor(
+            obs,
+            dtype=torch.float32,
+            device=self.device
+        ).unsqueeze(0)
 
-def make_env(seed, idx, render=False):
-    def thunk():
-        env = TronDuoEnv()
-        if render and idx == 0:
-            env = TronView(env)
+def load_agent(agent_path, env):
+    # Select the appropriate agent class based on the file name
+    if "self" in agent_path.lower():  # Takes the folder where models resisde
+        # e.g. runs\self_train_595179
+        files = os.listdir(agent_path)
+        human_file = [agent_path + "/" + f for f in files if f.endswith("_h.pth")][0]
+        adv_file = [agent_path + "/" + f for f in files if f.endswith("_a.pth")][0]
+        if not human_file or not adv_file:
+            raise ValueError(f"Paths missing .pth files found in directory: {agent_path}")
+        print(f"Loading human model from {human_file} and adversary model from {adv_file}")
 
-        env.action_space.seed(seed)
-        return env
+        from rl_core.agents.dqn import QNetwork
+        obs_shape = env.observation_space.shape[-3:]  # (3, H, W)
+        n_actions = env.action_space.nvec[0]           # should be 3
+        return QNetwork.from_checkpoint(human_file, obs_shape, n_actions), QNetwork.from_checkpoint(adv_file, obs_shape, n_actions)
+    
+    obs_shape = env.observation_space.shape  # (3, H, W)
+    n_actions = env.action_space.n           # should be 3
+    if "train" in agent_path.lower():
+        from rl_core.agents.dqn import QNetwork
+        return QNetwork.from_checkpoint(agent_path, obs_shape, n_actions)
+    elif "dqn" in agent_path.lower():
+        from rl_core.cleanrl.cleanrl.dqn import QNetwork as QNetwork
+        return QNetwork.from_checkpoint(agent_path,obs_shape, n_actions)
+    elif "ppo" in agent_path.lower():
+        from rl_core.cleanrl.cleanrl.ppo import Agent
+        return Agent.from_checkpoint(agent_path, obs_shape, n_actions)
+    elif "rainbow" in agent_path.lower():
+        from rl_core.cleanrl.cleanrl.rainbow import NoisyDuelingDistributionalNetwork
+        return NoisyDuelingDistributionalNetwork.from_checkpoint(agent_path, obs_shape, n_actions)
+    else:
+        raise ValueError(f"Unknown agent type in path: {agent_path}")
 
-    return thunk
+def play(path):
+    env = TronView(TronDuoEnv())
+    env = TorchObservationWrapper(env, device="cpu")
+    obs, _ = env.reset()
+
+    human, adversary = load_agent(path, env)
+    human.eval()  # Set the agent to evaluation mode
+    adversary.eval()  # Set the agent to evaluation mode
+
+    while True:
+        obs0, obs1 = obs[:, 0], obs[:, 1]
+        a0, a1 = human(obs0), adversary(obs1)  # Use the loaded model to select an action
+        obs, reward, done, _, info = env.step([a0, a1])
+
+        if done:
+            obs, _ = env.reset()
+            print(info.get("result"))
 
 if __name__ == "__main__":
-    n_envs = 5
-    envs = gym.vector.AsyncVectorEnv([make_env(i, i, render=False) for i in range(n_envs)])
-    action_space = envs.single_action_space
-    obs_space = envs.single_observation_space
-
-    agent = Agent.from_checkpoint("runs\PPO.pth", obs_space.shape[-3:], action_space.nvec[0])
-    agent.eval()
-
-    buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=(3, 25, 25), dtype=np.float32)
-    rb0 = ReplayBuffer(10000, buffer_obs_space, n_envs=n_envs, device="cpu")
-    rb1 = ReplayBuffer(10000, buffer_obs_space, n_envs=n_envs, device="cpu")
-    obs, info = envs.reset()
-
-    print("START SELF PLAY")
-    for _ in range(20):
-        obs0, obs1 = obs[:, 0], obs[:, 1]
-
-        with torch.no_grad():
-            a0 = agent(torch.tensor(obs0, dtype=torch.float32))  # shape: (n_envs,)
-            a1 = agent(torch.tensor(obs1, dtype=torch.float32))  # shape: (n_envs,)
-
-        actions = np.stack([a0.cpu().numpy(), a1.cpu().numpy()], axis=1)
-        next_obs, rewards, done, _, info = envs.step(actions)
-
-        r0, r1 = rewards, -rewards
-
-        # print("REWARD", r0, r1)
-        rb0.add(obs0, next_obs[:, 0], a0, r0, done, info)
-        rb1.add(obs1, next_obs[:, 1], a1, r1, done, info)
-
-        obs = next_obs
-
-    # Sample a batch from the replay buffer
-    sv = StateViewer(25, scale=20, fps=5)
-    batch = rb0.sample(32)
-    for obs in batch.observations:
-        sv.view(obs.numpy())
-
+    # Get args
+    import argparse
+    parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
+    parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
+    args = parser.parse_args()
+    play(args.path)
+    # play("runs/dqn_1/dqn.pth")
+    # play("runs/ppo_cnn_881413/ppo_cnn.pth")

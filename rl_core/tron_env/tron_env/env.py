@@ -77,17 +77,7 @@ class TronDuoEnv(gym.Env):
         super().__init__()
         self.tron = Tron(size)
         self.size = size
-
-        # self.action_space = gym.spaces.Tuple((
-        #     gym.spaces.Discrete(3),
-        #     gym.spaces.Discrete(3)
-        # ))
         self.action_space = gym.spaces.MultiDiscrete([3, 3])  # (left, forward, right) for each bike relative to their current heading
-        
-        # self.observation_space = gym.spaces.Tuple((
-        #     gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32),
-        #     gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32)
-        # ))
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, size, size), dtype=np.float32)
 
     def reset(self, seed=None, options=None):

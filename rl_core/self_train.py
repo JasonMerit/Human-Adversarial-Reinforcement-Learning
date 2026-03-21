@@ -170,17 +170,6 @@ if __name__ == "__main__":
             actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
 
-            # TRY NOT TO MODIFY: record rewards for plotting purposes
-            # if "final_info" in infos:
-            #     for info in infos["final_info"]:
-            #         if info and "episode" in info:
-            #             episode_count += 1
-            #             writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-            #             writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-
-            #             if episode_count % log_interval == 0:
-            #                 print(f"{global_step}: r={info['episode']['r']}")
-
             r0, r1 = rewards, -rewards
             human.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
             adversary.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
