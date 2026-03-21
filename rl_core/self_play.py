@@ -22,12 +22,8 @@ def load_agent(agent_path, env):
     # Select the appropriate agent class based on the file name
     if "self" in agent_path.lower():  # Takes the folder where models resisde
         # e.g. runs\self_train_595179
-        files = os.listdir(agent_path)
-        human_file = [agent_path + "/" + f for f in files if f.endswith("_h.pth")][0]
-        adv_file = [agent_path + "/" + f for f in files if f.endswith("_a.pth")][0]
-        if not human_file or not adv_file:
-            raise ValueError(f"Paths missing .pth files found in directory: {agent_path}")
-        print(f"Loading human model from {human_file} and adversary model from {adv_file}")
+        human_file = agent_path + "/human.pth"
+        adv_file = agent_path + "/adversary.pth"
 
         from rl_core.agents.dqn import QNetwork
         obs_shape = env.observation_space.shape[-3:]  # (3, H, W)

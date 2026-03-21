@@ -86,6 +86,7 @@ class DQNAgent:
 
     def save(self, path):
         torch.save(self.q_network.state_dict(), path)
+        print(f"Model saved to {path}")
     
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration

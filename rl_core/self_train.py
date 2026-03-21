@@ -2,6 +2,7 @@
 import os
 import random
 import time
+import yaml
 from dataclasses import dataclass
 from typing import Optional
 
@@ -37,7 +38,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_model: bool = False
+    save_model: bool = True
     """whether to save model into the `runs/{run_name}` folder"""
     upload_model: bool = False
     """whether to upload the saved model to huggingface"""
@@ -51,7 +52,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 4#16
+    num_envs: int = 2
     """the number of parallel game environments"""
     buffer_size: int = 100000
     """the replay memory buffer size"""
@@ -178,8 +179,7 @@ if __name__ == "__main__":
             # Iterate over terminations to log episode results
             for i in range(args.num_envs):
                 if terminations[i]:
-                    result = infos["final_info"][i]['result']
-                    results[result] += 1
+                    results[infos["final_info"][i]['result']] += 1
                     sps = int(env_step / (time.time() - start_time))
                     pbar.set_postfix({"Results": results, "SPS": sps})
 
@@ -219,13 +219,19 @@ if __name__ == "__main__":
                 
     finally:
         if args.save_model:
-            model_path = f"runs/{run_name}/{args.exp_name}__{env_step}_h.pth"
-            human.save(model_path)
-            print(f"Human model saved to \n{model_path}")
+            folder = "runs/self_train"
+            i = 0
+            while os.path.exists(folder + f"_{i}"):
+                i += 1
+            folder += f"_{i}/"
+            os.makedirs(folder)
             
-            model_path = f"runs/{run_name}/{args.exp_name}__{env_step}_a.pth"
-            adversary.save(model_path)
-            print(f"Adversary model saved to \n{model_path}")
+            with open(folder + "args.yml", "w") as f:
+                yaml.dump(vars(args), f)
+            with open(folder + "results.yml", "w") as f:
+                yaml.dump({"results": results, "steps_taken": env_step}, f)
+            human.save(folder + "human.pth")
+            adversary.save(folder + "adversary.pth")
 
         # from rl_core.tron_env.tron_env.utils import StateViewer
         # sv = StateViewer(25, scale=20, fps=5)
