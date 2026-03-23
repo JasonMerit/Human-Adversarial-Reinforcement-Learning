@@ -47,6 +47,9 @@ public class Game : MonoBehaviour
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
         tron = new Tron(new Vector2Int(25, 25));
+
+        // Call RunInference(); repeatedly to test
+        InvokeRepeating(nameof(RunInference), 0f, 1f);
     }
 
     public void Reset()
@@ -94,7 +97,7 @@ public class Game : MonoBehaviour
         {
             time -= tickRate;
             Step(currentAction); // advance tile
-            commited = false;
+            commited = false;            
         }
 
         // 5. Interpolate for smooth visuals and border based end points
@@ -154,17 +157,30 @@ public class Game : MonoBehaviour
 
     void RunInference()
     {
-        Tensor input = new Tensor(1,11,11,3);
-        // Fill input with random data
-        for (int i = 0; i < input.length; i++)
+        // Create tensor in a using block to ensure proper disposal
+        using (var input = new Tensor(1, 25, 25, 3))
         {
-            input[i] = Random.Range(0f, 1f);
+            // Fill input with random 1s and 0s
+            for (int i = 0; i < input.length; i++) input[i] = Random.value > 0.5f ? 1f : 0f;
+
+            worker.Execute(input);
+
+            // Peek output in another using block
+            using (var output = worker.PeekOutput("q_values"))
+            {
+                // Debug log the shape of the output
+                Debug.Log($"Output shape: {output.shape}");
+                string msg = "";
+                // int nActions = output.width;
+                int nActions = output.channels;
+
+                for (int i = 0; i < nActions; i++)
+                {
+                    // msg += $"Action {i}: {output[0, 0, i, 0]}\n";
+                    msg += $"Action {i}: {output[0, 0, 0, i]}\n";
+                }
+                outputText.text = msg;
+            }
         }
-        worker.Execute(input);
-        Tensor output = worker.PeekOutput();
-        // Debug.Log(output); // example
-        outputText.text = output[0].ToString();
-        input.Dispose();
-        output.Dispose();
     }
 }

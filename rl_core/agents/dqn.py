@@ -36,7 +36,7 @@ class QNetwork(nn.Module):
         features = self.cnn(x)
         return self.q_head(features)
     
-    def __call__(self, obs):  # Called in play for singular action selection
+    def act(self, obs):  # Called in play for singular action selection
         with torch.no_grad():
             q_values = self.forward(obs)
             action = torch.argmax(q_values, dim=1)
