@@ -68,7 +68,6 @@ public class Tron
         bike2 = new TronBike(new Vector2Int(5 * width / 6, height / 2));
         trails[bike1.pos.x, bike1.pos.y] = 1;
         trails[bike2.pos.x, bike2.pos.y] = 2;
-
     }
 
     // Returns:

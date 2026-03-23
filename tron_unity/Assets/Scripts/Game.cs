@@ -1,12 +1,13 @@
 using UnityEngine;
 using Unity.Barracuda;
 using System.Collections.Generic;
+using UnityEngine.InputSystem;
 using TMPro;
-
 
 public class Game : MonoBehaviour
 {
-    public readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
+    public readonly Vector2[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
+    public readonly Vector2Int[] IDIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     [SerializeField] Board board;
     [SerializeField] Bike player;
@@ -18,19 +19,27 @@ public class Game : MonoBehaviour
     IWorker worker;
     NetworkManager networkManager;
     Tron tron;
-    Controller controller;
+    PlayerInput playerInput;
 
     [HideInInspector] public GameState State;
-    float tickRate = 0.15f; // seconds per tick
+    public float tickRate = 0.15f; //.15 seconds per tick
     List<Vector2Int> history = new();
 
     float time;
     [HideInInspector] public Color playerColor;
     [HideInInspector] public Color adversaryColor;
 
+    // Input / action / lerping
+    int currentAction;
+    Queue<int> inputQueue = new Queue<int>(2);
+    bool commited;
+    Vector2 from;
+    Vector2 advFrom;
+    Vector2 advTo;
+
     void Awake()
     {
-        controller = GetComponent<Controller>();
+        playerInput = GetComponent<PlayerInput>();
         var model = ModelLoader.Load(modelAsset);
         worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
 
@@ -42,56 +51,82 @@ public class Game : MonoBehaviour
 
     public void Reset()
     {
-        time = tickRate; // immediate first tick
+        State = GameState.Playing;
+        time = 0;
+
         tron.Reset();
         board.Reset();
-        controller.Reset();
-        player.Reset(1);
-        adversary.Reset(3);
+        player.Reset(1, tron.bike1.pos);
+        adversary.Reset(3, tron.bike2.pos);
+        
+        currentAction = 1;
+        inputQueue.Clear();
+        commited = false;
 
-        player.transform.position = new Vector3(tron.bike1.pos.x, tron.bike1.pos.y, 0);
-        adversary.transform.position = new Vector3(tron.bike2.pos.x, tron.bike2.pos.y, 0);
-
+        from = tron.bike1.pos - DIRS[currentAction] * 0.5f;
+        advFrom = tron.bike2.pos - DIRS[3] * 0.5f;
+        advTo = advFrom + DIRS[3];
     }
 
     public void Tick()
-    {
-        time += Time.deltaTime;
-        if (time >= tickRate) {
-            time -= tickRate;
-            Step();
+    {       
+        //  1. Get input 
+        if (playerInput.actions["Up"].triggered) inputQueue.Enqueue(0);
+        else if (playerInput.actions["Right"].triggered) inputQueue.Enqueue(1);
+        else if (playerInput.actions["Down"].triggered) inputQueue.Enqueue(2);
+        else if (playerInput.actions["Left"].triggered) inputQueue.Enqueue(3);
+        
+        // 3. Turn window into input buffer (update currentAction)
+        if (!commited && inputQueue.Count > 0)
+        {
+            int next = inputQueue.Dequeue();
+            if (next != currentAction && (next + 2) % 4 != currentAction) // prevent reverse
+            {
+                currentAction = next;
+                commited = true;
+                player.Rotate(currentAction);
+            }
         }
 
-        var alpha = time / tickRate;
-        player.transform.position = (Vector3)Vector2.Lerp(tron.bike1.lastPos, tron.bike1.pos, alpha);
-        adversary.transform.position = (Vector3)Vector2.Lerp(tron.bike2.lastPos, tron.bike2.pos, alpha);
+        // 4. Step simulation (Update bike positions)
+        time += Time.deltaTime;
+        if (time >= tickRate)
+        {
+            time -= tickRate;
+            Step(currentAction); // advance tile
+            commited = false;
+        }
 
-        player.AddTrail(player.transform.position);
-        adversary.AddTrail(adversary.transform.position);
+        // 5. Interpolate for smooth visuals and border based end points
+        float alpha = time / tickRate;
+        Vector2 to = tron.bike1.pos + DIRS[currentAction] * 0.5f;
+
+        player.LerpPosition(from, to, alpha);
+        adversary.LerpPosition(advFrom, advTo, alpha);
     }
 
-    void Step()
-    // Updates State
+    void Step(int action)
     {
-        // board.SetCell(tron.bike1.pos, playerColor);
-        // board.SetCell(tron.bike2.pos, adversaryColor);
-        
         int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
-        int playerAction = controller.GetAction(); 
+        int playerAction = action;
         history.Add(new (playerAction, advAction));
 
-        player.Rotate(playerAction);
-        adversary.Rotate(advAction);
-        
-        State = tron.Step(DIRS[playerAction], DIRS[advAction]);
+        State = tron.Step(IDIRS[playerAction], IDIRS[advAction]);
         if (State != GameState.Playing) { EndEpisode(playerAction); }
-        
+
+        // Rendering and lerping setup
+        player.Transform(playerAction, tron.bike1.pos);
+        adversary.Transform(advAction, tron.bike2.pos);
+
+        from = tron.bike1.pos - DIRS[currentAction] * 0.5f;
+        advFrom = tron.bike2.pos - DIRS[advAction] * 0.5f;
+        advTo = advFrom + DIRS[advAction];
     }
 
     void EndEpisode(int playerAction)
     {
         if (State == GameState.Bike2Win) {
-            cameraShake.Shake(DIRS[playerAction]);
+            cameraShake.Shake(IDIRS[playerAction]);
             player.Crash();
         }
         else if (State == GameState.Bike1Win) {
@@ -113,7 +148,7 @@ public class Game : MonoBehaviour
 
     bool IsTrapped(TronBike bike)
     {
-        foreach (var dir in DIRS) { if (!bike.IsHitInDir(tron.trails, dir)) return false; }
+        foreach (var dir in IDIRS) { if (!bike.IsHitInDir(tron.trails, dir)) return false; }
         return true;
     }
 
