@@ -68,7 +68,6 @@ public class Tron
         bike2 = new TronBike(new Vector2Int(5 * width / 6, height / 2));
         trails[bike1.pos.x, bike1.pos.y] = 1;
         trails[bike2.pos.x, bike2.pos.y] = 2;
-
     }
 
     // Returns:
@@ -80,20 +79,20 @@ public class Tron
     {
         // Mark current positions as trails
         bool bike1Hit = bike1.Move(dir1, trails);
-        // bool bike2Hit = bike2.Move(dir2, trails);
+        bool bike2Hit = bike2.Move(dir2, trails);
 
         // Head-to-head collision
-        // if ((bike1Hit && bike2Hit) || bike1.pos == bike2.pos)
-        //     return GameState.Draw;
+        if ((bike1Hit && bike2Hit) || bike1.pos == bike2.pos)
+            return GameState.Draw;
 
-        // if (bike1Hit)
-        //     return GameState.Bike2Win;
+        if (bike1Hit)
+            return GameState.Bike2Win;
 
-        // if (bike2Hit)
-        //     return GameState.Bike1Win;
+        if (bike2Hit)
+            return GameState.Bike1Win;
 
         trails[bike1.pos.x, bike1.pos.y] = 1;
-        // trails[bike2.pos.x, bike2.pos.y] = 2;
+        trails[bike2.pos.x, bike2.pos.y] = 2;
 
         return GameState.Playing;
     }
