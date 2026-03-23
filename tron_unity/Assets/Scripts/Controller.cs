@@ -8,13 +8,14 @@ public class Controller : MonoBehaviour
     readonly Vector2Int[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     PlayerInput playerInput;
-    int currentAction = 1;
+    int currentAction;
 
     Queue<int> inputQueue = new Queue<int>(2);
 
     void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
+        Reset();
     }
 
     public void Reset()
