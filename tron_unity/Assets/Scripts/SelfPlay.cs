@@ -1,7 +1,6 @@
 using UnityEngine;
-using Unity.Barracuda;
+using Unity.InferenceEngine;
 using TMPro;
-using NUnit.Framework;
 
 public class SelfPlay : MonoBehaviour
 {
@@ -11,13 +10,13 @@ public class SelfPlay : MonoBehaviour
     [SerializeField] Board board;
     [SerializeField] Bike player;
     [SerializeField] Bike adversary;
-    [SerializeField] NNModel humanModelAsset;
-    [SerializeField] NNModel adversaryModelAsset;
+    [SerializeField] ModelAsset humanModelAsset;
+    [SerializeField] ModelAsset adversaryModelAsset;
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
  
-    IWorker humanWorker;
-    IWorker adversaryWorker;
+    Worker humanWorker;
+    Worker adversaryWorker;
     Tron tron;
 
     [HideInInspector] public GameState State;
@@ -35,9 +34,8 @@ public class SelfPlay : MonoBehaviour
 
     void Awake()
     {
-        // humanWorker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, ModelLoader.Load(humanModelAsset));
-        humanWorker = WorkerFactory.CreateWorker(WorkerFactory.Type.CSharpBurst, ModelLoader.Load(humanModelAsset));
-        adversaryWorker = WorkerFactory.CreateWorker(WorkerFactory.Type.CSharpBurst, ModelLoader.Load(adversaryModelAsset));
+        humanWorker = new Worker(ModelLoader.Load(humanModelAsset), BackendType.CPU);
+        adversaryWorker = new Worker(ModelLoader.Load(adversaryModelAsset), BackendType.CPU);
 
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
@@ -83,11 +81,9 @@ public class SelfPlay : MonoBehaviour
     void Step()
     {
         int humanAction = GetAction(humanWorker, player.orientation, tron.trails, tron.bike1.pos, tron.bike2.pos);
-        // Assert.IsTrue(humanAction == GetAction(humanWorker, player.orientation, tron.trails, tron.bike1.pos, tron.bike2.pos), $"nondeterministic human model");
         int humanHeading = (player.orientation + (humanAction - 1) + 4) % 4;
 
         int advAction = GetAction(adversaryWorker, adversary.orientation, tron.trails, tron.bike2.pos, tron.bike1.pos);
-        // Assert.IsTrue(advAction == GetAction(adversaryWorker, adversary.orientation, tron.trails, tron.bike2.pos, tron.bike1.pos), $"nondeterministic adversary model");
         int advHeading = (adversary.orientation + (advAction - 1) + 4) % 4;
 
         State = tron.Step(IDIRS[humanHeading], IDIRS[advHeading]);
@@ -119,7 +115,6 @@ public class SelfPlay : MonoBehaviour
             player.Crash();
             adversary.Crash();
         }
-
         Reset();
     }
 
@@ -131,46 +126,49 @@ public class SelfPlay : MonoBehaviour
         return (y, size - 1 - x);  // Left
     }
 
-    int GetAction(IWorker worker, int orientation, int[,] trails, Vector2 you, Vector2 other)
+    int GetAction(Worker worker, int orientation, int[,] trails, Vector2 you, Vector2 other)
     {
-        // Debug.Log(orientation);
-        // UnityEditor.EditorApplication.isPlaying = false;
-        // Create tensor in a using block to ensure proper disposal
-        using (var input = new Tensor(1, 25, 25, 3))
+        var input = new Tensor<float>(new TensorShape(1, 25, 25, 3));
+
+        // Fill NHWC tensor explicitly (Sentis expects NHWC by default)
+        for (int x = 0; x < 25; x++)
         {
-            // Fill input with trails and bike positions
-            for (int x = 0; x < 25; x++) {
-                for (int y = 0; y < 25; y++) {
-                    var (tx, ty) = Rotate(x, y, 25, orientation);
-
-                    input[0, ty, tx, 0] = (trails[x, y] != 0) ? 1f : 0f;
-                    input[0, ty, tx, 1] = (you.x == x && you.y == y) ? 1f : 0f;
-                    input[0, ty, tx, 2] = (other.x == x && other.y == y) ? 1f : 0f;
-                }
-            }
-
-            worker.Execute(input);
-
-            // Peek output in another using block
-            using (var output = worker.PeekOutput("q_values"))
+            for (int y = 0; y < 25; y++)
             {
-                int nActions = output.channels;
-                float maxQ = float.NegativeInfinity;
-                int bestAction = 0;
+                var (tx, ty) = Rotate(x, y, 25, orientation);
 
-                for (int i = 0; i < nActions; i++)
-                {
-                    float qValue = output[0, 0, 0, i];
-                    if (qValue > maxQ)
-                    {
-                        maxQ = qValue;
-                        bestAction = i;
-                    }
-                }
-                // Debug.Log($"Adversary chose action {bestAction} with Q-value {maxQ}");
-                return bestAction;
+                // Ensure consistent coordinate system (flip Y if needed)
+                int fy = 24 - ty;
+
+                input[0, fy, tx, 0] = (trails[x, y] != 0) ? 1f : 0f;
+                input[0, fy, tx, 1] = (you.x == x && you.y == y) ? 1f : 0f;
+                input[0, fy, tx, 2] = (other.x == x && other.y == y) ? 1f : 0f;
             }
         }
-    }
 
+        worker.Schedule(input);
+        var output = worker.PeekOutput() as Tensor<float>;
+        output.CompleteAllPendingOperations();
+
+        // Expected shape: (1, 1, 1, n_actions)
+        int nActions = 3;
+
+        float maxQ = float.NegativeInfinity;
+        int bestAction = 0;
+
+        for (int i = 0; i < nActions; i++)
+        {
+            float q = output[0, 0, 0, i];
+            if (q > maxQ)
+            {
+                maxQ = q;
+                bestAction = i;
+            }
+        }
+
+        input.Dispose();
+        output.Dispose();
+
+        return bestAction;
+    }
 }

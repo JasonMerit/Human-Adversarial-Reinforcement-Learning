@@ -37,6 +37,8 @@ def play():
         obs, reward, done, _, info = env.step([a0, a1])
 
         if done:
+            import time
+            time.sleep(100)
             obs, _ = env.reset()
             print(info.get("result"))
 

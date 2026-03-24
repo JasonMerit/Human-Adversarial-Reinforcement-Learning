@@ -1,5 +1,5 @@
 using UnityEngine;
-using Unity.Barracuda;
+using Unity.InferenceEngine;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
 using TMPro;
@@ -12,11 +12,11 @@ public class Game : MonoBehaviour
     [SerializeField] Board board;
     [SerializeField] Bike player;
     [SerializeField] Bike adversary;
-    [SerializeField] NNModel modelAsset;
+    [SerializeField] ModelAsset modelAsset;
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
  
-    IWorker worker;
+    Worker worker;
     NetworkManager networkManager;
     Tron tron;
     PlayerInput playerInput;
@@ -41,7 +41,7 @@ public class Game : MonoBehaviour
     {
         playerInput = GetComponent<PlayerInput>();
         var model = ModelLoader.Load(modelAsset);
-        worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
+        // worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
 
         networkManager = GetComponent<NetworkManager>();
         playerColor = Constants.cyan;
@@ -155,32 +155,4 @@ public class Game : MonoBehaviour
         return true;
     }
 
-    void RunInference()
-    {
-        // Create tensor in a using block to ensure proper disposal
-        using (var input = new Tensor(1, 25, 25, 3))
-        {
-            // Fill input with random 1s and 0s
-            for (int i = 0; i < input.length; i++) input[i] = Random.value > 0.5f ? 1f : 0f;
-
-            worker.Execute(input);
-
-            // Peek output in another using block
-            using (var output = worker.PeekOutput("q_values"))
-            {
-                // Debug log the shape of the output
-                Debug.Log($"Output shape: {output.shape}");
-                string msg = "";
-                // int nActions = output.width;
-                int nActions = output.channels;
-
-                for (int i = 0; i < nActions; i++)
-                {
-                    // msg += $"Action {i}: {output[0, 0, i, 0]}\n";
-                    msg += $"Action {i}: {output[0, 0, 0, i]}\n";
-                }
-                outputText.text = msg;
-            }
-        }
-    }
 }

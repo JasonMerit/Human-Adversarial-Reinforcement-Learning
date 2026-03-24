@@ -1,11 +1,11 @@
+import time
+
 from rl_core.tron_env.tron_env.env import TronDuoEnv
 from rl_core.tron_env.tron_env.wrappers import TronView
 from rl_core.agents.dqn import QNetwork
 
 import torch
 import gymnasium as gym
-import numpy as np
-import os
 
 class TorchObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env, device):
@@ -44,6 +44,7 @@ def play(path):
         obs, reward, done, _, info = env.step([a0, a1])
 
         if done:
+            time.sleep(100)
             obs, _ = env.reset()
             print(info.get("result"))
 

@@ -99,16 +99,18 @@
       },
       "url": "https://packages.unity.com"
     },
-    "com.unity.barracuda": {
-      "version": "https://github.com/Unity-Technologies/barracuda-release.git",
+    "com.unity.ai.inference": {
+      "version": "2.5.0",
       "depth": 0,
-      "source": "git",
+      "source": "registry",
       "dependencies": {
-        "com.unity.burst": "1.6.0",
-        "com.unity.modules.jsonserialize": "1.0.0",
+        "com.unity.burst": "1.8.17",
+        "com.unity.dt.app-ui": "1.3.3",
+        "com.unity.collections": "2.4.3",
+        "com.unity.nuget.newtonsoft-json": "3.2.1",
         "com.unity.modules.imageconversion": "1.0.0"
       },
-      "hash": "eefb8cb01e6c6a3a9f839e93bd5d0338f0b5a2f5"
+      "url": "https://packages.unity.com"
     },
     "com.unity.burst": {
       "version": "1.8.28",
@@ -137,6 +139,18 @@
         "com.unity.test-framework": "1.4.6",
         "com.unity.nuget.mono-cecil": "1.11.5",
         "com.unity.test-framework.performance": "3.0.3"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.dt.app-ui": {
+      "version": "2.1.1",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.physics": "1.0.0",
+        "com.unity.modules.androidjni": "1.0.0",
+        "com.unity.modules.uielements": "1.0.0",
+        "com.unity.modules.screencapture": "1.0.0"
       },
       "url": "https://packages.unity.com"
     },
@@ -191,6 +205,13 @@
     "com.unity.nuget.mono-cecil": {
       "version": "1.11.6",
       "depth": 2,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.nuget.newtonsoft-json": {
+      "version": "3.2.2",
+      "depth": 1,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
