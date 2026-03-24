@@ -49,7 +49,7 @@ public class Game : MonoBehaviour
         tron = new Tron(new Vector2Int(25, 25));
 
         // Call RunInference(); repeatedly to test
-        InvokeRepeating(nameof(RunInference), 0f, 1f);
+        // InvokeRepeating(nameof(RunInference), 0f, 1f);
     }
 
     public void Reset()
@@ -115,7 +115,7 @@ public class Game : MonoBehaviour
         history.Add(new (playerAction, advAction));
 
         State = tron.Step(IDIRS[playerAction], IDIRS[advAction]);
-        if (State != GameState.Playing) { EndEpisode(playerAction); }
+        if (State != GameState.Playing) { EndEpisode(playerAction); return; }
 
         // Rendering and lerping setup
         player.Transform(playerAction, tron.bike1.pos);

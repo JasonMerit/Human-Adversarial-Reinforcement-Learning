@@ -681,6 +681,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e16f7fcc3de4a4845909a348edf71ca0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BikeSprite
+  orientation: 0
 --- !u!120 &584205223
 LineRenderer:
   serializedVersion: 3
@@ -11175,53 +11176,6 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
---- !u!1 &1639965380
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1639965381}
-  - component: {fileID: 1639965382}
-  m_Layer: 0
-  m_Name: Main
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1639965381
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1639965380}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1795881258}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1639965382
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1639965380}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6e3753356d607cd4ba97802fbca43abd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Main
-  versionText: {fileID: 307692633}
-  centerText: {fileID: 652400945}
 --- !u!1 &1670021697
 GameObject:
   m_ObjectHideFlags: 0
@@ -11277,38 +11231,14 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1795881258}
-  - component: {fileID: 1795881260}
-  - component: {fileID: 1795881257}
-  - component: {fileID: 1795881259}
+  - component: {fileID: 1795881261}
   m_Layer: 0
-  m_Name: Game
+  m_Name: SelfPlay
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1795881257
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1795881256}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 117f008b98beb7945ae4fa926e567d2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Main
-  board: {fileID: 1429800408}
-  player: {fileID: 584205222}
-  adversary: {fileID: 2070454014}
-  modelAsset: {fileID: 5022602860645237092, guid: ffe09052b6b62ac47bbed096738ec4ab, type: 3}
-  outputText: {fileID: 26333215}
-  cameraShake: {fileID: 519420033}
-  State: 0
-  tickRate: 0.15
-  playerColor: {r: 0, g: 0, b: 0, a: 0}
-  adversaryColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!4 &1795881258
 Transform:
   m_ObjectHideFlags: 0
@@ -11325,9 +11255,9 @@ Transform:
   - {fileID: 584205221}
   - {fileID: 2070454013}
   - {fileID: 1429800410}
-  m_Father: {fileID: 1639965381}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1795881259
+--- !u!114 &1795881261
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -11336,39 +11266,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 1795881256}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8d7dad92cd5e55244afe2f688bccdce7, type: 3}
+  m_Script: {fileID: 11500000, guid: cc25cd56d97194a419cb04f0d0df00bf, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NetworkManager
---- !u!114 &1795881260
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1795881256}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
-  m_Actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
-  m_NotificationBehavior: 0
-  m_UIInputModule: {fileID: 0}
-  m_DeviceLostEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  m_DeviceRegainedEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  m_ControlsChangedEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  m_ActionEvents: []
-  m_NeverAutoSwitchControlSchemes: 0
-  m_DefaultControlScheme: Keyboard&Mouse
-  m_DefaultActionMap: Keyboard
-  m_SplitScreenIndex: -1
-  m_Camera: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::SelfPlay
+  board: {fileID: 1429800408}
+  player: {fileID: 584205222}
+  adversary: {fileID: 2070454014}
+  humanModelAsset: {fileID: 5022602860645237092, guid: 912fe8c51e802484e8ffc0d1819ec477, type: 3}
+  adversaryModelAsset: {fileID: 5022602860645237092, guid: ffe09052b6b62ac47bbed096738ec4ab, type: 3}
+  outputText: {fileID: 26333215}
+  cameraShake: {fileID: 519420033}
+  State: 3
+  tickRate: 0.05
+  playerColor: {r: 0, g: 0, b: 0, a: 0}
+  adversaryColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!1 &2070454012
 GameObject:
   m_ObjectHideFlags: 0
@@ -11415,6 +11326,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e16f7fcc3de4a4845909a348edf71ca0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BikeSprite
+  orientation: 0
 --- !u!120 &2070454015
 LineRenderer:
   serializedVersion: 3
@@ -11532,6 +11444,6 @@ SceneRoots:
   - {fileID: 519420032}
   - {fileID: 710671756}
   - {fileID: 433042355}
-  - {fileID: 1639965381}
+  - {fileID: 1795881258}
   - {fileID: 1670021699}
   - {fileID: 817427817}

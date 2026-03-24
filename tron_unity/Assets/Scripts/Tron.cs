@@ -4,11 +4,9 @@ using UnityEngine;
 public class TronBike
 {
     public Vector2Int pos;
-    public Vector2Int lastPos;
     public TronBike(Vector2Int startPos)
     {
         pos = startPos;
-        lastPos = startPos;
     }
 
     // Returns true if crash
@@ -19,7 +17,6 @@ public class TronBike
         if (IsHit(trails, newPos.x, newPos.y))
             return true;
         
-        lastPos = pos;
         pos = newPos;
         return false;
     }

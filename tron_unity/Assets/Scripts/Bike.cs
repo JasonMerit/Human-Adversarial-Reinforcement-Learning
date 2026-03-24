@@ -5,6 +5,8 @@ public class Bike : MonoBehaviour
     SpriteRenderer sprite;
     LineRenderer trail;
     ParticleSystem crashParticles;
+
+    public int orientation; // 0=up, 1=right, 2=down, 3=left
     
     void Awake()
     {
@@ -44,6 +46,7 @@ public class Bike : MonoBehaviour
         // DIRS = { up, right, down, left }
         // Rotation angles for each direction (in degrees)
         float[] angles = { 0f, 270f, 180f, 90f };
+        orientation = action;
         sprite.transform.rotation = Quaternion.Euler(0, 0, angles[action]);
     }
 

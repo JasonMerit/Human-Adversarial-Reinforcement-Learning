@@ -28,3 +28,5 @@ python rl_core/cleanrl/cleanrl/ppo_cnn.py --env-id Tron-v0
 
 
 runs\self_train_595179
+python -m rl_core.self_play runs/self_train_4
+python -m rl_core.self_play_onnx runs/self_train_4
