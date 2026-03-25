@@ -1,7 +1,10 @@
 # upload.py torch module to supabase storage
-
+import subprocess
+import os
 import torch
 import torch.nn as nn
+from dotenv import load_dotenv
+from supabase import create_client
 
 from rl_core.agents.dqn import QNetwork
 from rl_core.utils.helper import bcolors
@@ -9,10 +12,9 @@ from rl_core.utils.helper import bcolors
 # ===================
 # === pth -> onnx ===
 # ===================
-
 obs_shape, n_actions = (3, 25, 25), 3
 
-name = "sentis"
+name = "adversary"
 checkpoint_path = f"runs/self_train_4/adversary.pth"
 export_path = f"tron_unity/Assets/{name}.onnx"
 dummy_input = torch.rand(1, 25, 25, 3)  # single observation
@@ -43,17 +45,12 @@ torch.onnx.export(
     dynamic_axes={'state': {0: 'batch'}, 'q_values': {0: 'batch'}}  # allow variable batch sizes
 )
 
-print(f"Model {bcolors.OKGREEN}successfully{bcolors.ENDC} exported to ONNX format at {bcolors.OKCYAN}'{export_path}'{bcolors.ENDC}")
-
-
+print(f"Exported to ONNX format at {bcolors.OKCYAN}'{export_path}'{bcolors.ENDC}")
 
 
 # ======================
 # === onnx -> sentis ===
 # ======================
-
-import subprocess
-import os
 onnx2sentis_folder = os.getcwd() + "/tools/onnx2sentis_windows/"  # absolute path
 
 sentis_path = onnx2sentis_folder + f"{name}.sentis"
@@ -63,32 +60,34 @@ if result.returncode != 0:
     print("Error converting ONNX to Sentis:", result.stderr)
     raise RuntimeError("Conversion failed")
 
-print(f"Model {bcolors.OKGREEN}successfully{bcolors.ENDC} exported to Sentis format at {bcolors.OKCYAN}'{sentis_path}'{bcolors.ENDC}")
-
-
+print(f"Converted to Sentis format at {bcolors.OKCYAN}'{sentis_path}'{bcolors.ENDC}")
 
 
 # ==========================
 # === sentis -> supabase ===
 # ==========================
-
-from dotenv import load_dotenv
-from supabase import create_client
-
 load_dotenv()
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SERVICE_ROLE_KEY"))
 
-storage_path = "upload.sentis"
+storage_path = "adversary.sentis"
 
+bucket = "onnx-models"
+extension = ".sentis"
+
+# Rename existing file
+files = supabase.storage.from_(bucket).list()
+count = len([f for f in files if f["name"].startswith(name) and f["name"].endswith(extension)])
+response = supabase.storage.from_(bucket).move(
+        name + extension,  # Assuming one already exists with this name
+        name + str(count) + extension
+    )
+print(f"Renamed existing file to {bcolors.OKCYAN}{name + str(count) + extension}{bcolors.ENDC}")
+
+# Upload new file
 with open(sentis_path, "rb") as f:
-    file_size = os.path.getsize(sentis_path) / 1000
-    print(f"Uploading file: {sentis_path} ({file_size} bytes)")
-    response = supabase.storage.from_("onnx-models").upload(
+    response = supabase.storage.from_(bucket).upload(
         path=storage_path,
         file=f,
         file_options={"content-type": "application/octet-stream"}
     )
-
-print(response)
-
-
+print(f"Model {bcolors.OKGREEN}successfully{bcolors.ENDC} uploaded to {bcolors.OKCYAN}'{response.fullPath}'{bcolors.ENDC}")
