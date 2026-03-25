@@ -16,10 +16,10 @@ public class Game : MonoBehaviour
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
  
-    Worker worker;
+    // Worker worker;
     NetworkManager networkManager;
-    Tron tron;
     PlayerInput playerInput;
+    Tron tron;
 
     [HideInInspector] public GameState State;
     public float tickRate = 0.15f; //.15 seconds per tick
@@ -41,15 +41,12 @@ public class Game : MonoBehaviour
     void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
-        worker = new Worker(ModelLoader.Load(modelAsset), BackendType.GPUPixel);
-
         networkManager = GetComponent<NetworkManager>();
+
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
         tron = new Tron(new Vector2Int(25, 25));
-
-        // Call RunInference(); repeatedly to test
-        // InvokeRepeating(nameof(RunInference), 0f, 1f);
+        adversary.InitializeWorker(modelAsset);
     }
 
     public void Reset()
@@ -80,7 +77,7 @@ public class Game : MonoBehaviour
         else if (playerInput.actions["Down"].triggered) inputQueue.Enqueue(2);
         else if (playerInput.actions["Left"].triggered) inputQueue.Enqueue(3);
         
-        // 3. Turn window into input buffer (update currentAction)
+        // 2. Turn window into input buffer (update currentAction)
         if (!commited && inputQueue.Count > 0)
         {
             int next = inputQueue.Dequeue();
@@ -92,7 +89,7 @@ public class Game : MonoBehaviour
             }
         }
 
-        // 4. Step simulation (Update bike positions)
+        // 3. Step simulation (Update bike positions)
         time += Time.deltaTime;
         if (time >= tickRate)
         {
@@ -101,7 +98,7 @@ public class Game : MonoBehaviour
             commited = false;            
         }
 
-        // 5. Interpolate for smooth visuals and border based end points
+        // 4. Interpolate for smooth visuals and border based end points
         float alpha = time / tickRate;
         Vector2 to = tron.bike1.pos + DIRS[currentAction] * 0.5f;
 
@@ -111,7 +108,7 @@ public class Game : MonoBehaviour
     
     void Step(int action)
     {
-        int advAction = GetAction(worker, adversary.orientation, tron.trails, tron.bike2.pos, tron.bike1.pos);
+        int advAction = adversary.GetAction(tron.trails, tron.bike2.pos, tron.bike1.pos);
         int advHeading = (adversary.orientation + (advAction - 1) + 4) % 4;
         // int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
         int playerAction = action;
@@ -157,58 +154,4 @@ public class Game : MonoBehaviour
         foreach (var dir in IDIRS) { if (!bike.IsHitInDir(tron.trails, dir)) return false; }
         return true;
     }
-
-    (int tx, int ty) Rotate(int x, int y, int size, int o)
-    {
-        if (o == 0) return (x, y);  // Up
-        if (o == 1) return (size - 1 - y, x);  // Right
-        if (o == 2) return (size - 1 - x, size - 1 - y);  // Down
-        return (y, size - 1 - x);  // Left
-    }
-
-    int GetAction(Worker worker, int orientation, int[,] trails, Vector2 you, Vector2 other)
-    {
-        Tensor<float> input = new Tensor<float>(new TensorShape(1, 25, 25, 3));
-
-        // Fill NHWC tensor explicitly (Sentis expects NHWC by default)
-        for (int x = 0; x < 25; x++) {
-            for (int y = 0; y < 25; y++) {
-                var (tx, ty) = Rotate(x, y, 25, orientation);
-                int fy = 24 - ty;  // Numpy origin is top-left, Unity's is bottom-left
-
-                input[0, fy, tx, 0] = (trails[x, y] != 0) ? 1f : 0f;
-                input[0, fy, tx, 1] = (you.x == x && you.y == y) ? 1f : 0f;
-                input[0, fy, tx, 2] = (other.x == x && other.y == y) ? 1f : 0f;
-            }
-        }
-
-        worker.Schedule(input);
-        using var output = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
-
-        // Expected shape: (1, 1, 1, n_actions)
-        int nActions = 3;
-
-        float maxQ = float.NegativeInfinity;
-        int bestAction = 0;
-
-        for (int i = 0; i < nActions; i++)
-        {
-            float q = output[0, 0, 0, i];
-            if (q > maxQ)
-            {
-                maxQ = q;
-                bestAction = i;
-            }
-        }
-
-
-        input.Dispose();
-        return bestAction;
-    }
-
-    private void OnApplicationQuit()
-    {
-        worker?.Dispose();
-    }
-
 }

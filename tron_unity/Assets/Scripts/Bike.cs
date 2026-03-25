@@ -1,4 +1,5 @@
 using UnityEngine;
+using Unity.InferenceEngine;
 
 public class Bike : MonoBehaviour
 {
@@ -7,6 +8,7 @@ public class Bike : MonoBehaviour
     ParticleSystem crashParticles;
 
     public int orientation; // 0=up, 1=right, 2=down, 3=left
+    Worker worker;
     
     void Awake()
     {
@@ -62,6 +64,68 @@ public class Bike : MonoBehaviour
     public void LerpPosition(Vector2 from, Vector2 to, float t)
     {
         transform.position = Vector2.Lerp(from, to, t);
+    }
+
+    // =========================
+    // ======== Sentis =========
+    // =========================
+
+    public void InitializeWorker(ModelAsset modelAsset)
+    {
+        worker = new Worker(ModelLoader.Load(modelAsset), BackendType.GPUPixel);
+    }
+
+    (int tx, int ty) Rotate(int x, int y, int size, int o)
+    {
+        if (o == 0) return (x, y);  // Up
+        if (o == 1) return (size - 1 - y, x);  // Right
+        if (o == 2) return (size - 1 - x, size - 1 - y);  // Down
+        return (y, size - 1 - x);  // Left
+    }
+
+    public int GetAction(int[,] trails, Vector2 you, Vector2 other)
+    {
+        Tensor<float> input = new Tensor<float>(new TensorShape(1, 25, 25, 3));
+
+        // Fill NHWC tensor explicitly (Sentis expects NHWC by default)
+        for (int x = 0; x < 25; x++) {
+            for (int y = 0; y < 25; y++) {
+                var (tx, ty) = Rotate(x, y, 25, orientation);
+                int fy = 24 - ty;  // Numpy origin is top-left, Unity's is bottom-left
+
+                input[0, fy, tx, 0] = (trails[x, y] != 0) ? 1f : 0f;
+                input[0, fy, tx, 1] = (you.x == x && you.y == y) ? 1f : 0f;
+                input[0, fy, tx, 2] = (other.x == x && other.y == y) ? 1f : 0f;
+            }
+        }
+
+        worker.Schedule(input);
+        using var output = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
+
+        // Expected shape: (1, 1, 1, n_actions)
+        int nActions = 3;
+
+        float maxQ = float.NegativeInfinity;
+        int bestAction = 0;
+
+        for (int i = 0; i < nActions; i++)
+        {
+            float q = output[0, 0, 0, i];
+            if (q > maxQ)
+            {
+                maxQ = q;
+                bestAction = i;
+            }
+        }
+
+
+        input.Dispose();
+        return bestAction;
+    }
+
+    private void OnApplicationQuit()
+    {
+        worker?.Dispose();
     }
 
 }
