@@ -74,19 +74,8 @@ def upload_sentis(name, bucket, sentis_path):
         )
     print(f"Uploaded to {bcolors.OKCYAN}'{response.fullPath}'{bcolors.ENDC}")
 
-
-if __name__ == "__main__":
-    # Get name from system args
-    import argparse
-    parser = argparse.ArgumentParser(description="Upload trained model.")
-    parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
-    parser.add_argument("--name", type=str, default="adversary", help="Name of uploaded file.")
-    args = parser.parse_args()
-
-    name = args.name    
-    checkpoint_path = args.path
+def main(checkpoint_path, name):
     onnx_path = f"rl_core/{name}.onnx"  # Temp location for ONNX file
-    
     onnx2sentis_folder = os.getcwd() + "/tools/onnx2sentis_windows/"  # absolute path for subprocess
     sentis_path = onnx2sentis_folder + f"{name}.sentis"
     bucket = "onnx-models"
@@ -96,3 +85,15 @@ if __name__ == "__main__":
     print(f"Converted to Sentis format at {bcolors.OKCYAN}'{sentis_path}'{bcolors.ENDC}")
     upload_sentis(name, bucket, sentis_path)
     print(f"{bcolors.OKGREEN}Great success!{bcolors.ENDC}")
+
+if __name__ == "__main__":
+    # Get name from system args
+    import argparse
+    parser = argparse.ArgumentParser(description="Upload trained model.")
+    parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
+    parser.add_argument("--name", type=str, default="adversary", help="Name of uploaded file.")
+    args = parser.parse_args()
+
+    main(args.path, args.name)
+    
+    
