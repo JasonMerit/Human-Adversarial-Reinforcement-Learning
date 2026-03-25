@@ -46,7 +46,22 @@ public class Game : MonoBehaviour
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
         tron = new Tron(new Vector2Int(25, 25));
-        adversary.InitializeWorker(modelAsset);
+
+        // adversary.InitializeWorker(ModelLoader.Load(modelAsset));
+    }
+
+    void Start()
+    {
+        networkManager.DownloadONNXModel((path) => {
+            if (string.IsNullOrEmpty(path)) Debug.LogError("Failed to download ONNX model.");
+            else
+            {
+                Debug.Log($"ONNX model downloaded to: {path}");
+                // Initialize the worker with the downloaded model
+                Model model = ModelLoader.Load(path);
+                adversary.InitializeWorker(model);
+            }
+        });
     }
 
     public void Reset()

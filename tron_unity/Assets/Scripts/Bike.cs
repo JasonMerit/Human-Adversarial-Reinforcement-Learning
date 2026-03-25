@@ -70,9 +70,9 @@ public class Bike : MonoBehaviour
     // ======== Sentis =========
     // =========================
 
-    public void InitializeWorker(ModelAsset modelAsset)
+    public void InitializeWorker(Model model)
     {
-        worker = new Worker(ModelLoader.Load(modelAsset), BackendType.GPUPixel);
+        worker = new Worker(model, BackendType.GPUPixel);
     }
 
     (int tx, int ty) Rotate(int x, int y, int size, int o)

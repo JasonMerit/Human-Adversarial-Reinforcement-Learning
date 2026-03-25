@@ -3,14 +3,20 @@ using System.Collections;
 using System.Text;
 using UnityEngine.Networking;
 using System.Collections.Generic;
+using System.IO; // for File.WriteAllBytes
+using System;
+
 
 public class NetworkManager : MonoBehaviour
 {
     private const string SUPABASE_PROJECT_REF = "bdjoehhrxfjumlphkbbg";
     private const string SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkam9laGhyeGZqdW1scGhrYmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDkwMDEsImV4cCI6MjA4NzE4NTAwMX0.PF2OQkcLTyc0pk_sy--T1jdhQxWaWD_DCw-xcLTHbkU";
+    private const string EDGE_FUNCTION_URL = "https://" + SUPABASE_PROJECT_REF + ".supabase.co/functions/v1/upload-episode";
 
-    private const string EDGE_FUNCTION_URL =
-        "https://" + SUPABASE_PROJECT_REF + ".supabase.co/functions/v1/upload-episode";
+    private const string ONNX_BUCKET = "onnx-models";
+    private const string MODEL_FILE = "adversary.sentis";
+    // private const string MODEL_FILE = "sentis.onnx";
+    // private const string MODEL_FILE = "model_v1.onnx";
 
     public void SendEpisode(List<Vector2Int> trajectory, int winner, bool trapped)
     {
@@ -90,6 +96,37 @@ public class NetworkManager : MonoBehaviour
     private void AttachHeader(UnityWebRequest request, string key, string value)
     {
         request.SetRequestHeader(key, value);
+    }
+
+    // =========== Sentinel ===========
+    public void DownloadONNXModel(Action<string> onComplete)
+    {
+        StartCoroutine(DownloadONNXCoroutine(onComplete));
+    }
+
+    private string LocalModelPath => Path.Combine(Application.persistentDataPath, MODEL_FILE);
+    private IEnumerator DownloadONNXCoroutine(Action<string> onComplete)
+    {
+        string url = $"https://{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/{ONNX_BUCKET}/{MODEL_FILE}";
+
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("apikey", SUPABASE_ANON_KEY);
+            request.SetRequestHeader("Authorization", "Bearer " + SUPABASE_ANON_KEY);
+
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("ONNX download failed: " + request.error + " | " + request.downloadHandler.text);
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                File.WriteAllBytes(LocalModelPath, request.downloadHandler.data);
+                onComplete?.Invoke(LocalModelPath);
+            }
+        }
     }
 }
 

@@ -1,0 +1,1 @@
+I rely on the external onnx2sentis to convert the ONNX model to Sentis format. Download from https://github.com/UnaNancyOwen/onnx2sentis/releases/tag/v1.0.0 and place the folder into the tools/ directory. Python assumes it is the exe is located at `tools/onnx2sentis_windows/onnx2sentis.exe`

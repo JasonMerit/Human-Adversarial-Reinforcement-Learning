@@ -1,9 +1,14 @@
-import numpy as np
+# upload.py torch module to supabase storage
+
 import torch
 import torch.nn as nn
 
 from rl_core.agents.dqn import QNetwork
 from rl_core.utils.helper import bcolors
+
+# ===================
+# === pth -> onnx ===
+# ===================
 
 obs_shape, n_actions = (3, 25, 25), 3
 
@@ -41,17 +46,11 @@ torch.onnx.export(
 print(f"Model {bcolors.OKGREEN}successfully{bcolors.ENDC} exported to ONNX format at {bcolors.OKCYAN}'{export_path}'{bcolors.ENDC}")
 
 
-# from onnx import onnx
-# onnx_model = onnx.load(export_path)
-# onnx.checker.check_model(onnx_model)
 
-# # Test with dummy input
-# import onnxruntime as ort
-# ort_session = ort.InferenceSession(export_path)
-# ort_inputs = {ort_session.get_inputs()[0].name: dummy_input.numpy()}
-# ort_outs = ort_session.run(None, ort_inputs)
-# print(f"ONNX model output shape: {ort_outs[0].shape}")
-# print(ort_outs[0])
+
+# ======================
+# === onnx -> sentis ===
+# ======================
 
 import subprocess
 import os
@@ -63,4 +62,33 @@ result = subprocess.run([onnx2sentis_folder + "onnx2sentis.exe", export_path], c
 if result.returncode != 0:
     print("Error converting ONNX to Sentis:", result.stderr)
     raise RuntimeError("Conversion failed")
+
+print(f"Model {bcolors.OKGREEN}successfully{bcolors.ENDC} exported to Sentis format at {bcolors.OKCYAN}'{sentis_path}'{bcolors.ENDC}")
+
+
+
+
+# ==========================
+# === sentis -> supabase ===
+# ==========================
+
+from dotenv import load_dotenv
+from supabase import create_client
+
+load_dotenv()
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SERVICE_ROLE_KEY"))
+
+storage_path = "upload.sentis"
+
+with open(sentis_path, "rb") as f:
+    file_size = os.path.getsize(sentis_path) / 1000
+    print(f"Uploading file: {sentis_path} ({file_size} bytes)")
+    response = supabase.storage.from_("onnx-models").upload(
+        path=storage_path,
+        file=f,
+        file_options={"content-type": "application/octet-stream"}
+    )
+
+print(response)
+
 

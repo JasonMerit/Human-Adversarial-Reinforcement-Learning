@@ -26,3 +26,4 @@ export_presets.cfg
 
 # Supabase (Just do it in their browser UI)
 supabase/ 
+tools/
