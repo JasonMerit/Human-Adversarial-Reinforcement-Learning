@@ -6,7 +6,7 @@ using TMPro;
 
 public class Game : MonoBehaviour
 {
-    public readonly Vector2[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
+    public static readonly Vector2[] DIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
     public readonly Vector2Int[] IDIRS = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     [SerializeField] Board board;
@@ -23,6 +23,7 @@ public class Game : MonoBehaviour
 
     [HideInInspector] public GameState State;
     public float tickRate = 0.15f; //.15 seconds per tick
+    public float renderOffset = .6f;
     List<Vector2Int> history = new();
 
     float time;
@@ -37,11 +38,11 @@ public class Game : MonoBehaviour
     Vector2 advFrom;
     Vector2 advTo;
 
+
     void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
-        var model = ModelLoader.Load(modelAsset);
-        // worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, model);
+        worker = new Worker(ModelLoader.Load(modelAsset), BackendType.GPUPixel);
 
         networkManager = GetComponent<NetworkManager>();
         playerColor = Constants.cyan;
@@ -59,16 +60,17 @@ public class Game : MonoBehaviour
 
         tron.Reset();
         board.Reset();
-        player.Reset(1, tron.bike1.pos);
-        adversary.Reset(3, tron.bike2.pos);
         
         currentAction = 1;
         inputQueue.Clear();
         commited = false;
 
-        from = tron.bike1.pos - DIRS[currentAction] * 0.5f;
-        advFrom = tron.bike2.pos - DIRS[3] * 0.5f;
+        from = tron.bike1.pos - DIRS[currentAction] * renderOffset;
+        advFrom = tron.bike2.pos - DIRS[3] * renderOffset;
         advTo = advFrom + DIRS[3];
+
+        player.Reset(1, from);
+        adversary.Reset(3, advFrom);
     }
 
     public void Tick()
@@ -110,20 +112,22 @@ public class Game : MonoBehaviour
     
     void Step(int action)
     {
-        int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
+        int advAction = GetAction(worker, adversary.orientation, tron.trails, tron.bike2.pos, tron.bike1.pos);
+        int advHeading = (adversary.orientation + (advAction - 1) + 4) % 4;
+        // int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
         int playerAction = action;
-        history.Add(new (playerAction, advAction));
+        history.Add(new (playerAction, advHeading));
 
-        State = tron.Step(IDIRS[playerAction], IDIRS[advAction]);
+        State = tron.Step(IDIRS[playerAction], IDIRS[advHeading]);
         if (State != GameState.Playing) { EndEpisode(playerAction); return; }
 
         // Rendering and lerping setup
         player.Transform(playerAction, tron.bike1.pos);
-        adversary.Transform(advAction, tron.bike2.pos);
+        adversary.Transform(advHeading, tron.bike2.pos);
 
-        from = tron.bike1.pos - DIRS[currentAction] * .62f;
-        advFrom = tron.bike2.pos - DIRS[advAction] * .62f;
-        advTo = advFrom + DIRS[advAction];
+        from = tron.bike1.pos - DIRS[currentAction] * renderOffset;
+        advFrom = tron.bike2.pos - DIRS[advHeading] * renderOffset;
+        advTo = advFrom + DIRS[advHeading];
     }
 
     void EndEpisode(int playerAction)
@@ -153,6 +157,59 @@ public class Game : MonoBehaviour
     {
         foreach (var dir in IDIRS) { if (!bike.IsHitInDir(tron.trails, dir)) return false; }
         return true;
+    }
+
+    (int tx, int ty) Rotate(int x, int y, int size, int o)
+    {
+        if (o == 0) return (x, y);  // Up
+        if (o == 1) return (size - 1 - y, x);  // Right
+        if (o == 2) return (size - 1 - x, size - 1 - y);  // Down
+        return (y, size - 1 - x);  // Left
+    }
+
+    int GetAction(Worker worker, int orientation, int[,] trails, Vector2 you, Vector2 other)
+    {
+        Tensor<float> input = new Tensor<float>(new TensorShape(1, 25, 25, 3));
+
+        // Fill NHWC tensor explicitly (Sentis expects NHWC by default)
+        for (int x = 0; x < 25; x++) {
+            for (int y = 0; y < 25; y++) {
+                var (tx, ty) = Rotate(x, y, 25, orientation);
+                int fy = 24 - ty;  // Numpy origin is top-left, Unity's is bottom-left
+
+                input[0, fy, tx, 0] = (trails[x, y] != 0) ? 1f : 0f;
+                input[0, fy, tx, 1] = (you.x == x && you.y == y) ? 1f : 0f;
+                input[0, fy, tx, 2] = (other.x == x && other.y == y) ? 1f : 0f;
+            }
+        }
+
+        worker.Schedule(input);
+        using var output = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
+
+        // Expected shape: (1, 1, 1, n_actions)
+        int nActions = 3;
+
+        float maxQ = float.NegativeInfinity;
+        int bestAction = 0;
+
+        for (int i = 0; i < nActions; i++)
+        {
+            float q = output[0, 0, 0, i];
+            if (q > maxQ)
+            {
+                maxQ = q;
+                bestAction = i;
+            }
+        }
+
+
+        input.Dispose();
+        return bestAction;
+    }
+
+    private void OnApplicationQuit()
+    {
+        worker?.Dispose();
     }
 
 }

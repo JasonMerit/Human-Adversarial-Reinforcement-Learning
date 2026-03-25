@@ -662,7 +662,7 @@ Transform:
   m_GameObject: {fileID: 584205220}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4, y: 12, z: 0}
+  m_LocalPosition: {x: 3.4, y: 12, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -681,6 +681,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e16f7fcc3de4a4845909a348edf71ca0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BikeSprite
+  orientation: 0
 --- !u!120 &584205223
 LineRenderer:
   serializedVersion: 3
@@ -11307,6 +11308,7 @@ MonoBehaviour:
   cameraShake: {fileID: 519420033}
   State: 0
   tickRate: 0.15
+  renderOffset: 0.6
   playerColor: {r: 0, g: 0, b: 0, a: 0}
   adversaryColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!4 &1795881258
@@ -11396,7 +11398,7 @@ Transform:
   m_GameObject: {fileID: 2070454012}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 20, y: 12, z: 0}
+  m_LocalPosition: {x: 20.6, y: 12, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11415,6 +11417,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e16f7fcc3de4a4845909a348edf71ca0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BikeSprite
+  orientation: 0
 --- !u!120 &2070454015
 LineRenderer:
   serializedVersion: 3

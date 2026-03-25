@@ -25,6 +25,9 @@ public class Bike : MonoBehaviour
         crashParticles.Clear();
         crashParticles.Stop();
 
+        // Provided non-center position, so center it and add initial trail point
+        position += Game.DIRS[orientation];
+        position = new Vector2(Mathf.Round(position.x), Mathf.Round(position.y));
         Transform(orientation, position);
     }
 
@@ -34,7 +37,7 @@ public class Bike : MonoBehaviour
         AddTrail(position);
     }
 
-    void AddTrail(Vector2 position)
+    public void AddTrail(Vector2 position)
     {
         Vector3 newPoint = (Vector3)position + new Vector3(0.5f, 0.5f, 0);
         trail.positionCount += 1;

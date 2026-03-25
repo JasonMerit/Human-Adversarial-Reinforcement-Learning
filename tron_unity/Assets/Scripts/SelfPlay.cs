@@ -35,13 +35,32 @@ public class SelfPlay : MonoBehaviour
 
     void Awake()
     {
-        humanWorker = new Worker(ModelLoader.Load(humanModelAsset), BackendType.GPUCompute);
-        adversaryWorker = new Worker(ModelLoader.Load(adversaryModelAsset), BackendType.GPUCompute);
+        humanWorker = new Worker(ModelLoader.Load(humanModelAsset), BackendType.GPUPixel);
+        adversaryWorker = new Worker(ModelLoader.Load(adversaryModelAsset), BackendType.GPUPixel);
 
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
         tron = new Tron(new Vector2Int(25, 25));
     }
+
+    // Worker CreateWorker(ModelAsset modelAsset)
+    // {
+    //     var model = ModelLoader.Load(modelAsset);
+    //     var graph = new FunctionalGraph();
+    //     var input = graph.AddInputs(model)[0]; // Assuming single input at index 0
+    //     var modelOut = Functional.Forward(model, input);
+    //     var argmax = Functional.ArgMax(modelOut[0], dim: -1);
+
+    //     var compiled = graph.Compile(argmax);
+    //     if (compiled == null) {
+    //         // Raise error
+    //         Debug.LogError($"Failed to compile model: {modelAsset.name}");
+    //         UnityEditor.EditorApplication.isPlaying = false; // Stop play mode in editor
+    //         return null;
+    //     }
+
+    //     return new Worker(compiled, BackendType.GPUPixel);
+    // }
 
     void Start() {
         Reset();
@@ -173,3 +192,5 @@ public class SelfPlay : MonoBehaviour
         adversaryWorker?.Dispose();
     }
 }
+
+
