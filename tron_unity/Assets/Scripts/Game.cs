@@ -107,7 +107,7 @@ public class Game : MonoBehaviour
         player.LerpPosition(from, to, alpha);
         adversary.LerpPosition(advFrom, advTo, alpha);
     }
-
+    
     void Step(int action)
     {
         int advAction = Adversary.ChooseMove(tron.trails, tron.bike2.pos, tron.bike1.pos);
@@ -121,8 +121,8 @@ public class Game : MonoBehaviour
         player.Transform(playerAction, tron.bike1.pos);
         adversary.Transform(advAction, tron.bike2.pos);
 
-        from = tron.bike1.pos - DIRS[currentAction] * 0.5f;
-        advFrom = tron.bike2.pos - DIRS[advAction] * 0.5f;
+        from = tron.bike1.pos - DIRS[currentAction] * .62f;
+        advFrom = tron.bike2.pos - DIRS[advAction] * .62f;
         advTo = advFrom + DIRS[advAction];
     }
 

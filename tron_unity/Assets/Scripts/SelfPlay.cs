@@ -14,7 +14,8 @@ public class SelfPlay : MonoBehaviour
     [SerializeField] ModelAsset adversaryModelAsset;
     [SerializeField] TMP_Text outputText;
     [SerializeField] CameraShake cameraShake;
- 
+    
+    // Tensor<float> input;  // Reusable input tensor to avoid memory leakage?
     Worker humanWorker;
     Worker adversaryWorker;
     Tron tron;
@@ -34,8 +35,8 @@ public class SelfPlay : MonoBehaviour
 
     void Awake()
     {
-        humanWorker = new Worker(ModelLoader.Load(humanModelAsset), BackendType.CPU);
-        adversaryWorker = new Worker(ModelLoader.Load(adversaryModelAsset), BackendType.CPU);
+        humanWorker = new Worker(ModelLoader.Load(humanModelAsset), BackendType.GPUCompute);
+        adversaryWorker = new Worker(ModelLoader.Load(adversaryModelAsset), BackendType.GPUCompute);
 
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
@@ -93,9 +94,9 @@ public class SelfPlay : MonoBehaviour
         player.Transform(humanHeading, tron.bike1.pos);
         adversary.Transform(advHeading, tron.bike2.pos);
 
-        from = tron.bike1.pos - DIRS[humanHeading] * 0.5f;
+        from = tron.bike1.pos - DIRS[humanHeading] * .62f;
         to = from + DIRS[humanHeading];
-        advFrom = tron.bike2.pos - DIRS[advHeading] * 0.5f;
+        advFrom = tron.bike2.pos - DIRS[advHeading] * .62f;
         advTo = advFrom + DIRS[advHeading];
     }
 
@@ -128,17 +129,13 @@ public class SelfPlay : MonoBehaviour
 
     int GetAction(Worker worker, int orientation, int[,] trails, Vector2 you, Vector2 other)
     {
-        var input = new Tensor<float>(new TensorShape(1, 25, 25, 3));
+        Tensor<float> input = new Tensor<float>(new TensorShape(1, 25, 25, 3));
 
         // Fill NHWC tensor explicitly (Sentis expects NHWC by default)
-        for (int x = 0; x < 25; x++)
-        {
-            for (int y = 0; y < 25; y++)
-            {
+        for (int x = 0; x < 25; x++) {
+            for (int y = 0; y < 25; y++) {
                 var (tx, ty) = Rotate(x, y, 25, orientation);
-
-                // Ensure consistent coordinate system (flip Y if needed)
-                int fy = 24 - ty;
+                int fy = 24 - ty;  // Numpy origin is top-left, Unity's is bottom-left
 
                 input[0, fy, tx, 0] = (trails[x, y] != 0) ? 1f : 0f;
                 input[0, fy, tx, 1] = (you.x == x && you.y == y) ? 1f : 0f;
@@ -147,8 +144,7 @@ public class SelfPlay : MonoBehaviour
         }
 
         worker.Schedule(input);
-        var output = worker.PeekOutput() as Tensor<float>;
-        output.CompleteAllPendingOperations();
+        using var output = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
 
         // Expected shape: (1, 1, 1, n_actions)
         int nActions = 3;
@@ -166,9 +162,14 @@ public class SelfPlay : MonoBehaviour
             }
         }
 
-        input.Dispose();
-        output.Dispose();
 
+        input.Dispose();
         return bestAction;
+    }
+
+    private void OnApplicationQuit()
+    {
+        humanWorker?.Dispose();
+        adversaryWorker?.Dispose();
     }
 }
