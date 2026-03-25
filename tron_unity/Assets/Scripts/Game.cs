@@ -46,17 +46,15 @@ public class Game : MonoBehaviour
         playerColor = Constants.cyan;
         adversaryColor = Constants.orange;
         tron = new Tron(new Vector2Int(25, 25));
-
-        // adversary.InitializeWorker(ModelLoader.Load(modelAsset));
     }
 
     void Start()
     {
-        networkManager.DownloadONNXModel((path) => {
-            if (string.IsNullOrEmpty(path)) Debug.LogError("Failed to download ONNX model.");
+        networkManager.DownloadSentisModel((path) => {
+            if (string.IsNullOrEmpty(path)) Debug.LogError("Failed to download Sentis model.");
             else
             {
-                Debug.Log($"ONNX model downloaded to: {path}");
+                Debug.Log($"Sentis model downloaded to: {path}");
                 // Initialize the worker with the downloaded model
                 Model model = ModelLoader.Load(path);
                 adversary.InitializeWorker(model);
