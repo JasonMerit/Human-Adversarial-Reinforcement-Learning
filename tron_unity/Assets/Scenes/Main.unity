@@ -11303,7 +11303,7 @@ MonoBehaviour:
   board: {fileID: 1429800408}
   player: {fileID: 584205222}
   adversary: {fileID: 2070454014}
-  modelAsset: {fileID: 5022602860645237092, guid: ffe09052b6b62ac47bbed096738ec4ab, type: 3}
+  modelAsset: {fileID: 5022602860645237092, guid: af666cb795c1565489e7c25d6eea677c, type: 3}
   outputText: {fileID: 26333215}
   cameraShake: {fileID: 519420033}
   State: 0

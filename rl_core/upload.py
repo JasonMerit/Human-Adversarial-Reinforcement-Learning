@@ -58,11 +58,12 @@ def upload_sentis(name, bucket, sentis_path):
     # Rename existing file
     files = supabase.storage.from_(bucket).list()
     count = len([f for f in files if f["name"].startswith(name) and f["name"].endswith(extension)])
-    response = supabase.storage.from_(bucket).move(
-            storage_path,  # Assuming one already exists with this name
-            name + str(count) + extension
-        )
-    print(f"Renamed existing file to {bcolors.OKCYAN}{name + str(count) + extension}{bcolors.ENDC}")
+    if count > 0:
+        response = supabase.storage.from_(bucket).move(
+                storage_path,  # Assuming one already exists with this name
+                name + str(count) + extension
+            )
+        print(f"Renamed existing file to {bcolors.OKCYAN}{name + str(count) + extension}{bcolors.ENDC}")
 
     # Upload new file
     with open(sentis_path, "rb") as f:
@@ -75,8 +76,15 @@ def upload_sentis(name, bucket, sentis_path):
 
 
 if __name__ == "__main__":
-    name = "adversary"
-    checkpoint_path = f"runs/self_train_4/adversary.pth"
+    # Get name from system args
+    import argparse
+    parser = argparse.ArgumentParser(description="Upload trained model.")
+    parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
+    parser.add_argument("--name", type=str, default="adversary", help="Name of uploaded file.")
+    args = parser.parse_args()
+
+    name = args.name    
+    checkpoint_path = args.path
     onnx_path = f"rl_core/{name}.onnx"  # Temp location for ONNX file
     
     onnx2sentis_folder = os.getcwd() + "/tools/onnx2sentis_windows/"  # absolute path for subprocess
