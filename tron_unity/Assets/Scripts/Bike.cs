@@ -9,14 +9,15 @@ public class Bike : MonoBehaviour
 
     public int orientation; // 0=up, 1=right, 2=down, 3=left
     Worker worker;
-    
+    public float kek = 0.5f;
     void Awake()
     {
         sprite = GetComponentInChildren<SpriteRenderer>();
         trail = GetComponent<LineRenderer>();
         crashParticles = GetComponentInChildren<ParticleSystem>();
-        trail.startWidth = .5f;
-        trail.endWidth = .5f;
+        
+        trail.startWidth = kek;
+        trail.endWidth = kek;
     }
 
     public void Reset(int orientation, Vector2 position)

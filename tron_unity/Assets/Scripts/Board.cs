@@ -27,7 +27,7 @@ public class Board : MonoBehaviour
         {
             for (int y = 0; y < Constants.BOARD_SIZE; y++)
             {
-                Color color = (x + y) % 2 == 0 ? Constants.green : Constants.green_alt;
+                Color color = (x + y) % 2 == 0 ? Constants.black : Constants.grey;
                 SetCell(new Vector2Int(x, y), color);
             }
         }

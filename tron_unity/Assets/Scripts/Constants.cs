@@ -15,4 +15,6 @@ public static class Constants
     public static readonly Color orange = new(1f, 0.6f, 0f);  // FF9900
     public static readonly Color green = new(0.04f, 0.2f, 0.04f);
     public static readonly Color green_alt = new(0.04f, 0.25f, 0.04f);
+    public static readonly Color black = new(0.12f, 0.12f, 0.12f);
+    public static readonly Color grey = new(0.15f, 0.15f, 0.15f);
 }

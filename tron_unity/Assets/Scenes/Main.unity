@@ -682,6 +682,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BikeSprite
   orientation: 0
+  kek: 0.5
 --- !u!120 &584205223
 LineRenderer:
   serializedVersion: 3
@@ -11108,7 +11109,7 @@ TilemapRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 2100000, guid: 8426ce4b5c012264eaaf0259274df6e3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -11252,7 +11253,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32e4bbbcc56d1c44d98ee5f895f0e351, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  lineWidth: 0.1
+  lineWidth: 0.15
   lineMaterial: {fileID: 2100000, guid: 69735662b9ea4834d8e49c19af4ab9af, type: 2}
 --- !u!4 &1670021699
 Transform:
@@ -11418,6 +11419,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BikeSprite
   orientation: 0
+  kek: 0.5
 --- !u!120 &2070454015
 LineRenderer:
   serializedVersion: 3
