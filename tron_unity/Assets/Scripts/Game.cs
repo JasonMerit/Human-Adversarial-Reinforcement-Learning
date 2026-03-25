@@ -38,7 +38,6 @@ public class Game : MonoBehaviour
     Vector2 advFrom;
     Vector2 advTo;
 
-
     void Awake()
     {
         playerInput = GetComponent<PlayerInput>();

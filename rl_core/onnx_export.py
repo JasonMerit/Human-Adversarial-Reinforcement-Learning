@@ -8,7 +8,7 @@ from rl_core.utils.helper import bcolors
 obs_shape, n_actions = (3, 25, 25), 3
 
 name = "test"
-checkpoint_path = f"runs/self_train_4/human.pth"
+checkpoint_path = f"runs/self_train_4/adversary.pth"
 export_path = f"tron_unity/Assets/{name}.onnx"
 dummy_input = torch.rand(1, 25, 25, 3)  # single observation
 
@@ -25,8 +25,7 @@ class UnityExportWrapper(nn.Module):
         q = self.model(x)
         return q.view(-1, 1, 1, q.shape[-1])  # (N,1,1,C)
 
-wrapped_model = model
-# wrapped_model = UnityExportWrapper(model)
+wrapped_model = UnityExportWrapper(model)
 
 torch.onnx.export(
     wrapped_model,              # your trained PyTorch model
