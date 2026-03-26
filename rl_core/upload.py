@@ -17,27 +17,16 @@ class UnityExportWrapper(nn.Module):
         def forward(self, x_nhwc):
             x = x_nhwc.permute(0, 3, 1, 2)  # NHWC → NCHW
             q = self.model(x)
-            return q.view(-1, 1, 1, q.shape[-1])  # (N,1,1,C)
+            return q.reshape(q.shape[0], 1, 1, q.shape[-1])  # (N,1,1,C)
         
 def pth2onnx(checkpoint_path, export_path):
     obs_shape, n_actions = (3, 25, 25), 3
-    dummy_input = torch.rand(1, 25, 25, 3)  # single observation
+    dummy_input = torch.rand(1, 25, 25, 3)
 
     model = QNetwork.from_checkpoint(checkpoint_path, obs_shape, n_actions)  # Load your trained model
     model.eval()  # Set to evaluation mode for export
 
-    wrapped_model = UnityExportWrapper(model)
-
-    torch.onnx.export(
-        wrapped_model,              # your trained PyTorch model
-        dummy_input,                # example input
-        export_path,                # output file
-        export_params=True,         # store trained weights
-        opset_version=15,           # ONNX opset (higher is more compatible with newer features)
-        input_names=['state'],      # input tensor name
-        output_names=['q_values'],    # output tensor name
-        dynamic_axes={'state': {0: 'batch'}, 'q_values': {0: 'batch'}}  # allow variable batch sizes
-    )
+    torch.onnx.export(UnityExportWrapper(model), dummy_input, export_path, opset_version=15)
 
     print(f"Exported to ONNX format at {bcolors.OKCYAN}'{export_path}'{bcolors.ENDC}")
 

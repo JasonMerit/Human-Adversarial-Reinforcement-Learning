@@ -103,22 +103,18 @@ public class Bike : MonoBehaviour
         worker.Schedule(input);
         using var output = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
 
-        // Expected shape: (1, 1, 1, n_actions)
-        int nActions = 3;
-
-        float maxQ = float.NegativeInfinity;
+        // Iterate over the 3 action outputs and attatch to string
+        // string debugOutput = "Action values: ";
+        // for (int i = 0; i < 3; i++) {
+        //     debugOutput += $"Action {i}: {output[0, 0, 0, i]:F4}  ";
+        // }
+        // Debug.Log(debugOutput);
+        // // Debug.Log(output[0, 0, 0]);
+        // UnityEditor.EditorApplication.isPaused = true;
+        
         int bestAction = 0;
-
-        for (int i = 0; i < nActions; i++)
-        {
-            float q = output[0, 0, 0, i];
-            if (q > maxQ)
-            {
-                maxQ = q;
-                bestAction = i;
-            }
-        }
-
+        bestAction = (output[0, 0, 0, bestAction] > output[0, 0, 0, 1]) ? bestAction : 1;
+        bestAction = (output[0, 0, 0, bestAction] > output[0, 0, 0, 2]) ? bestAction : 2;
 
         input.Dispose();
         return bestAction;
