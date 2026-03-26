@@ -28,7 +28,7 @@ def pth2onnx(checkpoint_path, export_path):
 
     torch.onnx.export(UnityExportWrapper(model), dummy_input, export_path, opset_version=15)
 
-    print(f"Exported to ONNX format at {utils.cyan(export_path)}")
+    print(f"Exported to .onnx at {utils.cyan(export_path)}")
 
 def onnx2sentis(onnx2sentis_exe, onnx_path):
     result = subprocess.run([onnx2sentis_exe, onnx_path], capture_output=True, text=True)
@@ -71,7 +71,7 @@ def upload(checkpoint_path, name):
 
     pth2onnx(checkpoint_path, onnx_path)
     onnx2sentis(onnx2sentis_folder + "onnx2sentis.exe", onnx_path)
-    print(f"Converted to Sentis format at {utils.cyan(sentis_path)}")
+    print("Converted to .sentis at "+ utils.cyan('tools/onnx2sentis_windows/' + name + '.sentis'))
     upload_sentis(name, bucket, sentis_path)
     print(utils.green("Upload complete!!!"))
 

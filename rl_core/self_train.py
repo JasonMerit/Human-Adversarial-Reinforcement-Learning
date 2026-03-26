@@ -13,7 +13,7 @@ import tyro
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from cleanrl_utils.buffers import ReplayBuffer
+from rl_core.agents.buffers import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent
 from rl_core.env import TronView, TronDuoEnv, utils
@@ -47,7 +47,7 @@ class Args:
     """whether to render the environment during training (slows down training!)"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 1000#1_000_000
+    total_timesteps: int = 10000#1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""

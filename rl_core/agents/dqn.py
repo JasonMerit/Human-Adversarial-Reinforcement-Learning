@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from cleanrl_utils.buffers import ReplayBuffer
+from .buffers import ReplayBuffer
 
 class QNetwork(nn.Module):
     def __init__(self, obs_shape, n_actions):

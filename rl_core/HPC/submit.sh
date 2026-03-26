@@ -23,6 +23,6 @@ module load cuda/12.0
 
 # Activate conda properly
 source ~/miniconda3/etc/profile.d/conda.sh
-conda activate harl
+conda activate harl_hpc
 
 python cuda_check.py
