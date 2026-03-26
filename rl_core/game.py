@@ -2,7 +2,7 @@ import sys
 import pygame
 import numpy as np
 
-from tron_env.tron import Tron, Result
+from .env.tron import Tron, Result
 
 # --- Configuration ---
 CELL_SIZE = 25                # pixels per cell
@@ -29,8 +29,8 @@ DIR_MAP_P2 = {
 
 def draw_grid(screen, tron):
     screen.fill((0, 0, 0))
-    for y in range(tron.height):
-        for x in range(tron.width):
+    for y in range(tron.size):
+        for x in range(tron.size):
             cell = tron.walls[y, x]
             if cell == 1:
                 color = (0, 255, 255)
@@ -58,7 +58,7 @@ def main(GRID_SIZE=40, TICK_RATE=10):
 
     clock = pygame.time.Clock()
 
-    tron = Tron((GRID_SIZE, GRID_SIZE))
+    tron = Tron(GRID_SIZE)
     tron.reset()
 
     dir1 = RIGHT.copy()

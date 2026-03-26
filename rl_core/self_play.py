@@ -1,7 +1,6 @@
 import time
 
-from rl_core.tron_env.tron_env.env import TronDuoEnv
-from rl_core.tron_env.tron_env.wrappers import TronView
+from rl_core.env import TronDuoEnv, TronView
 from rl_core.agents.dqn import QNetwork
 
 import torch
@@ -52,8 +51,7 @@ if __name__ == "__main__":
     # Get args
     import argparse
     parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
-    parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
+    parser.add_argument("path", type=str, help="Path folder of trained model checkpoints.")
     args = parser.parse_args()
     play(args.path)
-    # play("runs/dqn_1/dqn.pth")
-    # play("runs/ppo_cnn_881413/ppo_cnn.pth")
+    

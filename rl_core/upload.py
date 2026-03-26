@@ -6,8 +6,8 @@ import torch.nn as nn
 from dotenv import load_dotenv
 from supabase import create_client
 
-from rl_core.agents.dqn import QNetwork
-from rl_core.utils.helper import bcolors
+from .agents.dqn import QNetwork
+from .env import utils
 
 class UnityExportWrapper(nn.Module):
         def __init__(self, model):
@@ -28,7 +28,7 @@ def pth2onnx(checkpoint_path, export_path):
 
     torch.onnx.export(UnityExportWrapper(model), dummy_input, export_path, opset_version=15)
 
-    print(f"Exported to ONNX format at {bcolors.OKCYAN}'{export_path}'{bcolors.ENDC}")
+    print(f"Exported to ONNX format at {utils.cyan(export_path)}")
 
 def onnx2sentis(onnx2sentis_exe, onnx_path):
     result = subprocess.run([onnx2sentis_exe, onnx_path], capture_output=True, text=True)
@@ -52,7 +52,7 @@ def upload_sentis(name, bucket, sentis_path):
                 storage_path,  # Assuming one already exists with this name
                 name + str(count) + extension
             )
-        print(f"Renamed existing file to {bcolors.OKCYAN}{name + str(count) + extension}{bcolors.ENDC}")
+        print(f"Renamed existing file to {utils.cyan(name + str(count) + extension)}")
 
     # Upload new file
     with open(sentis_path, "rb") as f:
@@ -61,9 +61,9 @@ def upload_sentis(name, bucket, sentis_path):
             file=f,
             file_options={"content-type": "application/octet-stream"}
         )
-    print(f"Uploaded to {bcolors.OKCYAN}'{response.fullPath}'{bcolors.ENDC}")
+    print(f"Uploaded to {utils.cyan(response.fullPath)}")
 
-def main(checkpoint_path, name):
+def upload(checkpoint_path, name):
     onnx_path = f"rl_core/{name}.onnx"  # Temp location for ONNX file
     onnx2sentis_folder = os.getcwd() + "/tools/onnx2sentis_windows/"  # absolute path for subprocess
     sentis_path = onnx2sentis_folder + f"{name}.sentis"
@@ -71,9 +71,9 @@ def main(checkpoint_path, name):
 
     pth2onnx(checkpoint_path, onnx_path)
     onnx2sentis(onnx2sentis_folder + "onnx2sentis.exe", onnx_path)
-    print(f"Converted to Sentis format at {bcolors.OKCYAN}'{sentis_path}'{bcolors.ENDC}")
+    print(f"Converted to Sentis format at {utils.cyan(sentis_path)}")
     upload_sentis(name, bucket, sentis_path)
-    print(f"{bcolors.OKGREEN}Great success!{bcolors.ENDC}")
+    print(utils.green("Upload complete!!!"))
 
 if __name__ == "__main__":
     # Get name from system args
@@ -83,6 +83,6 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, default="adversary", help="Name of uploaded file.")
     args = parser.parse_args()
 
-    main(args.path, args.name)
+    upload(args.path, args.name)
     
     

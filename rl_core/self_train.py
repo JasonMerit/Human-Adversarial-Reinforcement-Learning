@@ -16,8 +16,7 @@ from tqdm import tqdm
 from cleanrl_utils.buffers import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent
-from rl_core.tron_env.tron_env import TronView, TronDuoEnv
-from rl_core.utils.helper import StateViewer
+from rl_core.env import TronView, TronDuoEnv, utils
 
 
 @dataclass
@@ -38,7 +37,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_model: bool = True
+    save_model: bool = False
     """whether to save model into the `runs/{run_name}` folder"""
     upload_model: bool = False
     """whether to upload the saved model to huggingface"""
@@ -48,7 +47,7 @@ class Args:
     """whether to render the environment during training (slows down training!)"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 1_000_000
+    total_timesteps: int = 1000#1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -137,6 +136,8 @@ if __name__ == "__main__":
     adversary = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[1], lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, gamma=args.gamma, device=device)
 
     print(f"===== Training with seed {args.seed} on device {device} =====")
+    if not args.save_model:
+        print(utils.red("Models will NOT be saved!"))
     start_time = time.time()
 
     # Jason

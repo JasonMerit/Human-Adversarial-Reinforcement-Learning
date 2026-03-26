@@ -1,5 +1,5 @@
-from rl_core.tron_env.tron_env.env import TronEnv
-from rl_core.tron_env.tron_env.wrappers import TronView
+from .env import TronEnv, TronView
+from .env import utils
 
 import torch
 import gymnasium as gym
@@ -21,7 +21,7 @@ def load_agent(agent_path, env):
     n_actions = env.action_space.n           # should be 3
     # Select the appropriate agent class based on the file name
     if "train" in agent_path.lower():
-        from rl_core.agents.dqn import QNetwork
+        from .agents.dqn import QNetwork
         return QNetwork.from_checkpoint(agent_path, obs_shape, n_actions)
     elif "dqn" in agent_path.lower():
         from rl_core.cleanrl.cleanrl.dqn import QNetwork as QNetwork
@@ -44,7 +44,7 @@ def play(path):
     agent.eval()  # Set the agent to evaluation mode
     
     while True:
-        action = agent(state)  # Use the loaded model to select an action
+        action = agent.act(state)  # Use the loaded model to select an action
         state, reward, done, _, info = env.step(action)
 
         if done:
@@ -53,6 +53,8 @@ def play(path):
 
 if __name__ == "__main__":
     # Get args
+    print(utils.blue("NOT IMPLEMENTED! FUCK OFF"))
+    quit()
     import argparse
     parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
     parser.add_argument("path", type=str, help="Path to the trained model checkpoint.")
@@ -60,3 +62,4 @@ if __name__ == "__main__":
     play(args.path)
     # play("runs/dqn_1/dqn.pth")
     # play("runs/ppo_cnn_881413/ppo_cnn.pth")
+    # runs\self_train_4\adversary.pth

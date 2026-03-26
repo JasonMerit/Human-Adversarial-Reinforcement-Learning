@@ -93,7 +93,7 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 if __name__ == "__main__":
-    from rl_core.tron_env.tron_env import TronEnv
+    from rl_core.env import TronEnv
     env = TronEnv()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     obs_space = env.observation_space  # (3, H, W)

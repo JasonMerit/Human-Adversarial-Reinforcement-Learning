@@ -24,16 +24,12 @@ def eval(env, agent, episodes=10_000):
     return total_reward / episodes
 
 if __name__ == "__main__":
-    import os
-    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-    from environment.env import TronEnv
-    from environment.wrappers import TronView, TronEgo, TronTorch
-    from agents.deterministic import DeterministicAgent
-    from rl_core.train import QNet
+    from .env import TronEnv, TronView
+    from .env import utils
+    env = TronEnv()
 
-    agent = QNet.load("q_net.pth")
-    env = TronEnv(DeterministicAgent(), width=10, height=10)
-    env = TronEgo(env)
-    env = TronTorch(env)
+    print(utils.blue("NOT IMPLEMENTED! FUCK OFF"))
+    quit()
+    agent = None
 
     print(eval(env, agent))

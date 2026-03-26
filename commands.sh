@@ -6,6 +6,7 @@ bsub < HPC/submit.sh
 ## Home
 cd C:\Users\PC\Documents\Code\Human-Adversarial-Reinforcement-Learning
 harl\Scripts\activate
+harl_test\Scripts\activate
 
 ## Laptop
 cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
@@ -30,3 +31,5 @@ python rl_core/cleanrl/cleanrl/ppo_cnn.py --env-id Tron-v0
 python -m rl_core.self_play runs/self_train_4
 python -m rl_core.self_play_onnx runs/self_train_4
 python -m rl_core.upload runs/self_train_4/adversary.pth
+
+conda env create -f environment.yml
