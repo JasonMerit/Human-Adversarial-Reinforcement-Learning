@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  if (trajectory_length > 100) {
+  if (trajectory_length > 320) {  // (25 * 25) / 2 = 312.5
     return new Response(
       JSON.stringify({ error: "Trajectory too long" }),
       {
