@@ -9,20 +9,20 @@ class Color:
     RED_ALT = (220, 20, 20)
     GREY = (128, 128, 128)
 
-def red(text: str) -> str:
-    return '\033[91m' + text + '\033[0m'
+def red(text) -> str:
+    return '\033[91m' + str(text) + '\033[0m'
 
-def green(text: str) -> str:
-    return '\033[92m' + text + '\033[0m'
+def green(text) -> str:
+    return '\033[92m' + str(text) + '\033[0m'
 
-def yellow(text: str) -> str:
-    return '\033[93m' + text + '\033[0m'
+def yellow(text) -> str:
+    return '\033[93m' + str(text) + '\033[0m'
 
-def blue(text: str) -> str:
-    return '\033[94m' + text + '\033[0m'
+def blue(text) -> str:
+    return '\033[94m' + str(text) + '\033[0m'
 
-def cyan(text: str) -> str:
-    return '\033[96m' + text + '\033[0m'
+def cyan(text) -> str:
+    return '\033[96m' + str(text) + '\033[0m'
 
 class StateViewer:
     """Designed to be ignorant of tron, draw exactly whats provided in the state"""
