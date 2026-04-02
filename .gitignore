@@ -5,21 +5,17 @@ __pycache__/
 *.pkl
 *.db
 *.onnx
+*.sentis
 .venv/
 runs/
+
 # Virtual environment for development
 harl/  
+.venv/  
 .vscode/
 *.egg-info/
 build/
 dist/
-.vscode/
-
-# Godot 3
-.import/
-*.translation
-export_presets.cfg
-.mono/
 
 # Server
 .env
@@ -27,3 +23,4 @@ export_presets.cfg
 # Supabase (Just do it in their browser UI)
 supabase/ 
 tools/
+uv.lock

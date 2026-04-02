@@ -9,7 +9,7 @@ harl\Scripts\activate
 
 ## Laptop
 cd C:\Users\Jason\Documents\Code\Human-Adversarial-Reinforcement-Learning
-harl\Scripts\activate
+.venv\Scripts\activate
 
 # Different modules
 python -m rl_core.self_train
