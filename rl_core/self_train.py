@@ -16,7 +16,7 @@ from tqdm import tqdm
 from rl_core.agents.buffers import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent
-from rl_core.env import TronView, TronDuoEnv, utils
+from rl_core.env import TronView, TronDuoEnv, Tron2ChannelEnv
 
 
 @dataclass
@@ -37,7 +37,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_model: bool = False
+    save_model: bool = True
     """whether to save model into the `runs/{run_name}` folder"""
     upload_model: bool = False
     """whether to upload the saved model to huggingface"""
@@ -49,7 +49,7 @@ class Args:
     """the total number of checkpoints to save during training"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 100_000_000
+    total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -77,7 +77,7 @@ class Args:
 
 def make_env(seed, idx, render=False):
     def thunk():
-        env = TronDuoEnv()
+        env = Tron2ChannelEnv()
         if render and idx == 0:
             env = TronView(env)
 
@@ -130,18 +130,18 @@ if __name__ == "__main__":
     # env setup
     envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i, render=args.render) for i in range(args.num_envs)])
 
-    action_space = envs.single_action_space
-    obs_space = envs.single_observation_space
+    n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
+    obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
 
-    buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=(3, 25, 25), dtype=np.float32)
+    buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
     rb0 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
     rb1 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
-    human = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[0], lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, device=device)
-    adversary = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[1], lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, device=device)
+    human = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, device=device)
+    adversary = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, device=device)
 
     print(f"===== Training with seed {args.seed} on device {device} =====")
     if not args.save_model:
-        print(utils.red("Models will NOT be saved!"))
+        print("Models will NOT be saved!")
 
     obs, _ = envs.reset(seed=args.seed)
 
@@ -182,8 +182,8 @@ if __name__ == "__main__":
             a0 = human.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
             a1 = adversary.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
 
-            a0[explore_mask] = np.random.randint(0, action_space.nvec[0], size=explore_mask.sum())
-            a1[explore_mask] = np.random.randint(0, action_space.nvec[1], size=explore_mask.sum())
+            a0[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+            a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
             actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
@@ -233,5 +233,5 @@ if __name__ == "__main__":
             adversary.save(save_folder + "adversary.pth", verbose=True)
 
         envs.close()
-        print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours! Final SPS: {utils.cyan(sps)}")
+        print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours! Final SPS: {sps}")
         # writer.close()

@@ -93,12 +93,13 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 if __name__ == "__main__":
-    from rl_core.env import TronEnv
-    env = TronEnv()
+    from rl_core.env import TronEnv, Tron2ChannelEnv
+    env = Tron2ChannelEnv()
+    # env = TronEnv()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     obs_space = env.observation_space  # (3, H, W)
     action_space = env.action_space           # should be 3
     rb = ReplayBuffer(10000, obs_space, action_space, device)
-    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=2.5e-4, rb=rb, batch_size=32, device=device)
+    agent = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[0], lr=2.5e-4, rb=rb, batch_size=32, device=device)
 
 

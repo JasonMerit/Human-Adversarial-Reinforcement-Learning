@@ -120,7 +120,73 @@ class TronDuoEnv(gym.Env):
         assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
         return obs
 
+def encode_observation_2channel(walls, bike1, bike2):
+    occ = (walls > 0).astype(np.float32)
+
+    bikes = np.zeros_like(occ)
+
+    x, y = bike1
+    bikes[y, x] = 1.0
+
+    x, y = bike2
+    bikes[y, x] = -1.0
+
+    return np.stack([occ, bikes], axis=0)
+
+class Tron2ChannelEnv(gym.Env):
+    """TronEnv with both players controlled by the same agent. Action is a tuple of (action1, action2)"""
+    
+    reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: 1, Result.BIKE1_CRASH: -1, Result.PLAYING: 0 }
+
+    def __init__(self, size=25):
+        super().__init__()
+        self.tron = Tron(size)
+        self.size = size
+        self.action_space = gym.spaces.MultiDiscrete([3, 3])  # (left, forward, right) for each bike relative to their current heading
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 2, size, size), dtype=np.float32)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.tron.reset()
+        self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
+            
+        return self._get_state(), {'result': 0}
+    
+    def step(self, action : np.ndarray):
+        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+
+        # a0, a1 = int(action[0]), int(action[1])
+
+        self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
+        self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
+        
+        dir1 = TronEnvBase.action_mapping[self.heading1]
+        dir2 = TronEnvBase.action_mapping[self.heading2]
+    
+        result = self.tron.tick(dir1, dir2)
+        done = result != Result.PLAYING
+        state = self._get_state()
+        reward = self.reward_dict[result]
+
+        info = {"result": result} if done else {}
+        return state, reward, done, False, info
+    
+    def _get_state(self):
+        # First encode to one hot image
+        walls, bikes = encode_observation_2channel(self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos)
+        obs1 = (walls, bikes)
+        obs2 = (walls, -bikes)  # Flip the sign
+
+        # Then rotate according to heading so that bikes always face up
+        obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
+        obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
+
+        obs = np.stack([obs1, obs2], axis=0)
+        assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
+        return obs
+
 if __name__ == "__main__":
     env = TronDuoEnv()
-    obs, info = env.reset()
-    print(obs.shape)
+    print(env.observation_space.shape[-3:])
+    # obs, info = env.reset()
+    # print(obs.shape)
