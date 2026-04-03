@@ -1,7 +1,7 @@
 ## HPC
 ssh s216135@login1.gbar.dtu.dk
 cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
-bsub < HPC/submit.sh
+bsub < rl_core/HPC/submit.sh
 
 ## Home
 cd C:\Users\PC\Documents\Code\Human-Adversarial-Reinforcement-Learning

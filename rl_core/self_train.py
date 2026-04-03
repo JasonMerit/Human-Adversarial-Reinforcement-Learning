@@ -49,7 +49,7 @@ class Args:
     """the total number of checkpoints to save during training"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 10_000_000#1_000_000
+    total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -194,9 +194,6 @@ if __name__ == "__main__":
             for i in range(args.num_envs):
                 if terminations[i]:
                     results[infos["final_info"][i]['result']] += 1
-                    sps = int(env_step / (time.time() - start_time))
-                    # pbar.set_postfix({"Step time": f"{avg_time_per_step:.2f}", "Inference time": f"{avg_time_per_inference:.2f}"})
-                    # pbar.set_postfix({"Results": results, "SPS": sps})
 
 
             r0, r1 = rewards, -rewards
@@ -223,6 +220,7 @@ if __name__ == "__main__":
             
             # Logging
             if global_step % log_interval == 0:
+                sps = int(env_step / (time.time() - start_time))
                 pbar.set_postfix({"Results": results, "SPS": sps})
 
     finally:
