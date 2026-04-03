@@ -43,9 +43,9 @@ class QNetwork(nn.Module):
         return action.item()
     
     @staticmethod
-    def from_checkpoint(checkpoint_path, obs_shape, n_actions):
+    def from_checkpoint(checkpoint_path, obs_shape, n_actions, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')):
         model = QNetwork(obs_shape, n_actions)
-        model.load_state_dict(torch.load(checkpoint_path, weights_only=True))
+        model.load_state_dict(torch.load(checkpoint_path, weights_only=True, map_location=device))
         return model
 
 class DQNAgent:

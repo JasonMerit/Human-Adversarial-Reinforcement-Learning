@@ -8,6 +8,8 @@ __pycache__/
 *.sentis
 .venv/
 runs/
+*.txt
+*.pt
 
 # Virtual environment for development
 harl/  
@@ -24,3 +26,4 @@ dist/
 supabase/ 
 tools/
 uv.lock
+

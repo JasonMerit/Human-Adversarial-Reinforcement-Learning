@@ -62,9 +62,11 @@ class StateViewer:
         self.draw_walls_to_surface(walls, self.surface)
 
         # Heads
-        y, x = np.argwhere(bike1 == 1)[0]
+        y, x = np.argwhere(bike1 == 1)
+        # y, x = np.argwhere(bike1 == 1)[0]
         self.surface.set_at((x, y), Color.GREEN_ALT)
-        y, x = np.argwhere(bike2 == 1)[0]
+        y, x = np.argwhere(bike2 == 1)
+        # y, x = np.argwhere(bike2 == 1)[0]
         self.surface.set_at((x, y), Color.RED_ALT)
 
         self.screen.blit(self.pg.transform.scale(self.surface, self.window_size), (0, 0))
