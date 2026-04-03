@@ -1,5 +1,3 @@
-import time
-
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.agents.dqn import QNetwork
 
@@ -43,7 +41,6 @@ def play(path):
         obs, reward, done, _, info = env.step([a0, a1])
 
         if done:
-            time.sleep(100)
             obs, _ = env.reset()
             print(info.get("result"))
 

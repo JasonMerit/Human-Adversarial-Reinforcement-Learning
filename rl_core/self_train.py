@@ -10,7 +10,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 import tyro
-from torch.utils.tensorboard import SummaryWriter
 
 from rl_core.agents.buffers import ReplayBuffer
 
@@ -66,7 +65,7 @@ class Args:
 def make_env(seed, idx, environment, render=False):
     Env = TronDuoEnv if environment == "TronDuo" else Tron2ChannelEnv
     def thunk():
-        env = Tron2ChannelEnv()
+        env = Env()
         if render and idx == 0:
             env = TronView(env)
 

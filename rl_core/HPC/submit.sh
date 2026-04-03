@@ -36,5 +36,5 @@ do
     python -m rl_core.self_train --seed $seed --exp-name TwoChannel --environment DefaultTo2Channels
     echo ""
 done
-# python -m rl_core.self_train
+### python -m rl_core.self_train
 ### python -m rl_core.HPC.cuda_check
