@@ -25,7 +25,7 @@ for i in {1..5}
 do
     seed=$RANDOM
     echo "====== [$(date)] Starting run $i with seed $seed ======"
-    python -m rl_core.self_train --seed $seed --exp-name BenchMark --environment TronDuo
+    python -m rl_core.self_train --seed $seed --exp-name BenchMark
     echo ""
 done
 
