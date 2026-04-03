@@ -37,7 +37,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_model: bool = True
+    save_model: bool = False
     """whether to save model into the `runs/{run_name}` folder"""
     upload_model: bool = False
     """whether to upload the saved model to huggingface"""
@@ -49,7 +49,7 @@ class Args:
     """the total number of checkpoints to save during training"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 10_000_000
+    total_timesteps: int = 100_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -57,8 +57,6 @@ class Args:
     """the number of parallel game environments"""
     buffer_size: int = 100000
     """the replay memory buffer size"""
-    gamma: float = 0.99
-    """the discount factor gamma"""
     tau: float = 1.0
     """the target network update rate"""
     target_network_frequency: int = 500
@@ -138,8 +136,8 @@ if __name__ == "__main__":
     buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=(3, 25, 25), dtype=np.float32)
     rb0 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
     rb1 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
-    human = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[0], lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, gamma=args.gamma, device=device)
-    adversary = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[1], lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, gamma=args.gamma, device=device)
+    human = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[0], lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, device=device)
+    adversary = DQNAgent(obs_shape=obs_space.shape[-3:], n_actions=action_space.nvec[1], lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, device=device)
 
     print(f"===== Training with seed {args.seed} on device {device} =====")
     if not args.save_model:

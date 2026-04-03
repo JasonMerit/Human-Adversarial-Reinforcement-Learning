@@ -49,10 +49,9 @@ class QNetwork(nn.Module):
         return model
 
 class DQNAgent:
-    def __init__(self, obs_shape, n_actions, lr, rb, batch_size, gamma, device):
+    def __init__(self, obs_shape, n_actions, lr, rb, batch_size, device):
         self.rb = rb
         self.batch_size = batch_size
-        self.gamma = gamma
         self.device = device
         
         self.q_network = QNetwork(obs_shape, n_actions).to(device)
@@ -72,7 +71,7 @@ class DQNAgent:
         data = self.rb.sample(self.batch_size)
         with torch.no_grad():
             target_max, _ = self.target_network.forward(data.next_observations).max(dim=1)
-            td_target = data.rewards.flatten() + self.gamma * target_max * (1 - data.dones.flatten())
+            td_target = data.rewards.flatten() + target_max * (1 - data.dones.flatten())
         old_val = self.q_network.forward(data.observations).gather(1, data.actions).squeeze()
         loss = F.mse_loss(td_target, old_val)
 
@@ -100,6 +99,6 @@ if __name__ == "__main__":
     obs_space = env.observation_space  # (3, H, W)
     action_space = env.action_space           # should be 3
     rb = ReplayBuffer(10000, obs_space, action_space, device)
-    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=2.5e-4, rb=rb, batch_size=32, gamma=0.99, device=device)
+    agent = DQNAgent(obs_shape=obs_space.shape, n_actions=action_space.n, lr=2.5e-4, rb=rb, batch_size=32, device=device)
 
 
