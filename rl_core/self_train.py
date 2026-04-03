@@ -11,7 +11,6 @@ import numpy as np
 import torch
 import tyro
 from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
 
 from rl_core.agents.buffers import ReplayBuffer
 
@@ -29,24 +28,13 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
-    """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
-    """the wandb's project name"""
-    wandb_entity: Optional[str] = None
-    """the entity (team) of wandb's project"""
-    capture_video: bool = False
-    """whether to capture videos of the agent performances (check out `videos` folder)"""
     save_model: bool = True
-    """whether to save model into the `runs/{run_name}` folder"""
-    upload_model: bool = False
-    """whether to upload the saved model to huggingface"""
-    hf_entity: str = ""
-    """the user or org name of the model repository from the Hugging Face Hub"""
+    """whether to save model into the `runs/{exp_name}` folder"""
     render: bool = False
     """whether to render the environment during training (slows down training!)"""
     total_checkpoints: int = 10
     """the total number of checkpoints to save during training"""
+    environment: str = "TronDuo"
 
     # Algorithm specific arguments
     total_timesteps: int = 10_000_000
@@ -75,7 +63,8 @@ class Args:
     # """the frequency of training"""
 
 
-def make_env(seed, idx, render=False):
+def make_env(seed, idx, environment, render=False):
+    Env = TronDuoEnv if environment == "TronDuo" else Tron2ChannelEnv
     def thunk():
         env = Tron2ChannelEnv()
         if render and idx == 0:
@@ -100,24 +89,6 @@ if __name__ == "__main__":
 
     # Adjust batch size and learning starts based on number of envs
     args.batch_size = args.num_envs * 4  # 64 * 4 = 256
-    run_name = f"{args.exp_name}_{args.seed}"
-    if args.track:
-        import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
-    # writer = SummaryWriter(f"runs/{run_name}")
-    # writer.add_text(
-    #     "hyperparameters",
-    #     "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    # )
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -128,7 +99,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i, render=args.render) for i in range(args.num_envs)])
+    envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i, args.environment, render=args.render) for i in range(args.num_envs)])
 
     n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
@@ -150,12 +121,12 @@ if __name__ == "__main__":
     target_every = max(1, args.target_network_frequency // args.num_envs)
     learn_start_loop = args.learning_starts // args.num_envs
     save_every = max(1, (args.total_timesteps // args.num_envs) // args.total_checkpoints)
-    log_interval = 100
+    log_interval = 1000
 
 
     # Logging and saving model
     if args.save_model:
-        save_folder = "runs/self_train"
+        save_folder = "runs/" + args.exp_name
         i = 0
         while os.path.exists(save_folder + f"_{i}"):
             i += 1
@@ -171,8 +142,9 @@ if __name__ == "__main__":
 
     try:
         total_loops = args.total_timesteps // args.num_envs
-        pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
-        for global_step in pbar:
+        # pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
+        for global_step in range(total_loops):
+        # for global_step in pbar:
             env_step = global_step * args.num_envs
             obs0, obs1 = obs[:, 0], obs[:, 1]
 
@@ -217,9 +189,14 @@ if __name__ == "__main__":
                 adversary.save(save_folder + f"adversary_{env_step}.pth")
             
             # Logging
-            if global_step % log_interval == 0:
-                sps = int(env_step / (time.time() - start_time))
-                pbar.set_postfix({"Results": results, "SPS": sps})
+            # if global_step % log_interval == 0:
+            #     sps = int(env_step / (time.time() - start_time))
+                # pbar.set_postfix({"Results": results, "SPS": sps})
+            if global_step % log_interval == 0 and global_step > 0:
+                elapsed = time.time() - start_time
+                progress = global_step / total_loops
+                eta = elapsed * (1/progress - 1)
+                print(f"{progress*100:.1f}% - Results: {results} - SPS: {sps} - Elapsed: {elapsed/60:.1f} m - ETA: eta={eta/60:.1f} m")
 
     finally:
         if args.save_model:
