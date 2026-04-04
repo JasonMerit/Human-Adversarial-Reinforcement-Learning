@@ -120,6 +120,42 @@ class TronDuoEnv(gym.Env):
         assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
         return obs
 
+class TronCoreEnv(gym.Env):
+    """TronEnv agnostic to state representation - for comparing different state representations"""
+
+    def __init__(self, size=25):
+        super().__init__()
+        self.tron = Tron(size)
+        self.size = size
+        self.action_space = gym.spaces.MultiDiscrete([3, 3])  # (left, forward, right) for each bike relative to their current heading
+        # self.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, size, size), dtype=np.float32)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.tron.reset()
+        self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
+            
+        return self._get_state(), {'result': 0}
+    
+    def step(self, action : np.ndarray):
+        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+
+        self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
+        self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
+        
+        dir1 = TronEnvBase.action_mapping[self.heading1]
+        dir2 = TronEnvBase.action_mapping[self.heading2]
+    
+        result = self.tron.tick(dir1, dir2)
+        done = result != Result.PLAYING
+        state = self._get_state()
+
+        info = {"result": result} if done else {}
+        return state, 0, done, False, info
+    
+    def _get_state(self):
+        return self.heading1, self.heading2, self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
+
 def encode_observation_2channel(walls, bike1, bike2):
     occ = (walls > 0).astype(np.float32)
 

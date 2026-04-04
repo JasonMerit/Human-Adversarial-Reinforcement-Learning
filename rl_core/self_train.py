@@ -120,7 +120,7 @@ if __name__ == "__main__":
     target_every = max(1, args.target_network_frequency // args.num_envs)
     learn_start_loop = args.learning_starts // args.num_envs
     save_every = max(1, (args.total_timesteps // args.num_envs) // args.total_checkpoints)
-    log_interval = 1000
+    log_interval = 5000
 
 
     # Logging and saving model
@@ -183,19 +183,19 @@ if __name__ == "__main__":
                     adversary.update_target_network()
             
             # Saving
-            if global_step % save_every == 0 and args.save_model:
+            if global_step % save_every == 0 and args.save_model and global_step > 0:
                 human.save(save_folder + f"human_{env_step}.pth")
                 adversary.save(save_folder + f"adversary_{env_step}.pth")
             
             # Logging
             # if global_step % log_interval == 0:
-            #     sps = int(env_step / (time.time() - start_time))
                 # pbar.set_postfix({"Results": results, "SPS": sps})
             if global_step % log_interval == 0 and global_step > 0:
+                sps = int(env_step / (time.time() - start_time))
                 elapsed = time.time() - start_time
                 progress = global_step / total_loops
                 eta = elapsed * (1/progress - 1)
-                print(f"{progress*100:.1f}% - Results: {results} - SPS: {sps} - Elapsed: {elapsed/60:.1f} m - ETA: eta={eta/60:.1f} m")
+                print(f"{progress*100:.1f}% - SPS: {sps} - {eta/60:.1f} minutes left")
 
     finally:
         if args.save_model:
@@ -205,8 +205,8 @@ if __name__ == "__main__":
                     "steps_taken": env_step, 
                     "training_time_hours": (time.time() - start_time) / 3600,
                     }, f)
-            human.save(save_folder + "human.pth", verbose=True)
-            adversary.save(save_folder + "adversary.pth", verbose=True)
+            human.save(save_folder + f"human_{env_step}.pth", verbose=True)
+            adversary.save(save_folder + f"adversary_{env_step}.pth", verbose=True)
 
         envs.close()
         print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours! Final SPS: {sps}")

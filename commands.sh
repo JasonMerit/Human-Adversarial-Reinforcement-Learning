@@ -30,7 +30,7 @@ python -m rl_core.self_play runs/self_train_4
 python -m rl_core.self_play_onnx runs/self_train_4
 python -m rl_core.upload runs/self_train_4/adversary.pth
 python -m rl_core.battle runs/self_train_6 runs/self_train_gamma_0
-python -m rl_core.battle runs/self_train_gamma_0 runs/self_train_6 
+python -m rl_core.battle runs\BenchMark_2 runs\BenchMark_2
 
 
 conda env create -f environment.yml
