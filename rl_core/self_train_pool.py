@@ -162,18 +162,16 @@ if __name__ == "__main__":
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, env_step)
 
             a0 = current_agent.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
-            print(a0.shape)
             # a1 = opponent.opponent_act(torch.tensor(obs1, dtype=torch.float32, device=device))
             with torch.no_grad():
                 q = opponent.forward(torch.tensor(obs1, dtype=torch.float32, device=device))
                 probs = torch.softmax(q / .3, dim=1)  # tau=0.3 for now
-                a1 = torch.multinomial(probs, 1).squeeze().numpy()
-                print(a1.shape)
+                a1 = torch.multinomial(probs, 1).squeeze().cpu().numpy()
 
             explore_mask = np.random.rand(args.num_envs) < epsilon
             a0[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-            explore_mask = np.random.rand(args.num_envs) < .2  # Opponent constantly seeking random action 20% of the time
-            a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+            # explore_mask = np.random.rand(args.num_envs) < .2  # Opponent constantly seeking random action 20% of the time
+            # a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
             actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
