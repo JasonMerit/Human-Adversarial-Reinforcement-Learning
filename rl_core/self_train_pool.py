@@ -1,10 +1,10 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqnpy
 import os
 import random
 import time
 import yaml
 from dataclasses import dataclass
 from typing import Optional
+import copy
 
 import gymnasium as gym
 import numpy as np
@@ -58,6 +58,8 @@ class Args:
     """timestep to start learning"""
     # train_frequency: int = 10
     # """the frequency of training"""
+    pooling_frequency: int = 100_000
+    """the frequency of adding current agent to the pool and updating opponent"""
 
 
 def make_env(seed, idx, environment, render=False):
@@ -99,10 +101,8 @@ if __name__ == "__main__":
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
 
     buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
-    rb0 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
-    rb1 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
-    human = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, device=device)
-    adversary = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, device=device)
+    rb = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
+    current_agent = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb, batch_size=args.batch_size, device=device)
 
     print(f"===== Training with seed {args.seed} on device {device} =====")
     if not args.save_model:
@@ -115,6 +115,7 @@ if __name__ == "__main__":
     target_every = max(1, args.target_network_frequency // args.num_envs)
     learn_start_loop = args.learning_starts // args.num_envs
     save_every = max(1, (args.total_timesteps // args.num_envs) // args.total_checkpoints)
+    pool_every = max(1, (args.pooling_frequency // args.num_envs))  # Add to pool twice as often as saving
     log_interval = 5000
 
 
@@ -129,9 +130,25 @@ if __name__ == "__main__":
         with open(save_folder + "args.yml", "w") as f:
                 yaml.dump(vars(args), f)
 
-    results = [0, 0, 0]
-    sps = 0 # for final logging
+
+    # Initialize pool
+    eta = 0.01
+    past_agents = []       # list of past policies
+    past_qualities = []    # list of qi
+    opponent = current_agent.q_network  # Start by playing against self
+    opponent_idx = None
+    pool_size_limit = 50
+
+    def sample_opponent():
+        if len(past_agents) == 0:
+            return current_agent, None
+        # Softmax over qualities
+        probs = np.exp(np.array(past_qualities) - np.max(past_qualities))  # for numerical stability
+        probs /= probs.sum()
+        idx = np.random.choice(len(past_agents), p=probs)
+        return past_agents[idx], idx
     
+    sps = 0 # for final logging
     start_time = time.time()
 
     try:
@@ -143,12 +160,19 @@ if __name__ == "__main__":
             obs0, obs1 = obs[:, 0], obs[:, 1]
 
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, env_step)
+
+            a0 = current_agent.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
+            print(a0.shape)
+            # a1 = opponent.opponent_act(torch.tensor(obs1, dtype=torch.float32, device=device))
+            with torch.no_grad():
+                q = opponent.forward(torch.tensor(obs1, dtype=torch.float32, device=device))
+                probs = torch.softmax(q / .3, dim=1)  # tau=0.3 for now
+                a1 = torch.multinomial(probs, 1).squeeze().numpy()
+                print(a1.shape)
+
             explore_mask = np.random.rand(args.num_envs) < epsilon
-
-            a0 = human.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
-            a1 = adversary.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
-
             a0[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+            explore_mask = np.random.rand(args.num_envs) < .2  # Opponent constantly seeking random action 20% of the time
             a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
             actions = np.stack([a0, a1], axis=1)
@@ -157,30 +181,44 @@ if __name__ == "__main__":
             # Iterate over terminations to log episode results
             for i in range(args.num_envs):
                 if terminations[i]:
-                    results[infos["final_info"][i]['result']] += 1
+                    if opponent_idx is not None and infos["final_info"][i]['result'] == 1:  # current_agent wins => Punish opponent sampling
+                        qi = past_qualities[opponent_idx]
+                        pi = np.exp(qi) / np.sum(np.exp(np.array(past_qualities)))
+                        past_qualities[opponent_idx] = qi - eta / (len(past_agents) * pi)
 
-
-            r0, r1 = rewards, -rewards
-            human.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
-            adversary.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
-
+            current_agent.add_to_buffer(obs0, next_obs[:, 0], a0, rewards, terminations, infos)
             obs = next_obs
 
             # Training.
             if global_step > learn_start_loop:
                 if global_step % learn_every == 0:
-                    human.learn()
-                    adversary.learn()
+                    current_agent.learn()
 
-                # update target network
+                # Update target network 
                 if global_step % target_every == 0:
-                    human.update_target_network()
-                    adversary.update_target_network()
+                    current_agent.update_target_network()
+
+                # Pooling
+                if global_step % pool_every == 0:
+                    # Add current agent to pool
+                    past_agents.append(copy.deepcopy(current_agent.q_network))
+                    past_qualities.append(max(past_qualities) if len(past_qualities) > 0 else 1.0)
+                    if len(past_agents) > pool_size_limit:
+                        idx = np.argmin(past_qualities)
+                        past_agents.pop(idx)
+                        past_qualities.pop(idx)
+
+                    # Decide opponent
+                    if np.random.rand() < 0.8:
+                        opponent, opponent_idx = current_agent.q_network, None
+                    else:
+                        opponent, opponent_idx = sample_opponent()
+
+                    
             
             # Saving
             if global_step % save_every == 0 and args.save_model:
-                human.save(save_folder + f"human_{env_step}.pth")
-                adversary.save(save_folder + f"adversary_{env_step}.pth")
+                current_agent.save(save_folder + f"agent_{env_step}.pth")
             
             # Logging
             # if global_step % log_interval == 0:
@@ -196,12 +234,10 @@ if __name__ == "__main__":
         if args.save_model:
             with open(save_folder + "results.yml", "w") as f:
                 yaml.dump({
-                    "results": results, 
                     "steps_taken": env_step, 
                     "training_time_hours": (time.time() - start_time) / 3600,
                     }, f)
-            human.save(save_folder + f"human_{env_step}.pth", verbose=True)
-            adversary.save(save_folder + f"adversary_{env_step}.pth", verbose=True)
+            current_agent.save(save_folder + f"agent_{env_step}.pth", verbose=True)
 
         envs.close()
         print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours! Final SPS: {sps}")

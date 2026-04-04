@@ -21,20 +21,9 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 
-for i in {1..5}
+for i in {1..10}
 do
-    seed=$RANDOM
-    echo "====== [$(date)] Starting run $i with seed $seed ======"
-    python -m rl_core.self_train --seed $seed --exp-name BenchMark
+    echo "====== [$(date)] Starting run $i ======"
+    python -m rl_core.self_train --exp-name Pooling
     echo ""
 done
-
-for i in {1..5}
-do
-    seed=$RANDOM
-    echo "====== [$(date)] Starting run $i with seed $seed ======"
-    python -m rl_core.self_train --seed $seed --exp-name TwoChannel --environment DefaultTo2Channels
-    echo ""
-done
-### python -m rl_core.self_train
-### python -m rl_core.HPC.cuda_check
