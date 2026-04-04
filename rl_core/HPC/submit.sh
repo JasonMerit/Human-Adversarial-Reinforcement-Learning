@@ -24,6 +24,6 @@ conda activate harl_hpc
 for i in {1..10}
 do
     echo "====== [$(date)] Starting run $i ======"
-    python -m rl_core.self_train --exp-name Pooling
+    python -m rl_core.self_train_pool --exp-name Pooling
     echo ""
 done
