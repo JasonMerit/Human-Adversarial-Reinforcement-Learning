@@ -80,7 +80,7 @@ def battle_team(path0, path1):
     # env = TronCoreEnv()
     env = TronDuoEnv()
     env = TorchObservationWrapper(env, device="cpu")
-    # env = TronView(env, fps=100)
+    env = TronView(env, fps=20)
     # env.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, 25, 25), dtype=np.float32)
     team_1 = load_experiment(path0, env)
 

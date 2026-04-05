@@ -47,9 +47,9 @@ class QNetwork(nn.Module):
             q_values = self.forward(obs)
         return torch.argmax(q_values, dim=1).cpu().numpy()
     
-    @staticmethod
-    def from_checkpoint(checkpoint_path, obs_shape, n_actions, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')):
-        model = QNetwork(obs_shape, n_actions)
+    @classmethod
+    def from_checkpoint(cls, checkpoint_path, obs_shape, n_actions, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')):
+        model = cls(obs_shape, n_actions)
         model.load_state_dict(torch.load(checkpoint_path, weights_only=True, map_location=device))
         return model
 

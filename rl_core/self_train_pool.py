@@ -135,7 +135,7 @@ if __name__ == "__main__":
     eta = 0.01
     past_agents = []       # list of past policies
     past_qualities = []    # list of qi
-    opponent : QNetwork = copy.deepcopy(current_agent.q_network)  # start by playing against self
+    opponent : QNetwork = current_agent.q_network  # start by playing against self
     opponent_idx = None
     pool_size_limit = 50
 
@@ -204,7 +204,7 @@ if __name__ == "__main__":
 
                     # Decide opponent
                     if np.random.rand() < 0.8:
-                        opponent, opponent_idx = copy.deepcopy(current_agent.q_network), None
+                        opponent, opponent_idx = current_agent.q_network, None
                     else:
                         opponent, opponent_idx = sample_opponent()
 
