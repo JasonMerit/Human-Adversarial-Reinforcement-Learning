@@ -41,6 +41,11 @@ class QNetwork(nn.Module):
             q_values = self.forward(obs)
             action = torch.argmax(q_values, dim=1)
         return action.item()
+
+    def opponent_act(self, obs):  # Called in play for singular action selection
+        with torch.no_grad():
+            q_values = self.forward(obs)
+        return torch.argmax(q_values, dim=1).cpu().numpy()
     
     @staticmethod
     def from_checkpoint(checkpoint_path, obs_shape, n_actions, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')):
