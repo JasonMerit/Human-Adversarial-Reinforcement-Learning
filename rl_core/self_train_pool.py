@@ -162,7 +162,7 @@ if __name__ == "__main__":
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, env_step)
 
             a0 = current_agent.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
-            a1 = opponent.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
+            a1 = opponent.opponent_act(torch.tensor(obs1, dtype=torch.float32, device=device))
 
             explore_mask = np.random.rand(args.num_envs) < epsilon
             a0[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
