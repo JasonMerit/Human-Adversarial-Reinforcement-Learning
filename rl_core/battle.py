@@ -3,19 +3,8 @@ import gymnasium as gym
 
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.agents.dqn import QNetwork
+from rl_core.env.wrappers import TorchObservationWrapper
 
-
-class TorchObservationWrapper(gym.ObservationWrapper):
-    def __init__(self, env, device):
-        super().__init__(env)
-        self.device = device
-
-    def observation(self, obs):
-        return torch.as_tensor(
-            obs,
-            dtype=torch.float32,
-            device=self.device
-        ).unsqueeze(0)
 
 def load_agent(agent_path0, agent_path1, env):
     # Select the appropriate agent class based on the file name

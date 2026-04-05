@@ -2,6 +2,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pygame.pkgdata")
 import gymnasium as gym
 import numpy as np
+import torch
 
 from . import utils
 
@@ -217,3 +218,15 @@ class TronEgo(gym.Wrapper):
 
     def observation(self, obs):
         return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
+
+class TorchObservationWrapper(gym.ObservationWrapper):
+    def __init__(self, env, device):
+        super().__init__(env)
+        self.device = device
+
+    def observation(self, obs):
+        return torch.as_tensor(
+            obs,
+            dtype=torch.float32,
+            device=self.device
+        ).unsqueeze(0)
