@@ -24,6 +24,8 @@ class Args:
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
+    cuda: bool = True
+    """if toggled, cuda will be enabled by default"""
 
     # Algorithm specific arguments
     total_timesteps: int = 100_000#10_000_000

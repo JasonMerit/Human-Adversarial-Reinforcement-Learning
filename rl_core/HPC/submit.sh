@@ -2,7 +2,7 @@
 ### General options
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J Tron-DQN
+#BSUB -J Tron
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
