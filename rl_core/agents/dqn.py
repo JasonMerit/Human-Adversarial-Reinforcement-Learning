@@ -88,7 +88,7 @@ class DQNAgent:
     def update_target_network(self):
         self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def save(self, path, verbose=False):
+    def save(self, path, verbose=True):
         torch.save(self.q_network.state_dict(), path)
         if verbose:
             print(f"Model saved to {path}")

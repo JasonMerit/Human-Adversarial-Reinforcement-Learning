@@ -1,9 +1,10 @@
-from certifi.__main__ import args
 import torch
 import torch.nn as nn
 import numpy as np
 from torch.distributions import Categorical
 from torch import optim
+
+from .buffers import RolloutBuffer
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -70,20 +71,39 @@ class ActorCriticNetwork(nn.Module):
         agent.load_state_dict(torch.load(checkpoint_path, weights_only=True))
         return agent
 
-class PPOAgent(nn.Module):
-    def __init__(self, obs_shape, n_actions, device, args):
+class PPOAgent():
+    def __init__(self, obs_shape, n_actions, buffer : RolloutBuffer, device, args):
         super().__init__()
         self.network = ActorCriticNetwork(obs_shape, n_actions).to(device)
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate, eps=1e-5)
         self.args = args
+        self.buffer = buffer
 
-    def get_values(self, x):
+    def get_value(self, x):
         return self.network.get_value(x)
 
     def get_action_and_value(self, x, action=None):
         return self.network.get_action_and_value(x, action)
-        
-    def learn(self, b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values):
+    
+    def add(self, obs, action, reward, episode_start, value, logprob):
+        self.buffer.add(obs, action, reward, episode_start, value, logprob)
+    
+    def save(self, path, verbose=True):
+        torch.save(self.network.state_dict(), path)
+        if verbose:
+            print(f"Model saved to {path}")
+
+    def learn(self, last_values, done):
+        self.buffer.compute_returns_and_advantage(last_values, done)
+
+        batch = next(self.buffer.get())
+        b_obs = batch.observations
+        b_actions = batch.actions
+        b_logprobs = batch.log_prob
+        b_advantages = batch.advantages
+        b_returns = batch.returns
+        b_values = batch.values
+
         # Optimizing the policy and value network
         b_inds = np.arange(self.args.batch_size)
         clipfracs = []
@@ -137,3 +157,5 @@ class PPOAgent(nn.Module):
 
             if self.args.target_kl is not None and approx_kl > self.args.target_kl:
                 break
+        
+        self.buffer.reset()

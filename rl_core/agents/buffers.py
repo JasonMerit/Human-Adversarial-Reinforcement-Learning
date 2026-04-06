@@ -47,8 +47,8 @@ __all__ = [
 class RolloutBufferSamples(NamedTuple):
     observations: th.Tensor
     actions: th.Tensor
-    old_values: th.Tensor
-    old_log_prob: th.Tensor
+    values: th.Tensor
+    log_prob: th.Tensor
     advantages: th.Tensor
     returns: th.Tensor
 
@@ -466,10 +466,10 @@ class RolloutBuffer(BaseBuffer):
         self,
         buffer_size: int,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Space = spaces.Discrete(1),
         device: th.device | str = "auto",
         gae_lambda: float = 1,
-        gamma: float = 0.99,
+        gamma: float = 1.0,
         n_envs: int = 1,
     ):
         super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)

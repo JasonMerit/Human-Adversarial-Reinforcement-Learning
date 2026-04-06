@@ -8,7 +8,7 @@
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=3GB]"
 #BSUB -M 3GB
-#BSUB -W 7:00
+#BSUB -W 1:00
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
@@ -20,11 +20,13 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
+python -m rl_core.train_ppo --exp-name Sync
+python -m rl_core.train_ppo --exp-name Async
 
-for i in {1..10}
-do
-    echo "====== [$(date)] Starting run $i ======"
-    python -m rl_core.self_train_pool --exp-name Pooling
-    # python -m rl_core.self_train_pool --exp-name Pooling --no-save-model --total_timesteps 10 --num-envs 1
-    echo ""
-done
+# for i in {1..10}
+# do
+#     echo "====== [$(date)] Starting run $i ======"
+#     # python -m rl_core.self_train_pool --exp-name Pooling
+#     # python -m rl_core.self_train_pool --exp-name Pooling --no-save-model --total_timesteps 10 --num-envs 1
+#     echo ""
+# done

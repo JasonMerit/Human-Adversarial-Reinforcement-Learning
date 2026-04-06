@@ -69,7 +69,10 @@ class TronEnvBase(gym.Env):
 
     
 class TronDuoEnv(gym.Env):
-    """TronEnv with both players controlled by the same agent. Action is a tuple of (action1, action2)"""
+    """
+    TronEnv with both players controlled by the same agent. Action is a tuple of (action1, action2)
+    Rewards assume bike1 is the "main" agent and bike2 is the adversary, so reward is positive if bike1 wins and negative if bike2 wins.
+    """
     
     reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: 1, Result.BIKE1_CRASH: -1, Result.PLAYING: 0 }
 
