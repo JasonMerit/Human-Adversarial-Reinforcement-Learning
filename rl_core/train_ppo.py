@@ -20,7 +20,7 @@ from rl_core.agents.ppo import PPOAgent
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: Optional[int] = None
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -30,7 +30,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 5
+    num_envs: int = 64
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
@@ -60,6 +60,8 @@ class Args:
     """whether to save the final model"""
     num_checkpoints: int = 10
     """the number of checkpoints to save (computed in runtime)"""
+    sync: bool = False
+    """whether to use envs synchronously """
     
     # to be filled in runtime
     batch_size: int = 0
@@ -113,7 +115,12 @@ if __name__ == "__main__":
 
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
+    if args.sync:
+        envs = gym.vector.SyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
+        print("Using synchronous environments (SyncVectorEnv)")
+    else:
+        envs = gym.vector.AsyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
+        print("Using asynchronous environments (AsyncVectorEnv)")
     n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
 

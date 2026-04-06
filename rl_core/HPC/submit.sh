@@ -20,8 +20,8 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-python -m rl_core.train_ppo --exp-name Sync
-python -m rl_core.train_ppo --exp-name Async
+python -m rl_core.train_ppo --exp-name Sync --sync
+python -m rl_core.train_ppo --exp-name Async --no-sync
 
 # for i in {1..10}
 # do
