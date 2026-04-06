@@ -90,7 +90,7 @@ if __name__ == "__main__":
     if args.seed is None:
         args.seed = np.random.randint(0, 1e6)
     save_every = args.num_iterations // args.num_checkpoints
-    log_every = args.num_iterations // 100
+    log_every = max(1, args.num_iterations // 100)
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
     print(f"===== Training with seed {args.seed} on device {device} =====")
