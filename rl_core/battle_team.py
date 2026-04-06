@@ -9,6 +9,7 @@ from rl_core.env import TronDuoEnv, TronView
 from rl_core.env.env import TronCoreEnv, encode_observation, encode_observation_2channel
 from rl_core.env.wrappers import TorchObservationWrapper
 from rl_core.agents.dqn import QNetwork
+from rl_core.agents.ppo import ActorCriticNetwork
 
 
 def load_experiment(path, env):
@@ -24,7 +25,8 @@ def load_experiment(path, env):
     for run in runs:
         files = [f for f in os.listdir(os.path.join(folder, run)) if f.endswith(".pth")]
         file = max(files, key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
-        network = QNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
+        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
+        # network = QNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
         network.eval()
         team.append(network)
     
@@ -98,6 +100,6 @@ def battle_team(path0, path1):
     print(f"Team 1 win rate: {results[1] / (results[1] + results[2]) * 100:.1f}% with {results[0]} draws")
 
 if __name__ == "__main__":
-    battle_team("Pooling", "BenchMark")
+    battle_team("Async", "BenchMark")
     # battle_team("runs/BenchMark", "runs/TwoChannel")
     

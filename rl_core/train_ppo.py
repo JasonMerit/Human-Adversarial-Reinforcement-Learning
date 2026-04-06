@@ -28,7 +28,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 1_000_000#10_000_000
+    total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -62,8 +62,6 @@ class Args:
     """whether to save the final model"""
     num_checkpoints: int = 10
     """the number of checkpoints to save (computed in runtime)"""
-    sync: bool = False
-    """whether to use envs synchronously """
     
     # to be filled in runtime
     batch_size: int = 0
@@ -117,12 +115,7 @@ if __name__ == "__main__":
 
 
     # env setup
-    if args.sync:
-        envs = gym.vector.SyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
-        print("Using synchronous environments (SyncVectorEnv)")
-    else:
-        envs = gym.vector.AsyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
-        print("Using asynchronous environments (AsyncVectorEnv)")
+    envs = gym.vector.SyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
     n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
 

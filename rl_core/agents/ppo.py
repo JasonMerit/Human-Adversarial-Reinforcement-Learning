@@ -64,11 +64,15 @@ class ActorCriticNetwork(nn.Module):
         probs = Categorical(logits=logits)
 
         return probs.sample()
+
+    def act(self, state):
+        with torch.no_grad():
+            return self.forward(state).cpu().numpy()[0]
         
     @classmethod
-    def from_checkpoint(cls, checkpoint_path, obs_shape, n_actions):
+    def from_checkpoint(cls, checkpoint_path, obs_shape, n_actions, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')):
         agent = cls(obs_shape, n_actions)
-        agent.load_state_dict(torch.load(checkpoint_path, weights_only=True))
+        agent.load_state_dict(torch.load(checkpoint_path, weights_only=True, map_location=device))
         return agent
 
 class PPOAgent():
