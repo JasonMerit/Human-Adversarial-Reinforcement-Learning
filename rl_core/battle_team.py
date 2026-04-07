@@ -11,6 +11,33 @@ from rl_core.env.wrappers import TorchObservationWrapper
 from rl_core.agents.dqn import QNetwork
 from rl_core.agents.ppo import ActorCriticNetwork
 
+def load_experiment_intra_team(path, env):
+    # Select the appropriate agent class based on the file name
+    obs_shape = env.observation_space.shape[-3:]  # (3, H, W)
+    n_actions = env.action_space.nvec[0]           # should be 3
+    folder = "runs/"
+
+    # Find all folders in runs that start with the given path
+    runs = [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f)) and f.startswith(os.path.basename(path))]
+
+    team_1 = []
+    team_2 = []
+    for run in runs:
+        files = [f for f in os.listdir(os.path.join(folder, run)) if f.endswith(".pth")]
+        # Find top two latest files (one for each agent) based on modified time
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
+
+        # file = max(files, key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
+        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-1]), obs_shape, n_actions)
+        network.eval()
+        team_1.append(network)
+
+        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-2]), obs_shape, n_actions)
+        network.eval()
+        # network = QNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
+        team_2.append(network)
+    
+    return team_1, team_2
 
 def load_experiment(path, env):
     # Select the appropriate agent class based on the file name
@@ -24,10 +51,19 @@ def load_experiment(path, env):
     team = []
     for run in runs:
         files = [f for f in os.listdir(os.path.join(folder, run)) if f.endswith(".pth")]
-        file = max(files, key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
-        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
-        # network = QNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
+        # Find top two latest files (one for each agent) based on modified time
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
+        print(files)
+        quit()
+
+        # file = max(files, key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
+        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-1]), obs_shape, n_actions)
         network.eval()
+        team.append(network)
+
+        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-2]), obs_shape, n_actions)
+        network.eval()
+        # network = QNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
         team.append(network)
     
     return team
@@ -73,6 +109,7 @@ def play(agent_0, agent_1, env):
     while True:
         obs0, obs1 = obs[:, 0], obs[:, 1]
         a0, a1 = agent_0.act(obs0), agent_1.act(obs1)  # Use the loaded model to select an action
+        a1 = np.random.randint(0, 3)  # Random action for adversary
         obs, _, done, _, info = env.step([a0, a1])
 
         if done:
@@ -82,12 +119,13 @@ def battle_team(path0, path1):
     # env = TronCoreEnv()
     env = TronDuoEnv()
     env = TorchObservationWrapper(env, device="cpu")
-    env = TronView(env, fps=20)
+    # env = TronView(env, fps=50)
     # env.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, 25, 25), dtype=np.float32)
     team_1 = load_experiment(path0, env)
 
     # env.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 2, 25, 25), dtype=np.float32)
     team_2 = load_benchmark(path1, env)
+    # team_1, team_2 = load_experiment_intra_team(path0, env)
     print(f"Team sizes: {len(team_1)}, {len(team_2)}")
 
     # Have each team_1 member play against each team_2 member and print results
@@ -100,6 +138,6 @@ def battle_team(path0, path1):
     print(f"Team 1 win rate: {results[1] / (results[1] + results[2]) * 100:.1f}% with {results[0]} draws")
 
 if __name__ == "__main__":
-    battle_team("Async", "BenchMark")
+    battle_team("PPO", "BenchMark")
     # battle_team("runs/BenchMark", "runs/TwoChannel")
     

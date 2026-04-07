@@ -113,7 +113,6 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(i, args.seed) for i in range(args.num_envs)])
     n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
@@ -152,7 +151,6 @@ if __name__ == "__main__":
             
                 for i in np.where(done)[0]:  # Update results for any env that is done
                     results[infos["final_info"][i]['result']] += 1
-                    print(results)
             
             # Learn after collecting data for num_steps steps
             with torch.no_grad():
