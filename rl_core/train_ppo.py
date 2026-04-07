@@ -128,6 +128,7 @@ if __name__ == "__main__":
     episode_start = np.zeros(args.num_envs)
 
     global_step = 0
+    results = [0, 0, 0]
     start_time = time.time()
     
     try:
@@ -149,6 +150,10 @@ if __name__ == "__main__":
                 obs1, obs2 = next_obs[:, 0], next_obs[:, 1]
                 episode_start = done
             
+                for i in np.where(done)[0]:  # Update results for any env that is done
+                    results[infos["final_info"][i]['result']] += 1
+                    print(results)
+            
             # Learn after collecting data for num_steps steps
             with torch.no_grad():
                 last_values1 = agent1.get_value(torch.tensor(obs1).to(device)).reshape(1, -1)
@@ -158,7 +163,7 @@ if __name__ == "__main__":
 
 
             # Saving
-            if iteration % save_every == 0 and args.save:
+            if args.save and iteration % save_every == 0:
                 agent1.save(save_folder + f"A_{global_step}.pth")
                 agent2.save(save_folder + f"B_{global_step}.pth")
             
@@ -168,7 +173,8 @@ if __name__ == "__main__":
                 elapsed = time.time() - start_time
                 progress = iteration / args.num_iterations
                 eta = elapsed * (1/progress - 1)
-                print(f"{progress*100:.1f}% - SPS: {sps} - {eta/60:.1f} minutes left")
+                print(f"{progress*100:.1f}% - SPS: {sps}")
+                print(f"{results = } - {eta/60:.1f} minutes left....", end='\r')
 
     finally:
         if args.save:
@@ -176,6 +182,7 @@ if __name__ == "__main__":
                 yaml.dump({
                     "steps_taken": global_step, 
                     "training_time_hours": (time.time() - start_time) / 3600,
+                    "results": results,
                     }, f)
             agent1.save(save_folder + f"A_{global_step}.pth", verbose=True)
             agent2.save(save_folder + f"B_{global_step}.pth", verbose=True)

@@ -178,7 +178,7 @@ if __name__ == "__main__":
                     adversary.update_target_network()
             
             # Saving
-            if global_step % save_every == 0 and args.save_model:
+            if args.save_model and global_step % save_every == 0:
                 human.save(save_folder + f"human_{env_step}.pth")
                 adversary.save(save_folder + f"adversary_{env_step}.pth")
             
