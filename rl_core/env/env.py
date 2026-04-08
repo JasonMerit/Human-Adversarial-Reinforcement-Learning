@@ -5,6 +5,7 @@ import numpy as np
 import gymnasium as gym
 
 from .tron import Tron, Result
+from rich import print
 from . import utils
 from .heuristic import get_best_action
 from .wrappers import encode_observation
@@ -51,7 +52,7 @@ class TronEnvBase(gym.Env):
         return self._get_state(), {'result': 0}
     
     def step(self, action : int):
-        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+        assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
         
         dir1 = self.action_mapping[get_best_action(self._get_state())]  # Human's action
         dir2 = self.action_mapping[action]
@@ -91,7 +92,7 @@ class TronDuoEnv(gym.Env):
         return self._get_state(), {'result': 0}
     
     def step(self, action : np.ndarray):
-        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+        assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
 
         # a0, a1 = int(action[0]), int(action[1])
 
