@@ -71,12 +71,12 @@ import torch.nn.functional as F
 
 class FactorizedNoisyLinear(nn.Module):
     """ Factorized Gaussian noise layer for per-env NoisyNets """
-    def __init__(self, in_features: int, out_features: int, sigma_0: float = 0.5, num_envs: int = 5):
+    def __init__(self, in_features: int, out_features: int, sigma_0: float = 0.5, parallel_envs: int = 5):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.sigma_0 = sigma_0
-        self.num_envs = num_envs  # number of parallel envs / agents
+        self.parallel_envs = parallel_envs  # number of parallel envs / agents
 
         # Base parameters
         self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
@@ -85,8 +85,8 @@ class FactorizedNoisyLinear(nn.Module):
         self.bias_sigma = nn.Parameter(torch.empty(out_features))
 
         # Noise buffers: one set per env
-        self.register_buffer('weight_epsilon', torch.empty(num_envs, out_features, in_features))
-        self.register_buffer('bias_epsilon', torch.empty(num_envs, out_features))
+        self.register_buffer('weight_epsilon', torch.empty(parallel_envs, out_features, in_features))
+        self.register_buffer('bias_epsilon', torch.empty(parallel_envs, out_features))
 
         self.reset_parameters()
         self.reset_noise()  # initialize
@@ -107,7 +107,7 @@ class FactorizedNoisyLinear(nn.Module):
     @torch.no_grad()
     def reset_noise(self):
         """Reset noise for all envs independently"""
-        for env_idx in range(self.num_envs):
+        for env_idx in range(self.parallel_envs):
             epsilon_in = self._get_noise(self.in_features)
             epsilon_out = self._get_noise(self.out_features)
             self.weight_epsilon[env_idx].copy_(epsilon_out.outer(epsilon_in))
@@ -120,17 +120,17 @@ class FactorizedNoisyLinear(nn.Module):
 
     def forward(self, input: Tensor):
         """
-        Expects input shape: (num_envs, batch_per_env, in_features)
-        or (num_envs, in_features) if batch_size=1 per env.
+        Expects input shape: (parallel_envs, batch_per_env, in_features)
+        or (parallel_envs, in_features) if batch_size=1 per env.
         Uses the corresponding noise for each env.
         """
-        if input.dim() == 2 and self.num_envs > 1:
-            # assume input shape is (num_envs, in_features)
+        if input.dim() == 2 and self.parallel_envs > 1:
+            # assume input shape is (parallel_envs, in_features)
             out = torch.stack([
                 F.linear(input[i],
                          self.weight_mu + self.weight_sigma * self.weight_epsilon[i],
                          self.bias_mu + self.bias_sigma * self.bias_epsilon[i])
-                for i in range(self.num_envs)
+                for i in range(self.parallel_envs)
             ])
             return out
         else:

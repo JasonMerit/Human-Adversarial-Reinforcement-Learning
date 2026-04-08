@@ -23,7 +23,7 @@ class Rainbow:
 
         net = networks.get_model()
         # net = networks.get_model(args.network_arch, args.spectral_norm)
-        linear_layer = networks.FactorizedNoisyLinear
+        linear_layer = partial(networks.FactorizedNoisyLinear, parallel_envs=args.parallel_envs)
         # linear_layer = partial(networks.FactorizedNoisyLinear, sigma_0=args.noisy_sigma0) if args.noisy_dqn else nn.Linear
         # depth = args.frame_stack*(1 if args.grayscale else 3)
         self.device = device

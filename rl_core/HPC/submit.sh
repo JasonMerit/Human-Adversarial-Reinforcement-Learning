@@ -24,7 +24,7 @@ for i in {1..5}
 do
     echo "====== [$(date)] Starting run $i ======"
     # python -m rl_core.train_ppo --exp-name PPO
-    python -m rl_core.rainbow.train --exp-name Rainbow
+    python -m rl_core.rainbow.train --exp-name Rainbow --training_frames 10_000_000
     # python -m rl_core.self_train_pool --exp-name Pooling --no-save-model --total_timesteps 10 --num-envs 1
     echo ""
 done

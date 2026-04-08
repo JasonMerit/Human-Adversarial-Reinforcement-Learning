@@ -62,8 +62,6 @@ if __name__ == '__main__':
     # create decay schedules for dqn's exploration epsilon and per's importance sampling (beta) parameter
     per_beta_schedule = LinearSchedule(0, initial_value=args.prioritized_er_beta0, final_value=1.0, decay_time=args.prioritized_er_time)
 
-    args.parallel_envs = 5
-    print("DEBUGGING MODE WITH ONLY 5 PARALLEL ENVS. CHANGE THIS BACK TO 64 FOR FULL TRAINING!")
     envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.parallel_envs)])
     states, _ = envs.reset()
 
@@ -139,6 +137,7 @@ if __name__ == '__main__':
                 yaml.dump({
                     "steps_taken": game_frame, 
                     "training_time_hours": (time.time() - start_time) / 3600,
+                    "results": results,
                     }, f)
             agent1.save(save_folder + f"A_{game_frame}.pth", verbose=True)
             agent2.save(save_folder + f"B_{game_frame}.pth", verbose=True)
