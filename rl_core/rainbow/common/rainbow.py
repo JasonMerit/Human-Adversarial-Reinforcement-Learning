@@ -17,9 +17,8 @@ from ..common.utils import prep_observation_for_qnet
 class Rainbow:
     buffer: Union[UniformReplayBuffer, PrioritizedReplayBuffer]
 
-    def __init__(self, env, args: SimpleNamespace) -> None:
+    def __init__(self, env, args: SimpleNamespace, device: torch.device) -> None:
         self.env = env
-        self.save_dir = args.save_dir
         self.use_amp = args.use_amp
 
         net = networks.get_model()
@@ -27,9 +26,9 @@ class Rainbow:
         linear_layer = networks.FactorizedNoisyLinear
         # linear_layer = partial(networks.FactorizedNoisyLinear, sigma_0=args.noisy_sigma0) if args.noisy_dqn else nn.Linear
         # depth = args.frame_stack*(1 if args.grayscale else 3)
-        self.device = "cpu"
-        self.q_policy = net(3, actions=3, linear_layer=linear_layer).to(self.device) # 3 channels (depth)
-        self.q_target = net(3, actions=3, linear_layer=linear_layer).to(self.device) # 3 channels (depth)
+        self.device = device
+        self.q_policy = net(3, actions=3, linear_layer=linear_layer).to(device) # 3 channels (depth)
+        self.q_target = net(3, actions=3, linear_layer=linear_layer).to(device) # 3 channels (depth)
         self.q_target.load_state_dict(self.q_policy.state_dict())
 
         #k = 0
@@ -72,9 +71,7 @@ class Rainbow:
     def act(self, states):
         """ computes an epsilon-greedy step with respect to the current policy self.q_policy """
         with torch.no_grad():
-            with autocast(device_type=self.device, enabled=self.use_amp):
-                # states = prep_observation_for_qnet(torch.from_numpy(np.stack(states)), self.use_amp)
-                # print(states.shape)  # (5, 3, 25, 25)
+            with autocast(device_type=str(self.device), enabled=self.use_amp):
                 action_values = self.q_policy(states, advantages_only=True)
                 actions = torch.argmax(action_values, dim=1)
             return actions.cpu()
@@ -121,14 +118,7 @@ class Rainbow:
 
         return td_est.mean().item(), loss.item(), grad_norm.item()
 
-    def save(self, game_frame, **kwargs):
-        save_path = (self.save_dir + f"/checkpoint_{game_frame}.pt")
-        torch.save({**kwargs, 'state_dict': self.q_policy.state_dict(), 'game_frame': game_frame}, save_path)
-
-        try:
-            artifact = wandb.Artifact('saved_model', type='model')
-            artifact.add_file(save_path)
-            wandb.run.log_artifact(artifact)
-            print(f'Saved model checkpoint at {game_frame} frames.')
-        except Exception as e:
-            print('[bold red] Error while saving artifacts to wandb:', e)
+    def save(self, path, verbose=True):
+        torch.save(self.q_policy.state_dict(), path)
+        if verbose:
+            print(f"Model saved to {path}")
