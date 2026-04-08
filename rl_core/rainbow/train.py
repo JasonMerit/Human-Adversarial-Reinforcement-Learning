@@ -36,9 +36,6 @@ if __name__ == '__main__':
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # set up logging & model checkpoints
-    # wandb.init(project='rainbow', save_code=True, config=dict(**wandb_log_config, log_version=100),
-    #            mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[args.wandb_tag] if args.wandb_tag else [])
     save_dir = Path("checkpoints") / "KEK"#wandb.run.name
     save_dir.mkdir(parents=True, exist_ok=True)
     args.save_dir = str(save_dir)
@@ -49,65 +46,56 @@ if __name__ == '__main__':
     args.parallel_envs = 5
     envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.parallel_envs)])
     states, _ = envs.reset()
-    # states = states[:, 0]
-    print('[green bold]Start')
 
-    rainbow = Rainbow(envs, args)
-    # wandb.watch(rainbow.q_policy)
-
-    # print('[blue bold]Running environment =', args.env_name,
-    #       '[blue bold]\nwith action space   =', env.action_space,
-    #       '[blue bold]\nobservation space   =', env.observation_space,)
-        #   '[blue bold]\nand config:', sn(**wandb_log_config))
-
-    episode_count = 0
-    returns = deque(maxlen=100)
-    discounted_returns = deque(maxlen=10)
-    losses = deque(maxlen=10)
-    q_values = deque(maxlen=10)
-    grad_norms = deque(maxlen=10)
-    iter_times = deque(maxlen=10)
+    agent1 = Rainbow(envs, args)
+    agent2 = Rainbow(envs, args)
 
     returns_all = []
     q_values_all = []
 
+    print('[green bold]Start')
     for game_frame in range(0, args.training_frames + 1, args.parallel_envs):
         # print("[yellow bold]Game frame: ", game_frame)
         per_beta = per_beta_schedule(game_frame)
 
         # reset the noisy-nets noise in the policy
-        rainbow.reset_noise(rainbow.q_policy)
+        agent1.reset_noise(agent1.q_policy)
+        agent2.reset_noise(agent2.q_policy)
 
         # compute actions to take in all parallel envs, asynchronously start environment step
-        states = states[:, 0]  # (5, 3, 25, 25)
-        actions = rainbow.act(torch.from_numpy(states).float().to(device))
-        # assert (actions[0] == actions).all(), "All actions should be the same"
-        actions = np.stack([actions.cpu().numpy(), actions.cpu().numpy()], axis=1)  # (5, 2)         # Stack actions to act as opponent for testing
-        next_states, rewards, dones, _, infos = envs.step(actions)
+        obs1, obs2 = states[:, 0], states[:, 1]  # (5, 3, 25, 25)
+        actions1 = agent1.act(torch.from_numpy(obs1).float().to(device)).cpu().numpy()
+        actions2 = agent2.act(torch.from_numpy(obs2).float().to(device)).cpu().numpy()
+        # assert (actions1 == actions2).all(), "Sucess. Actions differ!"
+        # assert (actions1[0] == actions1).all(), "Sucess. Actions differ!"
+        next_states, rewards, dones, _, infos = envs.step(np.stack([actions1, actions2], axis=1))
         
-        # Add to buffer
-        for state, action, reward, done, j in zip(states, actions, rewards, dones, range(args.parallel_envs)):
-            rainbow.buffer.put(state, action, reward, done, j=j)
+        # Buffer
+        for state, action, reward, done, j in zip(obs1, actions1, rewards, dones, range(args.parallel_envs)):
+            agent1.buffer.put(state, action, reward, done, j=j)
+        for state, action, reward, done, j in zip(obs2, actions2, rewards, dones, range(args.parallel_envs)):
+            agent2.buffer.put(state, action, -reward, done, j=j)
 
         states = next_states
 
         # Learning
-        if rainbow.buffer.burnedin:
+        if agent1.buffer.burnedin:
             for train_iter in range(args.train_count):
-                if train_iter > 0: rainbow.reset_noise(rainbow.q_policy)
-                q, loss, grad_norm = rainbow.train(args.batch_size, beta=per_beta)
-                losses.append(loss)
-                grad_norms.append(grad_norm)
-                q_values.append(q)
-                q_values_all.append((game_frame, q))
+                if train_iter > 0: 
+                    agent1.reset_noise(agent1.q_policy)
+                    agent2.reset_noise(agent2.q_policy)
+                q, loss, grad_norm = agent1.train(args.batch_size, beta=per_beta)
+                q, loss, grad_norm = agent2.train(args.batch_size, beta=per_beta)
 
         # Update target network
-        if game_frame % args.sync_dqn_target_every == 0 and rainbow.buffer.burnedin:
-            rainbow.sync_Q_target()
+        if game_frame % args.sync_dqn_target_every == 0 and agent1.buffer.burnedin:
+            agent1.sync_Q_target()
+            agent2.sync_Q_target()
 
         # every 1M frames, save a model checkpoint to disk and wandb
         if game_frame % (500_000-(500_000 % args.parallel_envs)) == 0 and game_frame > 0:
-            rainbow.save(game_frame, args=args, run_name="KEK", run_id="KEK", target_metric=np.mean(returns), returns_all=returns_all, q_values_all=q_values_all)
+            agent1.save(game_frame, args=args, run_name="KEK", run_id="KEK")
+            agent2.save(game_frame, args=args, run_name="KEK", run_id="KEK")
             print(f'Model saved at {game_frame} frames.')
 
     envs.close()
