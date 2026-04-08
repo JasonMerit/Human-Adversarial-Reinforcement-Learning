@@ -25,9 +25,7 @@ class Args:
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
-    cuda: bool = True
-    """if toggled, cuda will be enabled by default"""
-    save_model: bool = True
+    save: bool = True
     """whether to save model into the `runs/{exp_name}` folder"""
     render: bool = False
     """whether to render the environment during training (slows down training!)"""
@@ -90,36 +88,36 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # env setup
-    envs = gym.vector.AsyncVectorEnv([make_env(args.seed + i, i, args.environment, render=args.render) for i in range(args.num_envs)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.seed + i, i, args.environment, render=args.render) for i in range(args.num_envs)])
 
     n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
 
     buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
-    rb0 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
-    rb1 = ReplayBuffer(args.buffer_size, buffer_obs_space, device=device, n_envs=args.num_envs)
-    human = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb0, batch_size=args.batch_size, device=device)
-    adversary = DQNAgent(obs_shape=obs_shape, n_actions=n_actions, lr=args.learning_rate, rb=rb1, batch_size=args.batch_size, device=device)
+    buffer_args = {"buffer_size": args.buffer_size, "observation_space": buffer_obs_space, "device": device, "n_envs": args.num_envs}
+    agent_args = {"obs_shape": obs_shape, "n_actions": n_actions, "lr": args.learning_rate, "rb": ReplayBuffer(**buffer_args), "batch_size": args.batch_size, "device": device}
+    agent1 = DQNAgent(**agent_args)
+    agent2 = DQNAgent(**agent_args)
 
     print(f"===== Training with seed {args.seed} on device {device} =====")
-    if not args.save_model:
-        print("Models will NOT be saved!")
-
     obs, _ = envs.reset(seed=args.seed)
 
     # Handling multiple parallel envs steps
     learn_every = max(1, args.batch_size // args.num_envs)  # 256 / 64 = 4 steps
     target_every = max(1, args.target_network_frequency // args.num_envs)
     learn_start_loop = args.learning_starts // args.num_envs
-    save_every = max(1, (args.total_timesteps // args.num_envs) // args.total_checkpoints)
+
+    total_loops = args.total_timesteps // args.num_envs
+    save_every = max(1, total_loops // args.total_checkpoints)
+    log_interval = max(1, total_loops // 100)
     log_interval = 5000
 
 
     # Logging and saving model
-    if args.save_model:
+    if args.save:
         save_folder = "runs/" + args.exp_name
         i = 0
         while os.path.exists(save_folder + f"_{i}"):
@@ -128,59 +126,56 @@ if __name__ == "__main__":
         os.makedirs(save_folder)
         with open(save_folder + "args.yml", "w") as f:
                 yaml.dump(vars(args), f)
+    else:
+        print("Models will NOT be saved!")
 
     results = [0, 0, 0]
-    sps = 0 # for final logging
-    
     start_time = time.time()
 
     try:
-        total_loops = args.total_timesteps // args.num_envs
         # pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
         for global_step in range(1, total_loops+1):
         # for global_step in pbar:
             env_step = global_step * args.num_envs
             obs0, obs1 = obs[:, 0], obs[:, 1]
 
+            a0 = agent1.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
+            a1 = agent2.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
+            
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, env_step)
             explore_mask = np.random.rand(args.num_envs) < epsilon
-
-            a0 = human.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
-            a1 = adversary.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
-
             a0[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+            explore_mask = np.random.rand(args.num_envs) < epsilon
             a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
             actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
 
             # Iterate over terminations to log episode results
-            for i in range(args.num_envs):
-                if terminations[i]:
-                    results[infos["final_info"][i]['result']] += 1
-
+            for i in np.where(terminations)[0]:  # Update results for any env that is done
+                results[infos["final_info"][i]['result']] += 1
 
             r0, r1 = rewards, -rewards
-            human.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
-            adversary.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
+            agent1.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
+            agent2.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
 
             obs = next_obs
 
             # Training.
             if global_step > learn_start_loop:
                 if global_step % learn_every == 0:
-                    human.learn()
-                    adversary.learn()
+                    agent1.learn()
+                    agent2.learn()
 
                 # update target network
                 if global_step % target_every == 0:
-                    human.update_target_network()
-                    adversary.update_target_network()
+                    agent1.update_target_network()
+                    agent2.update_target_network()
             
             # Saving
-            if args.save_model and global_step % save_every == 0:
-                human.save(save_folder + f"human_{env_step}.pth")
-                adversary.save(save_folder + f"adversary_{env_step}.pth")
+            if args.save and global_step % save_every == 0:
+                agent1.save(save_folder + f"A_{env_step}.pth")
+                agent2.save(save_folder + f"B_{env_step}.pth")
             
             # Logging
             # if global_step % log_interval == 0:
@@ -190,19 +185,20 @@ if __name__ == "__main__":
                 elapsed = time.time() - start_time
                 progress = global_step / total_loops
                 eta = elapsed * (1/progress - 1)
-                print(f"{progress*100:.1f}% - SPS: {sps} - {eta/60:.1f} minutes left")
+                print(f"{progress*100:.1f}% - SPS: {sps}")
+                print(f"{eta/60:.1f} minutes left...", end='\r')
 
     finally:
-        if args.save_model:
+        if args.save:
             with open(save_folder + "results.yml", "w") as f:
                 yaml.dump({
                     "results": results, 
                     "steps_taken": env_step, 
                     "training_time_hours": (time.time() - start_time) / 3600,
                     }, f)
-            human.save(save_folder + f"human_{env_step}.pth", verbose=True)
-            adversary.save(save_folder + f"adversary_{env_step}.pth", verbose=True)
+            agent1.save(save_folder + f"A_{env_step}.pth", verbose=True)
+            agent2.save(save_folder + f"B_{env_step}.pth", verbose=True)
 
         envs.close()
-        print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours! Final SPS: {sps}")
+        print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours!")
         # writer.close()
