@@ -9,135 +9,136 @@ from torch import nn as nn, Tensor
 from torch.nn import init
 import torch.nn.functional as F
 
-# class FactorizedNoisyLinear(nn.Module):
-#     """ The factorized Gaussian noise layer for noisy-nets dqn. """
-#     def __init__(self, in_features: int, out_features: int, sigma_0: float = .5) -> None:
-#         super().__init__()
-#         self.in_features = in_features
-#         self.out_features = out_features
-#         self.sigma_0 = sigma_0  # .5 from paper appendix
-
-#         # weight: w = \mu^w + \sigma^w . \epsilon^w
-#         self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
-#         self.weight_sigma = nn.Parameter(torch.empty(out_features, in_features))
-#         self.register_buffer('weight_epsilon', torch.empty(out_features, in_features))
-
-#         # bias: b = \mu^b + \sigma^b . \epsilon^b
-#         self.bias_mu = nn.Parameter(torch.empty(out_features))
-#         self.bias_sigma = nn.Parameter(torch.empty(out_features))
-#         self.register_buffer('bias_epsilon', torch.empty(out_features))
-
-#         self.reset_parameters()
-#         self.reset_noise()
-
-#     @torch.no_grad()
-#     def reset_parameters(self) -> None:
-#         # initialization is similar to Kaiming uniform (He. initialization) with fan_mode=fan_in
-#         scale = 1 / sqrt(self.in_features)
-
-#         init.uniform_(self.weight_mu, -scale, scale)
-#         init.uniform_(self.bias_mu, -scale, scale)
-
-#         init.constant_(self.weight_sigma, self.sigma_0 * scale)
-#         init.constant_(self.bias_sigma, self.sigma_0 * scale)
-
-#     @torch.no_grad()
-#     def _get_noise(self, size: int) -> Tensor:
-#         noise = torch.randn(size, device=self.weight_mu.device)
-#         # f(x) = sgn(x)sqrt(|x|)
-#         return noise.sign().mul_(noise.abs().sqrt_())
-
-#     @torch.no_grad()
-#     def reset_noise(self) -> None:
-#         # like in eq 10 and 11 of the paper
-#         epsilon_in = self._get_noise(self.in_features)
-#         epsilon_out = self._get_noise(self.out_features)
-#         self.weight_epsilon.copy_(epsilon_out.outer(epsilon_in))
-#         self.bias_epsilon.copy_(epsilon_out)
-        
-
-#     @torch.no_grad()
-#     def disable_noise(self) -> None:
-#         self.weight_epsilon[:] = 0
-#         self.bias_epsilon[:] = 0
-
-#     def forward(self, input: Tensor) -> Tensor:
-#         # y = wx + d, where
-#         # w = \mu^w + \sigma^w * \epsilon^w
-#         # b = \mu^b + \sigma^b * \epsilon^b
-#         return F.linear(input,
-#                         self.weight_mu + self.weight_sigma*self.weight_epsilon,
-#                         self.bias_mu + self.bias_sigma*self.bias_epsilon)
-
 class FactorizedNoisyLinear(nn.Module):
-    """ Factorized Gaussian noise layer for per-env NoisyNets """
-    def __init__(self, in_features: int, out_features: int, sigma_0: float = 0.5, parallel_envs: int = 5):
+    """ The factorized Gaussian noise layer for noisy-nets dqn. """
+    def __init__(self, in_features: int, out_features: int, sigma_0: float = .5) -> None:
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.sigma_0 = sigma_0
-        self.parallel_envs = parallel_envs  # number of parallel envs / agents
+        self.sigma_0 = sigma_0  # .5 from paper appendix
 
-        # Base parameters
+        # weight: w = \mu^w + \sigma^w . \epsilon^w
         self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
         self.weight_sigma = nn.Parameter(torch.empty(out_features, in_features))
+        self.register_buffer('weight_epsilon', torch.empty(out_features, in_features))
+
+        # bias: b = \mu^b + \sigma^b . \epsilon^b
         self.bias_mu = nn.Parameter(torch.empty(out_features))
         self.bias_sigma = nn.Parameter(torch.empty(out_features))
-
-        # Noise buffers: one set per env
-        self.register_buffer('weight_epsilon', torch.empty(parallel_envs, out_features, in_features))
-        self.register_buffer('bias_epsilon', torch.empty(parallel_envs, out_features))
+        self.register_buffer('bias_epsilon', torch.empty(out_features))
 
         self.reset_parameters()
-        self.reset_noise()  # initialize
+        self.reset_noise()
 
     @torch.no_grad()
-    def reset_parameters(self):
+    def reset_parameters(self) -> None:
+        # initialization is similar to Kaiming uniform (He. initialization) with fan_mode=fan_in
         scale = 1 / sqrt(self.in_features)
+
         init.uniform_(self.weight_mu, -scale, scale)
         init.uniform_(self.bias_mu, -scale, scale)
+
         init.constant_(self.weight_sigma, self.sigma_0 * scale)
         init.constant_(self.bias_sigma, self.sigma_0 * scale)
 
     @torch.no_grad()
-    def _get_noise(self, size: int):
+    def _get_noise(self, size: int) -> Tensor:
         noise = torch.randn(size, device=self.weight_mu.device)
+        # f(x) = sgn(x)sqrt(|x|)
         return noise.sign().mul_(noise.abs().sqrt_())
 
     @torch.no_grad()
-    def reset_noise(self):
-        """Reset noise for all envs independently"""
-        for env_idx in range(self.parallel_envs):
-            epsilon_in = self._get_noise(self.in_features)
-            epsilon_out = self._get_noise(self.out_features)
-            self.weight_epsilon[env_idx].copy_(epsilon_out.outer(epsilon_in))
-            self.bias_epsilon[env_idx].copy_(epsilon_out)
+    def reset_noise(self) -> None:
+        # like in eq 10 and 11 of the paper
+        epsilon_in = self._get_noise(self.in_features)
+        epsilon_out = self._get_noise(self.out_features)
+        self.weight_epsilon.copy_(epsilon_out.outer(epsilon_in))
+        self.bias_epsilon.copy_(epsilon_out)
+        
 
     @torch.no_grad()
-    def disable_noise(self):
-        self.weight_epsilon.zero_()
-        self.bias_epsilon.zero_()
+    def disable_noise(self) -> None:
+        self.weight_epsilon[:] = 0
+        self.bias_epsilon[:] = 0
 
-    def forward(self, input: Tensor):
-        """
-        Expects input shape: (parallel_envs, batch_per_env, in_features)
-        or (parallel_envs, in_features) if batch_size=1 per env.
-        Uses the corresponding noise for each env.
-        """
-        if input.dim() == 2 and self.parallel_envs > 1:
-            # assume input shape is (parallel_envs, in_features)
-            out = torch.stack([
-                F.linear(input[i],
-                         self.weight_mu + self.weight_sigma * self.weight_epsilon[i],
-                         self.bias_mu + self.bias_sigma * self.bias_epsilon[i])
-                for i in range(self.parallel_envs)
-            ])
-            return out
-        else:
-            # fallback for single env or normal linear
-            return F.linear(input,
-                            self.weight_mu + self.weight_sigma * self.weight_epsilon[0],
-                            self.bias_mu + self.bias_sigma * self.bias_epsilon[0])
+    def forward(self, input: Tensor) -> Tensor:
+        # y = wx + d, where
+        # w = \mu^w + \sigma^w * \epsilon^w
+        # b = \mu^b + \sigma^b * \epsilon^b
+        return F.linear(input,
+                        self.weight_mu + self.weight_sigma*self.weight_epsilon,
+                        self.bias_mu + self.bias_sigma*self.bias_epsilon)
+
+# class FactorizedNoisyLinear(nn.Module):
+#     """ Factorized Gaussian noise layer for per-env NoisyNets """
+#     def __init__(self, in_features: int, out_features: int, sigma_0: float = 0.5):
+#     # def __init__(self, in_features: int, out_features: int, sigma_0: float = 0.5, num_envs: int = 5):
+#         super().__init__()
+#         self.in_features = in_features
+#         self.out_features = out_features
+#         self.sigma_0 = sigma_0
+#         # self.num_envs = num_envs  # number of parallel envs / agents
+
+#         # Base parameters
+#         self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
+#         self.weight_sigma = nn.Parameter(torch.empty(out_features, in_features))
+#         self.bias_mu = nn.Parameter(torch.empty(out_features))
+#         self.bias_sigma = nn.Parameter(torch.empty(out_features))
+
+#         # Noise buffers: one set per env
+#         self.register_buffer('weight_epsilon', torch.empty(num_envs, out_features, in_features))
+#         self.register_buffer('bias_epsilon', torch.empty(num_envs, out_features))
+
+#         self.reset_parameters()
+#         self.reset_noise()  # initialize
+
+#     @torch.no_grad()
+#     def reset_parameters(self):
+#         scale = 1 / sqrt(self.in_features)
+#         init.uniform_(self.weight_mu, -scale, scale)
+#         init.uniform_(self.bias_mu, -scale, scale)
+#         init.constant_(self.weight_sigma, self.sigma_0 * scale)
+#         init.constant_(self.bias_sigma, self.sigma_0 * scale)
+
+#     @torch.no_grad()
+#     def _get_noise(self, size: int):
+#         noise = torch.randn(size, device=self.weight_mu.device)
+#         return noise.sign().mul_(noise.abs().sqrt_())
+
+#     @torch.no_grad()
+#     def reset_noise(self):
+#         """Reset noise for all envs independently"""
+#         for env_idx in range(self.num_envs):
+#             epsilon_in = self._get_noise(self.in_features)
+#             epsilon_out = self._get_noise(self.out_features)
+#             self.weight_epsilon[env_idx].copy_(epsilon_out.outer(epsilon_in))
+#             self.bias_epsilon[env_idx].copy_(epsilon_out)
+
+#     @torch.no_grad()
+#     def disable_noise(self):
+#         self.weight_epsilon.zero_()
+#         self.bias_epsilon.zero_()
+
+#     def forward(self, input: Tensor):
+#         """
+#         Expects input shape: (num_envs, batch_per_env, in_features)
+#         or (num_envs, in_features) if batch_size=1 per env.
+#         Uses the corresponding noise for each env.
+#         """
+#         if input.dim() == 2 and self.num_envs > 1:
+#             # assume input shape is (num_envs, in_features)
+#             out = torch.stack([
+#                 F.linear(input[i],
+#                          self.weight_mu + self.weight_sigma * self.weight_epsilon[i],
+#                          self.bias_mu + self.bias_sigma * self.bias_epsilon[i])
+#                 for i in range(self.num_envs)
+#             ])
+#             return out
+#         else:
+#             # fallback for single env or normal linear
+#             return F.linear(input,
+#                             self.weight_mu + self.weight_sigma * self.weight_epsilon[0],
+#                             self.bias_mu + self.bias_sigma * self.bias_epsilon[0])
 
 class Dueling(nn.Module):
     """ The dueling branch used in all nets that use dueling-dqn. """

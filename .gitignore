@@ -27,3 +27,5 @@ supabase/
 tools/
 uv.lock
 
+rl_core/rainbow/Rainbow/
+

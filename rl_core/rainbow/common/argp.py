@@ -33,12 +33,14 @@ def read_args():
     parser.add_argument('--sync_dqn_target_every', type=int, default=32_000, help='sync Q target net every n frames')
 
     parser.add_argument('--batch_size', type=int, default=256, help='sample size when sampling from the replay buffer')
-    parser.add_argument('--parallel_envs', type=int, default=64, help='number of envs in the vectorized env')
+    parser.add_argument('--num_envs', type=int, default=64, help='number of envs in the vectorized env')
     parser.add_argument('--train_count', type=int, default=2, help='how often to train on a batch_size batch for every step (of the vectorized env)')
 
     # rainbow settings
+    parser.add_argument('--init_eps', type=float, default=1.0, help='initial dqn exploration epsilon (when not using noisy-nets)')
+    parser.add_argument('--final_eps', type=float, default=0.01, help='final dqn exploration epsilon (when not using noisy-nets)')
+    parser.add_argument('--eps_decay_frac', type=float, default=0.5, help='fraction of training frames over which to decay exploration epsilon')
     parser.add_argument('--double_dqn', type=parse_bool, default=True, help='whether to use the double-dqn TD-target')
-    parser.add_argument('--prioritized_er', type=parse_bool, default=True, help='whether to use prioritized experience replay')
     parser.add_argument('--prioritized_er_beta0', type=float, default=0.45, help='importance sampling exponent for PER (0.4 for rainbow, 0.5 for dopamine)')
     parser.add_argument('--prioritized_er_time', type=int, default=None, help='time period over which to increase the IS exponent (+inf for dopamine; default is value of training_frames)')
     parser.add_argument('--n_step', type=int, default=3, help='the n in n-step bootstrapping')
@@ -55,12 +57,16 @@ def read_args():
     parser.add_argument('--exp-name', type=str, default='Rainbow', help='name of the experiment for logging purposes')
     parser.add_argument('--save', type=parse_bool, default=True, help='whether to save the final model')
     parser.add_argument('--total_checkpoints', type=int, default=10, help='the number of checkpoints to save (computed in runtime)')
+    parser.add_argument('--debug', type=parse_bool, default=False, help='if true, will set burnin to 1.5*batch_size for quick testing')
     args = parser.parse_args()
 
     # some initial checks to ensure all arguments are valid
-    assert (args.sync_dqn_target_every % args.parallel_envs) == 0 # otherwise target may not be synced since the main loop iterates in steps of parallel_envs
+    assert (args.sync_dqn_target_every % args.num_envs) == 0 # otherwise target may not be synced since the main loop iterates in steps of num_envs
     assert args.loss_fn in ('mse', 'huber')
     assert args.burnin > args.batch_size
+
+    if args.debug:
+        args.burnin = int(1.5 * args.batch_size)
 
     args.seed = random.randint(0, 1e6) if args.seed == -1 else args.seed
 

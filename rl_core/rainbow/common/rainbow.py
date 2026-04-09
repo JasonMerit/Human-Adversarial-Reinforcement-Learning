@@ -11,11 +11,11 @@ from rich import print
 from torch.amp import GradScaler, autocast
 
 from ..common import networks
-from ..common.replay_buffer import UniformReplayBuffer, PrioritizedReplayBuffer
+from ..common.replay_buffer import PrioritizedReplayBuffer
 from ..common.utils import prep_observation_for_qnet
 
 class Rainbow:
-    buffer: Union[UniformReplayBuffer, PrioritizedReplayBuffer]
+    buffer: PrioritizedReplayBuffer
 
     def __init__(self, env, args: SimpleNamespace, device: torch.device) -> None:
         self.env = env
@@ -23,7 +23,8 @@ class Rainbow:
 
         net = networks.get_model()
         # net = networks.get_model(args.network_arch, args.spectral_norm)
-        linear_layer = partial(networks.FactorizedNoisyLinear, parallel_envs=args.parallel_envs)
+        linear_layer = networks.FactorizedNoisyLinear
+        # linear_layer = partial(networks.FactorizedNoisyLinear, num_envs=args.num_envs)
         # linear_layer = partial(networks.FactorizedNoisyLinear, sigma_0=args.noisy_sigma0) if args.noisy_dqn else nn.Linear
         # depth = args.frame_stack*(1 if args.grayscale else 3)
         self.device = device
@@ -38,12 +39,7 @@ class Rainbow:
 
         self.double_dqn = args.double_dqn
 
-        self.prioritized_er = args.prioritized_er
-        if self.prioritized_er:
-            self.buffer = PrioritizedReplayBuffer(args.burnin, args.buffer_size, args.gamma, args.n_step, args.parallel_envs, use_amp=self.use_amp)
-        else:
-            self.buffer = UniformReplayBuffer(args.burnin, args.buffer_size, args.gamma, args.n_step, args.parallel_envs, use_amp=self.use_amp)
-
+        self.buffer = PrioritizedReplayBuffer(args.burnin, args.buffer_size, args.gamma, args.n_step, args.num_envs, use_amp=self.use_amp)
         self.n_step_gamma = args.gamma ** args.n_step
 
         self.max_grad_norm = args.max_grad_norm
@@ -51,7 +47,7 @@ class Rainbow:
         self.scaler = GradScaler(device=self.device, enabled=self.use_amp)
 
         loss_fn_cls = nn.MSELoss if args.loss_fn == 'mse' else nn.SmoothL1Loss
-        self.loss_fn = loss_fn_cls(reduction=('none' if self.prioritized_er else 'mean'))
+        self.loss_fn = loss_fn_cls(reduction=('none'))
 
     def sync_Q_target(self) -> None:
         self.q_target.load_state_dict(self.q_policy.state_dict())
@@ -82,32 +78,29 @@ class Rainbow:
         if self.double_dqn:
             best_action = torch.argmax(self.q_policy(next_state, advantages_only=True), dim=1)
             next_Q = torch.gather(self.q_target(next_state), dim=1, index=best_action.unsqueeze(1)).squeeze()
-            return reward + self.n_step_gamma * next_Q * (1 - done)
+            return reward + self.n_step_gamma * next_Q * (1 - done.float())
         else:
             max_q = torch.max(self.q_target(next_state), dim=1)[0]
-            return reward + self.n_step_gamma * max_q * (1 - done)
+            return reward + self.n_step_gamma * max_q * (1 - done.float())
 
     def train(self, batch_size, beta=None) -> Tuple[float, float, float]:
-        if self.prioritized_er:
-            indices, weights, (state, next_state, action, reward, done) = self.buffer.sample(batch_size, beta)
-            weights = torch.from_numpy(weights).to(self.device)
-        else:
-            state, next_state, action, reward, done = self.buffer.sample(batch_size)
+        indices, weights, (state, next_state, action, reward, done) = self.buffer.sample(batch_size, beta)
+        weights = torch.from_numpy(weights).to(self.device)
 
         self.opt.zero_grad()
-        with autocast(device_type=self.device, enabled=self.use_amp):
+        with autocast(device_type=str(self.device), enabled=self.use_amp):
+            # print("state:", state.shape)
+            # print("q:", self.q_policy(state).shape)
+            # raise Exception("Debugging shapes")
             td_est = torch.gather(self.q_policy(state), dim=1, index=action.unsqueeze(1)).squeeze()
             td_tgt = self.td_target(reward, next_state, done)
 
-            if self.prioritized_er:
-                td_errors = td_est-td_tgt
-                new_priorities = np.abs(td_errors.detach().cpu().numpy()) + 1e-6  # 1e-6 is the epsilon in PER
-                self.buffer.update_priorities(indices, new_priorities)
+            td_errors = td_est-td_tgt
+            new_priorities = np.abs(td_errors.detach().cpu().numpy()) + 1e-6  # 1e-6 is the epsilon in PER
+            self.buffer.update_priorities(indices, new_priorities)
 
-                losses = self.loss_fn(td_tgt, td_est)
-                loss = torch.mean(weights * losses)
-            else:
-                loss = self.loss_fn(td_tgt, td_est)
+            losses = self.loss_fn(td_tgt, td_est)
+            loss = torch.mean(weights * losses)
 
         self.scaler.scale(loss).backward()
 

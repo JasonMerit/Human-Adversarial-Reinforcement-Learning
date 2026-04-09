@@ -13,6 +13,7 @@ import yaml
 import torch#, wandb
 import numpy as np
 from rich import print
+from tqdm import tqdm
 
 from .common import argp
 from .common.rainbow import Rainbow
@@ -60,9 +61,10 @@ if __name__ == '__main__':
     # args.save_dir = str(save_dir)
 
     # create decay schedules for dqn's exploration epsilon and per's importance sampling (beta) parameter
+    eps_schedule = LinearSchedule(0, initial_value=args.init_eps, final_value=args.final_eps, decay_time=args.eps_decay_frac * args.training_frames)
     per_beta_schedule = LinearSchedule(0, initial_value=args.prioritized_er_beta0, final_value=1.0, decay_time=args.prioritized_er_time)
 
-    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.parallel_envs)])
+    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.num_envs)])
     states, _ = envs.reset()
 
     agent1 = Rainbow(envs, args, device)
@@ -74,9 +76,14 @@ if __name__ == '__main__':
     print('[green bold]Start')
     start_time = time.time()
     results = [0, 0, 0]  # tie/win/loss counts for agent1
+    
+    # Set pbar to fill within total_time 
+    # total_time = 20
+    # pbar = tqdm(total=total_time) 
     try:
-        for game_frame in range(0, args.training_frames + 1, args.parallel_envs):
+        for game_frame in range(0, args.training_frames + 1, args.num_envs):
             # print("[yellow bold]Game frame: ", game_frame)
+            eps = eps_schedule(game_frame)
             per_beta = per_beta_schedule(game_frame)
 
             # reset the noisy-nets noise in the policy
@@ -85,16 +92,23 @@ if __name__ == '__main__':
 
             # compute actions to take in all parallel envs, asynchronously start environment step
             obs1, obs2 = states[:, 0], states[:, 1]  # (5, 3, 25, 25)
+            
             actions1 = agent1.act(torch.from_numpy(obs1).float().to(device)).cpu().numpy()
+            explore_mask = np.random.rand(args.num_envs) < eps
+            actions1[explore_mask] = np.random.randint(0, 3, size=explore_mask.sum())
+            
+            explore_mask = np.random.rand(args.num_envs) < eps
             actions2 = agent2.act(torch.from_numpy(obs2).float().to(device)).cpu().numpy()
-            # assert (actions1 == actions2).all(), "Sucess. Actions differ!"
-            # assert (actions1[0] == actions1).all(), "Sucess. Actions differ!"
+            actions2[explore_mask] = np.random.randint(0, 3, size=explore_mask.sum())
+
+            # assert not (actions1 == actions2).all(), f"Same actions for both agents :( \n{actions1}\n{actions2}"
+            # assert not (actions1[0] == actions1).all(), f"Same action for agent1 :( \n{actions1}"
             next_states, rewards, dones, _, infos = envs.step(np.stack([actions1, actions2], axis=1))
             
             # Buffer
-            for state, action, reward, done, j in zip(obs1, actions1, rewards, dones, range(args.parallel_envs)):
+            for state, action, reward, done, j in zip(obs1, actions1, rewards, dones, range(args.num_envs)):
                 agent1.buffer.put(state, action, reward, done, j=j)
-            for state, action, reward, done, j in zip(obs2, actions2, rewards, dones, range(args.parallel_envs)):
+            for state, action, reward, done, j in zip(obs2, actions2, rewards, dones, range(args.num_envs)):
                 agent2.buffer.put(state, action, -reward, done, j=j)
 
             states = next_states
@@ -118,7 +132,7 @@ if __name__ == '__main__':
                 agent2.sync_Q_target()
             
             # Logging
-            if game_frame % log_every_frames < args.parallel_envs and game_frame > 0:
+            if game_frame % log_every_frames < args.num_envs and game_frame > 0:
                 sps = int(game_frame / (time.time() - start_time))
                 elapsed = time.time() - start_time
                 progress = game_frame / args.training_frames
@@ -127,10 +141,19 @@ if __name__ == '__main__':
                 print(f"{eta/60:.1f} minutes left...", end='\r')
 
             # every 1M frames, save a model checkpoint to disk and wandb
-            if game_frame % save_every_frames < args.parallel_envs and game_frame > 0:
+            if game_frame % save_every_frames < args.num_envs and game_frame > 0:
                 agent1.save(save_folder + f"A_{game_frame}.pth", verbose=True)
                 agent2.save(save_folder + f"B_{game_frame}.pth", verbose=True)
-    
+
+
+            # elapsed = int(time.time() - start_time)
+            # pbar.update(elapsed - pbar.n)  
+            # if elapsed >= total_time:  
+            #     print(f"\nStopping training after {total_time} seconds for testing purposes.")
+            #     break
+    # except Exception as e:
+    #     print(f"[red bold]An exception occurred: {e}[/red bold]")
+    #     print(f"Finished after {time.time() - start_time:.1f} seconds")
     finally:
         if args.save:
             with open(save_folder + "results.yml", "w") as f:
@@ -141,5 +164,7 @@ if __name__ == '__main__':
                     }, f)
             agent1.save(save_folder + f"A_{game_frame}.pth", verbose=True)
             agent2.save(save_folder + f"B_{game_frame}.pth", verbose=True)
+
+        print(f"Finished after {time.time() - start_time:.1f} seconds")
 
     envs.close()
