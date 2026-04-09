@@ -24,8 +24,8 @@ def eval(env, agent, episodes=10_000):
     return total_reward / episodes
 
 if __name__ == "__main__":
-    from .env import TronEnv, TronView
-    from .env import utils
+    from ..env import TronEnv, TronView
+    from ..env import utils
     env = TronEnv()
 
     print(utils.blue("NOT IMPLEMENTED! FUCK OFF"))

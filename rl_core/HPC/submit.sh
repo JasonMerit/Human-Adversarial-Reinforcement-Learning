@@ -2,11 +2,12 @@
 ### General options
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J Tron
+#BSUB -J Rainbow
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=32GB]"
+### BSUB -R "rusage[mem=32GB]"
+#BSUB -R "select[gpu32gb]"
 #BSUB -M 32GB
 #BSUB -W 5:00
 #BSUB -u s216135@dtu.dk
@@ -22,9 +23,9 @@ conda activate harl_hpc
 
 for i in {1..5}
 do
-    echo "====== [$(date)] Starting run $i ======"
+    echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
     # python -m rl_core.train_ppo --exp-name PPO
-    python -m rl_core.rainbow.train --exp-name Rainbow --training_frames 10_000_000
+    python -m rl_core.rainbow.train --exp-name $LSB_JOBID --training_frames 10_000_000
     # python -m rl_core.self_train_pool --exp-name Pooling --no-save-model --total_timesteps 10 --num-envs 1
     echo ""
 done

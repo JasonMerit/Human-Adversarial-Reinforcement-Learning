@@ -116,3 +116,11 @@ class Rainbow:
         torch.save(self.q_policy.state_dict(), path)
         if verbose:
             print(f"Model saved to {path}")
+    
+    @classmethod
+    def from_checkpoint(cls, path, obs_shape, n_actions, device="cpu"):
+        net = networks.get_model()
+        linear_layer = networks.FactorizedNoisyLinear
+        q_policy = net(obs_shape[0], actions=n_actions, linear_layer=linear_layer).to(device)
+        q_policy.load_state_dict(torch.load(path, weights_only=True, map_location=device))
+        return q_policy
