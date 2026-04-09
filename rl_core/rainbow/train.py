@@ -54,6 +54,7 @@ if __name__ == '__main__':
         os.makedirs(save_folder)
         with open(save_folder + "args.yml", "w") as f:
                 yaml.dump(vars(args), f)
+        print(f"Models will be saved to {save_folder}!")
     else:
         print("Models will NOT be saved!")
     # save_dir = Path("checkpoints") / "KEK"#wandb.run.name

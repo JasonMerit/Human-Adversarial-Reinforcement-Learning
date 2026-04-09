@@ -6,8 +6,8 @@
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=3GB]"
-#BSUB -M 3GB
+#BSUB -R "rusage[mem=32GB]"
+#BSUB -M 32GB
 #BSUB -W 5:00
 #BSUB -u s216135@dtu.dk
 #BSUB -B
