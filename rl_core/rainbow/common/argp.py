@@ -67,6 +67,7 @@ def read_args():
 
     if args.debug:
         args.burnin = int(1.5 * args.batch_size)
+        args.num_envs = 5
 
     args.seed = random.randint(0, 1e6) if args.seed == -1 else args.seed
 

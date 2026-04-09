@@ -1,8 +1,9 @@
 #!/bin/bash
+name = "Rainbow"
 ### General options
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J Tron
+#BSUB -J $name
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
@@ -24,7 +25,7 @@ for i in {1..5}
 do
     echo "====== [$(date)] Starting run $i ======"
     # python -m rl_core.train_ppo --exp-name PPO
-    python -m rl_core.rainbow.train --exp-name Rainbow --training_frames 10_000_000
+    python -m rl_core.rainbow.train --exp-name $name --training_frames 10_000_000
     # python -m rl_core.self_train_pool --exp-name Pooling --no-save-model --total_timesteps 10 --num-envs 1
     echo ""
 done

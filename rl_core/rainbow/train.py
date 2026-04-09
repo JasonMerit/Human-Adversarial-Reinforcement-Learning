@@ -38,7 +38,7 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"===== Training with seed {args.seed} on device {device} =====")
+    print(f"===== Training with seed {args.seed} on device {device} =====" + ("[yellow bold](debug mode)[/yellow bold]" if args.debug else ""))
 
     # Logging and saving model
     # log_every_frames = 1
@@ -78,8 +78,8 @@ if __name__ == '__main__':
     results = [0, 0, 0]  # tie/win/loss counts for agent1
     
     # Set pbar to fill within total_time 
-    # total_time = 20
-    # pbar = tqdm(total=total_time) 
+    total_time = 60
+    pbar = tqdm(total=total_time) 
     try:
         for game_frame in range(0, args.training_frames + 1, args.num_envs):
             # print("[yellow bold]Game frame: ", game_frame)
@@ -145,15 +145,13 @@ if __name__ == '__main__':
                 agent1.save(save_folder + f"A_{game_frame}.pth", verbose=True)
                 agent2.save(save_folder + f"B_{game_frame}.pth", verbose=True)
 
-
-            # elapsed = int(time.time() - start_time)
-            # pbar.update(elapsed - pbar.n)  
-            # if elapsed >= total_time:  
-            #     print(f"\nStopping training after {total_time} seconds for testing purposes.")
-            #     break
-    # except Exception as e:
-    #     print(f"[red bold]An exception occurred: {e}[/red bold]")
-    #     print(f"Finished after {time.time() - start_time:.1f} seconds")
+            if args.debug:
+                elapsed = int(time.time() - start_time)
+                pbar.update(elapsed - pbar.n)  
+                if elapsed >= total_time:  
+                    print(f"\nStopping training after {total_time} seconds for testing purposes.")
+                    break
+    
     finally:
         if args.save:
             with open(save_folder + "results.yml", "w") as f:
