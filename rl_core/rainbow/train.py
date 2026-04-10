@@ -79,8 +79,9 @@ if __name__ == '__main__':
     results = [0, 0, 0]  # tie/win/loss counts for agent1
     
     # Set pbar to fill within total_time 
-    total_time = 60
-    pbar = tqdm(total=total_time) 
+    if args.debug:
+        total_time = 20
+        pbar = tqdm(total=total_time) 
     try:
         for game_frame in range(0, args.total_timesteps + 1, args.num_envs):
             # print("[yellow bold]Game frame: ", game_frame)

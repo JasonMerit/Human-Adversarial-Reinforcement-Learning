@@ -41,6 +41,7 @@ def read_args():
     parser.add_argument('--final_eps', type=float, default=0.01, help='final dqn exploration epsilon (when not using noisy-nets)')
     parser.add_argument('--eps_decay_frac', type=float, default=0.5, help='fraction of training frames over which to decay exploration epsilon')
     parser.add_argument('--double_dqn', type=parse_bool, default=True, help='whether to use the double-dqn TD-target')
+    parser.add_argument('--prioritized_er', type=parse_bool, default=True, help='whether to use prioritized experience replay')
     parser.add_argument('--prioritized_er_beta0', type=float, default=0.45, help='importance sampling exponent for PER (0.4 for rainbow, 0.5 for dopamine)')
     parser.add_argument('--prioritized_er_time', type=int, default=None, help='time period over which to increase the IS exponent (+inf for dopamine; default is value of total_timesteps)')
     parser.add_argument('--n_step', type=int, default=3, help='the n in n-step bootstrapping')

@@ -5,9 +5,62 @@ from math import sqrt
 import numpy as np
 import torch
 
-from ..common.utils import prep_observation_for_qnet
-
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+class UniformReplayBuffer:
+    def __init__(self, burnin, capacity, gamma, n_step, parallel_envs, use_amp):
+        self.capacity = capacity
+        self.burnin = burnin
+        self.buffer = []
+        self.nextwrite = 0
+        self.use_amp = use_amp
+
+        self.gamma = gamma
+        self.n_step = n_step
+        self.n_step_buffers = [collections.deque(maxlen=self.n_step + 1) for j in range(parallel_envs)]
+
+    def put(self, *transition, j):
+        self.n_step_buffers[j].append(transition)
+        if len(self.n_step_buffers[j]) == self.n_step + 1 and not self.n_step_buffers[j][0][3]:  # n-step transition can't start with terminal state
+            state = self.n_step_buffers[j][0][0]
+            action = self.n_step_buffers[j][0][1]
+            next_state = self.n_step_buffers[j][self.n_step][0]
+            done = self.n_step_buffers[j][self.n_step][3]
+            reward = self.n_step_buffers[j][0][2]
+            for k in range(1, self.n_step):
+                reward += self.n_step_buffers[j][k][2] * self.gamma ** k
+                if self.n_step_buffers[j][k][3]:
+                    done = True
+                    break
+
+            action = torch.LongTensor([action]).to(device)
+            reward = torch.FloatTensor([reward]).to(device)
+            done = torch.FloatTensor([done]).to(device)
+
+            if len(self.buffer) < self.capacity:
+                self.buffer.append((state, next_state, action, reward, done))
+            else:
+                self.buffer[self.nextwrite % self.capacity] = (state, next_state, action, reward, done)
+                self.nextwrite += 1
+
+    def sample(self, batch_size, beta=None):
+        """ Sample a minibatch from the ER buffer (also converts the FrameStacked LazyFrames to contiguous tensors) """
+        batch = random.sample(self.buffer, batch_size)
+        state, next_state, action, reward, done = zip(*batch)
+        state = list(map(lambda x: torch.from_numpy(x.__array__()), state))
+        next_state = list(map(lambda x: torch.from_numpy(x.__array__()), next_state))
+
+        state, next_state, action, reward, done = map(torch.stack, [state, next_state, action, reward, done])
+        return state, next_state, action.squeeze(), reward.squeeze(), done.squeeze()
+        # return prep_observation_for_qnet(state, self.use_amp), prep_observation_for_qnet(next_state, self.use_amp), \
+        #        action.squeeze(), reward.squeeze(), done.squeeze()
+
+    @property
+    def burnedin(self):
+        return len(self) >= self.burnin
+
+    def __len__(self):
+        return len(self.buffer)
 
 class PrioritizedReplayBuffer:
     """ based on https://nn.labml.ai/rl/dqn, supports n-step bootstrapping and parallel environments,
@@ -130,8 +183,8 @@ class PrioritizedReplayBuffer:
         state, next_state, action, reward, done = map(torch.stack, [state, next_state, action, reward, done])
         # print(state.shape, next_state.shape, action.shape, reward.shape, done.shape)
         return state, next_state, action.squeeze(), reward.squeeze(), done.squeeze()
-        return prep_observation_for_qnet(state, self.use_amp), prep_observation_for_qnet(next_state, self.use_amp), \
-               action.squeeze(), reward.squeeze(), done.squeeze()
+        # return prep_observation_for_qnet(state, self.use_amp), prep_observation_for_qnet(next_state, self.use_amp), \
+        #        action.squeeze(), reward.squeeze(), done.squeeze()
 
     def update_priorities(self, indexes, priorities):
         for idx, priority in zip(indexes, priorities):

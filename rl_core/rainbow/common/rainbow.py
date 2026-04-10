@@ -12,10 +12,10 @@ from torch.amp import GradScaler, autocast
 
 from ..common import networks
 from ..common.networks import RainbowTronNet
-from ..common.replay_buffer import PrioritizedReplayBuffer
+from ..common.replay_buffer import UniformReplayBuffer, PrioritizedReplayBuffer
 
 class Rainbow:
-    buffer: PrioritizedReplayBuffer
+    buffer: Union[UniformReplayBuffer, PrioritizedReplayBuffer]
 
     def __init__(self, envs, args: SimpleNamespace, device: torch.device) -> None:
         self.use_amp = args.use_amp
@@ -40,7 +40,10 @@ class Rainbow:
 
         self.double_dqn = args.double_dqn
 
-        self.buffer = PrioritizedReplayBuffer(args.burnin, args.buffer_size, args.gamma, args.n_step, args.num_envs, use_amp=self.use_amp)
+        if args.prioritized_er:
+            self.buffer = PrioritizedReplayBuffer(args.burnin, args.buffer_size, args.gamma, args.n_step, args.num_envs, use_amp=self.use_amp)
+        else:
+            self.buffer = UniformReplayBuffer(args.burnin, args.buffer_size, args.gamma, args.n_step, args.num_envs, use_amp=self.use_amp)
         self.n_step_gamma = args.gamma ** args.n_step
 
         self.max_grad_norm = args.max_grad_norm

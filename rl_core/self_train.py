@@ -133,15 +133,16 @@ if __name__ == "__main__":
         os.makedirs(save_folder)
         with open(save_folder + "args.yml", "w") as f:
                 yaml.dump(vars(args), f)
+        print(f"Models will be saved to {save_folder}!")
     else:
-        print("Models will NOT be saved!")
+        print("[bold yellow] Models will NOT be saved!")
 
     results = [0, 0, 0]
     start_time = time.time()
-    total_time = 60
-    pbar = tqdm(total=total_time) 
+    if args.debug:
+        total_time = 60
+        pbar = tqdm(total=total_time) 
 
-    # with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU], record_shapes=True, with_stack=True) as prof:
     try:
         # pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
         for global_step in range(1, total_loops+1):
@@ -217,6 +218,5 @@ if __name__ == "__main__":
             agent2.save(save_folder + f"B_{env_step}.pth", verbose=True)
 
         envs.close()
-        # prof.export_chrome_trace("rl_core/trace_dqn.json")
         print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours!")
         # writer.close()
