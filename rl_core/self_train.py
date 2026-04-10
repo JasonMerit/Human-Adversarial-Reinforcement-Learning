@@ -40,7 +40,7 @@ class Args:
     """whether to run in debug mode (no saving, more logging, etc.)"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 15_000_000
+    total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -140,6 +140,8 @@ if __name__ == "__main__":
     start_time = time.time()
     total_time = 60
     pbar = tqdm(total=total_time) 
+
+    # with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU], record_shapes=True, with_stack=True) as prof:
     try:
         # pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
         for global_step in range(1, total_loops+1):
@@ -215,5 +217,6 @@ if __name__ == "__main__":
             agent2.save(save_folder + f"B_{env_step}.pth", verbose=True)
 
         envs.close()
+        # prof.export_chrome_trace("rl_core/trace_dqn.json")
         print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours!")
         # writer.close()

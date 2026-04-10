@@ -22,7 +22,7 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-python -m rl_core.self_train --exp-name $J --total_timesteps 10_000_000
+python -m rl_core.self_train --exp-name $J
 # python -m rl_core.rainbow.train --exp-name $J --total_timesteps 10_000_000
 # for i in {1..5}
 # do
