@@ -68,7 +68,8 @@ def read_args():
     assert args.burnin > args.batch_size
 
     if args.debug:
-        # args.burnin = int(1.5 * args.batch_size)
+        args.batch_size = 16
+        args.burnin = args.batch_size
         args.num_envs = 5
         args.save = False
 

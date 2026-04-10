@@ -20,6 +20,7 @@ class Rainbow:
     def __init__(self, envs, args: SimpleNamespace, device: torch.device) -> None:
         self.use_amp = args.use_amp
         self.device = device
+        self.prioritized_er = args.prioritized_er
 
         if not args.tron:
             net = networks.get_model()
@@ -88,24 +89,28 @@ class Rainbow:
             return reward + self.n_step_gamma * max_q * (1 - done.float())
 
     def train(self, batch_size, beta=None) -> Tuple[float, float, float]:
-        indices, weights, (state, next_state, action, reward, done) = self.buffer.sample(batch_size, beta)
-        weights = torch.from_numpy(weights).to(self.device)
+        if self.prioritized_er:
+            indices, weights, (state, next_state, action, reward, done) = self.buffer.sample(batch_size, beta)
+            weights = torch.from_numpy(weights).to(self.device)
+        else:
+            state, next_state, action, reward, done = self.buffer.sample(batch_size)
         state = state.to(self.device)
         next_state = next_state.to(self.device)
-        # print(f"[yellow bold]State type: {type(state)}, State shape: {state.shape}, State device: {state.device}[/yellow bold]")
-        # raise Exception("Debugging: check state type")
 
         self.opt.zero_grad()
         with autocast(device_type=str(self.device), enabled=self.use_amp):
             td_est = torch.gather(self.q_policy(state), dim=1, index=action.unsqueeze(1)).squeeze()
             td_tgt = self.td_target(reward, next_state, done)
 
-            td_errors = td_est-td_tgt
-            new_priorities = np.abs(td_errors.detach().cpu().numpy()) + 1e-6  # 1e-6 is the epsilon in PER
-            self.buffer.update_priorities(indices, new_priorities)
+            if self.prioritized_er:
+                td_errors = td_est-td_tgt
+                new_priorities = np.abs(td_errors.detach().cpu().numpy()) + 1e-6  # 1e-6 is the epsilon in PER
+                self.buffer.update_priorities(indices, new_priorities)
 
-            losses = self.loss_fn(td_tgt, td_est)
-            loss = torch.mean(weights * losses)
+                losses = self.loss_fn(td_tgt, td_est)
+                loss = torch.mean(weights * losses)
+            else:
+                loss = self.loss_fn(td_tgt, td_est).mean()
 
         self.scaler.scale(loss).backward()
 
