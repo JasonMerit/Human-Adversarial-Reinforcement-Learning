@@ -42,8 +42,8 @@ if __name__ == '__main__':
 
     # Logging and saving model
     # log_every_frames = 1
-    log_every_frames = max(1, args.training_frames // 100)
-    save_every_frames = max(1, args.training_frames // args.total_checkpoints)
+    log_every_frames = max(1, args.total_timesteps // 100)
+    save_every_frames = max(1, args.total_timesteps // args.total_checkpoints)
     
     if args.save:
         save_folder = "runs/" + args.exp_name
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     # args.save_dir = str(save_dir)
 
     # create decay schedules for dqn's exploration epsilon and per's importance sampling (beta) parameter
-    eps_schedule = LinearSchedule(0, initial_value=args.init_eps, final_value=args.final_eps, decay_time=args.eps_decay_frac * args.training_frames)
+    eps_schedule = LinearSchedule(0, initial_value=args.init_eps, final_value=args.final_eps, decay_time=args.eps_decay_frac * args.total_timesteps)
     per_beta_schedule = LinearSchedule(0, initial_value=args.prioritized_er_beta0, final_value=1.0, decay_time=args.prioritized_er_time)
 
     envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.num_envs)])
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     total_time = 60
     pbar = tqdm(total=total_time) 
     try:
-        for game_frame in range(0, args.training_frames + 1, args.num_envs):
+        for game_frame in range(0, args.total_timesteps + 1, args.num_envs):
             # print("[yellow bold]Game frame: ", game_frame)
             eps = eps_schedule(game_frame)
             per_beta = per_beta_schedule(game_frame)
@@ -136,7 +136,7 @@ if __name__ == '__main__':
             if game_frame % log_every_frames < args.num_envs and game_frame > 0:
                 sps = int(game_frame / (time.time() - start_time))
                 elapsed = time.time() - start_time
-                progress = game_frame / args.training_frames
+                progress = game_frame / args.total_timesteps
                 eta = elapsed * (1/progress - 1)
                 print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results}")
                 print(f"{eta/60:.1f} minutes left...", end='\r')
