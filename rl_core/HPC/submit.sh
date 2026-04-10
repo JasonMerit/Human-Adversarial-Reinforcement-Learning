@@ -3,7 +3,7 @@
 #BSUB -q gpuv100
 #BSUB -J RainbowSimpler
 ###BSUB -J Rainbow[1-5]  # Job array with 5 tasks - remove the loop in the script if using this
-#BSUB -n 2
+#BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
 ### BSUB -R "rusage[mem=32GB]"
