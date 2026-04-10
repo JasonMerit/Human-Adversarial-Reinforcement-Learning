@@ -1,9 +1,9 @@
 #!/bin/bash
-### General options
 ###BSUB -q hpc
 #BSUB -q gpuv100
 #BSUB -J Rainbow
-#BSUB -n 4
+###BSUB -J Rainbow[1-5]  # Job array with 5 tasks - remove the loop in the script if using this
+#BSUB -n 2
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
 ### BSUB -R "rusage[mem=32GB]"
@@ -21,7 +21,7 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-for i in {1..5}
+for i in {1..1}
 do
     echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
     # python -m rl_core.train_ppo --exp-name PPO

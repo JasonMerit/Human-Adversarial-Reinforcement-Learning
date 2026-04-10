@@ -11,25 +11,26 @@ from rich import print
 from torch.amp import GradScaler, autocast
 
 from ..common import networks
+from ..common.networks import RainbowTronNet
 from ..common.replay_buffer import PrioritizedReplayBuffer
-from ..common.utils import prep_observation_for_qnet
 
 class Rainbow:
     buffer: PrioritizedReplayBuffer
 
-    def __init__(self, env, args: SimpleNamespace, device: torch.device) -> None:
-        self.env = env
+    def __init__(self, envs, args: SimpleNamespace, device: torch.device) -> None:
         self.use_amp = args.use_amp
-
-        net = networks.get_model()
-        # net = networks.get_model(args.network_arch, args.spectral_norm)
-        linear_layer = networks.FactorizedNoisyLinear
-        # linear_layer = partial(networks.FactorizedNoisyLinear, num_envs=args.num_envs)
-        # linear_layer = partial(networks.FactorizedNoisyLinear, sigma_0=args.noisy_sigma0) if args.noisy_dqn else nn.Linear
-        # depth = args.frame_stack*(1 if args.grayscale else 3)
         self.device = device
-        self.q_policy = net(3, actions=3, linear_layer=linear_layer).to(device) # 3 channels (depth)
-        self.q_target = net(3, actions=3, linear_layer=linear_layer).to(device) # 3 channels (depth)
+
+        if not args.tron:
+            net = networks.get_model()
+            linear_layer = networks.FactorizedNoisyLinear
+            self.q_policy = net(3, actions=3, linear_layer=linear_layer).to(device) # 3 channels (depth)
+            self.q_target = net(3, actions=3, linear_layer=linear_layer).to(device) # 3 channels (depth)
+        else:
+            n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
+            obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
+            self.q_policy = RainbowTronNet(obs_shape, n_actions).to(device) # 3 channels (depth)
+            self.q_target = RainbowTronNet(obs_shape, n_actions).to(device) # 3 channels (depth)
         self.q_target.load_state_dict(self.q_policy.state_dict())
 
         #k = 0

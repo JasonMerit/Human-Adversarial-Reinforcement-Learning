@@ -30,3 +30,14 @@ python -m rl_core.rainbow.train --save False --num_envs 5
 
 conda env create -f environment.yml
 rl_core\HPC\submit.sh
+
+python -m cProfile -o rl_core/rainbow/rainbow.prof -m rl_core.rainbow.train --debug True --save False --num_envs 5
+snakeviz rl_core\\rainbow\\rainbow.prof
+
+python -m cProfile -o rl_core/dqn.prof -m rl_core.self_train --debug --no-save
+snakeviz rl_core\\dqn.prof
+
+python -m cProfile -o rl_core/rainbow/impala.prof -m rl_core.rainbow.train --debug True
+python -m cProfile -o rl_core/rainbow/tron.prof -m rl_core.rainbow.train --debug True --tron True
+snakeviz rl_core\\rainbow\\tron.prof
+snakeviz rl_core\\rainbow\\impala.prof

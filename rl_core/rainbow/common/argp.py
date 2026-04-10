@@ -58,6 +58,7 @@ def read_args():
     parser.add_argument('--save', type=parse_bool, default=True, help='whether to save the final model')
     parser.add_argument('--total_checkpoints', type=int, default=10, help='the number of checkpoints to save (computed in runtime)')
     parser.add_argument('--debug', type=parse_bool, default=False, help='if true, will set burnin to 1.5*batch_size for quick testing')
+    parser.add_argument('--tron', type=parse_bool, default=True, help='if true, will use the Tron-specific network architecture')
     args = parser.parse_args()
 
     # some initial checks to ensure all arguments are valid
@@ -66,8 +67,9 @@ def read_args():
     assert args.burnin > args.batch_size
 
     if args.debug:
-        args.burnin = int(1.5 * args.batch_size)
+        # args.burnin = int(1.5 * args.batch_size)
         args.num_envs = 5
+        args.save = False
 
     args.seed = random.randint(0, 1e6) if args.seed == -1 else args.seed
 

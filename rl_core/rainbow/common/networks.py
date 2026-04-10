@@ -346,5 +346,43 @@ class ImpalaCNNLarge(nn.Module):
 #     elif model_str.startswith('impala_large:'):
 #         return partial(ImpalaCNNLarge, model_size=int(model_str[13:]), spectral_norm=spectral_norm)
 
+class RainbowTronNet(nn.Module):
+    def __init__(self, obs_shape, n_actions):
+        super().__init__()
+        c, h, w = obs_shape
+
+        self.cnn = nn.Sequential(
+            nn.Conv2d(c, 32, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.ReLU(),
+            nn.Flatten()
+        )
+
+        with torch.no_grad():
+            n_flat = self.cnn(torch.zeros(1, c, h, w)).shape[1]
+
+        self.value = nn.Sequential(
+            nn.Linear(n_flat, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
+
+        self.advantage = nn.Sequential(
+            nn.Linear(n_flat, 128),
+            nn.ReLU(),
+            nn.Linear(128, n_actions)
+        )
+
+    def forward(self, x, advantages_only=False):
+        f = self.cnn(x)
+        a = self.advantage(f)
+        if advantages_only:
+            return a
+        v = self.value(f)
+        return v + (a - a.mean(dim=1, keepdim=True))
+
 def get_model():
     return partial(ImpalaCNNLarge, model_size=2, spectral_norm="all")

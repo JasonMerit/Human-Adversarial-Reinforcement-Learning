@@ -38,7 +38,7 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"===== Training with seed {args.seed} on device {device} =====" + ("[yellow bold](debug mode)[/yellow bold]" if args.debug else ""))
+    print(f"=====|  Training with seed {args.seed} on device {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
     # Logging and saving model
     # log_every_frames = 1

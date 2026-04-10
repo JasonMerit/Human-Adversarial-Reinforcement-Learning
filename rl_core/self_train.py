@@ -6,10 +6,13 @@ import yaml
 from dataclasses import dataclass
 from typing import Optional
 
+from rich import print
+
 import gymnasium as gym
 import numpy as np
 import torch
 import tyro
+from tqdm import tqdm
 
 from rl_core.agents.buffers import ReplayBuffer
 
@@ -32,6 +35,9 @@ class Args:
     total_checkpoints: int = 10
     """the total number of checkpoints to save during training"""
     environment: str = "TronDuo"
+    """the environment to train on (TronDuo or Tron2Channel)"""
+    debug: bool = False
+    """whether to run in debug mode (no saving, more logging, etc.)"""
 
     # Algorithm specific arguments
     total_timesteps: int = 15_000_000
@@ -81,6 +87,9 @@ if __name__ == "__main__":
     args = tyro.cli(Args)
     if args.seed is None:
         args.seed = np.random.randint(0, 1e6)
+    if args.debug:
+        args.num_envs = 5
+        args.save = False
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -89,6 +98,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"=====|  Training with seed {args.seed} on device {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.seed + i, i, args.environment, render=args.render) for i in range(args.num_envs)])
@@ -101,8 +111,7 @@ if __name__ == "__main__":
     agent_args = {"obs_shape": obs_shape, "n_actions": n_actions, "lr": args.learning_rate, "rb": ReplayBuffer(**buffer_args), "batch_size": args.batch_size, "device": device}
     agent1 = DQNAgent(**agent_args)
     agent2 = DQNAgent(**agent_args)
-
-    print(f"===== Training with seed {args.seed} on device {device} =====")
+    
     obs, _ = envs.reset(seed=args.seed)
 
     # Handling multiple parallel envs steps
@@ -113,8 +122,6 @@ if __name__ == "__main__":
     total_loops = args.total_timesteps // args.num_envs
     save_every = max(1, total_loops // args.total_checkpoints)
     log_interval = max(1, total_loops // 100)
-    log_interval = 5000
-
 
     # Logging and saving model
     if args.save:
@@ -131,7 +138,8 @@ if __name__ == "__main__":
 
     results = [0, 0, 0]
     start_time = time.time()
-
+    total_time = 60
+    pbar = tqdm(total=total_time) 
     try:
         # pbar = tqdm(range(total_loops), desc="Training", miniters=log_interval)
         for global_step in range(1, total_loops+1):
@@ -187,6 +195,13 @@ if __name__ == "__main__":
                 eta = elapsed * (1/progress - 1)
                 print(f"{progress*100:.1f}% - SPS: {sps}")
                 print(f"{eta/60:.1f} minutes left...", end='\r')
+            
+            if args.debug:
+                elapsed = int(time.time() - start_time)
+                pbar.update(elapsed - pbar.n)  
+                if elapsed >= total_time:  
+                    print(f"\nStopping training after {total_time} seconds for testing purposes.")
+                    break
 
     finally:
         if args.save:

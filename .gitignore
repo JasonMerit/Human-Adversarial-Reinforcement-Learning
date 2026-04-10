@@ -10,6 +10,7 @@ __pycache__/
 runs/
 *.txt
 *.pt
+*.prof
 
 # Virtual environment for development
 harl/  
@@ -28,4 +29,5 @@ tools/
 uv.lock
 
 rl_core/rainbow/Rainbow/
+test.py
 
