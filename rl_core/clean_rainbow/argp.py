@@ -80,9 +80,7 @@ def read_args():
         args.total_timesteps = 400
         args.render = True
 
-        args.start_e = 1.0
-        args.end_e = 0.0
-        args.exploration_fraction = 1.0
+        args.exp_name = "debug_" + args.exp_name
     
     assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"

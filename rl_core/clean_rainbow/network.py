@@ -166,6 +166,8 @@ class Rainbow:
             # compute the n-step Bellman update.
             gamma_n = self.gamma**self.n_step
             next_atoms = rewards + gamma_n * support * (1 - dones.float())
+            assert next_atoms < self.q_network.v_max, f"Expected next_atoms < {self.q_network.v_max}, got {next_atoms.max().item()}"
+            assert next_atoms > self.q_network.v_min, f"Expected next_atoms > {self.q_network.v_min}, got {next_atoms.min().item()}"
             tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
 
             TimerRegistry.start()
@@ -203,8 +205,7 @@ class Rainbow:
         loss.backward()
 
         # Nudged between backward and optimizer for grad logging
-        if self.writer:
-        # if self.writer and self.learning_steps % 100 == 0:
+        if self.writer and self.learning_steps % 100 == 0:
             grad, weight = self.grad_weight_norm()
             self.writer.add_scalar(f"gradients/{self.name}_grad_norm", grad, self.learning_steps)
             self.writer.add_scalar(f"gradients/{self.name}_weight_norm", weight, self.learning_steps)
@@ -213,7 +214,6 @@ class Rainbow:
             q_values = (pred_dist * self.q_network.support).sum(dim=1)  # [B]
             self.writer.add_scalar(f"losses/{self.name}_q_values_mean", q_values.mean().item(), self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
-
 
         self.optimizer.step()
         TimerRegistry.stop("backward")

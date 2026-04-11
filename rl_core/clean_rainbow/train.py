@@ -2,7 +2,6 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rainbow/#rainbow_ataripy
 import random, os, time, shutil
 
-from tqdm import tqdm
 import gymnasium as gym
 import numpy as np
 import torch
@@ -87,7 +86,6 @@ if __name__ == "__main__":
 
     obs, _ = envs.reset()
     obs1, obs2 = obs[:, 0], obs[:, 1]
-    # for global_step in tqdm(range(1, total_loops + 1)):
     for global_step in range(1, total_loops + 1):
         a1 = agent1.act(obs1)
         a2 = agent2.act(obs2)
@@ -95,7 +93,7 @@ if __name__ == "__main__":
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-        explore_mask = np.random.rand(args.num_envs) < epsilon
+        explore_mask = np.random.rand(args.num_envs) < 1  # FULL EXPLORE MODE
         a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
         actions = np.stack([a1, a2], axis=1) 
@@ -103,7 +101,7 @@ if __name__ == "__main__":
         next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
 
         agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
-        agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
+        # agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
         obs1, obs2 = next_obs1, next_obs2
         episode_lengths += 1
@@ -112,12 +110,12 @@ if __name__ == "__main__":
         # if global_step > burnin:
         for _ in range(train_count):
             agent1.learn()
-            agent2.learn()
+            # agent2.learn()
 
         # update target network
         if global_step % target_every == 0:
             agent1.update_target()
-            agent2.update_target()
+            # agent2.update_target()
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
@@ -145,6 +143,10 @@ if __name__ == "__main__":
         #     agent1.save(save_folder + f"A_{env_step}.pth")
         #     agent2.save(save_folder + f"B_{env_step}.pth")
 
+    envs.close()
+    print(f"Total logs: {kek}")
+    TimerRegistry.report()
+
     if args.track:
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
@@ -162,7 +164,3 @@ if __name__ == "__main__":
         if args.save:
             agent1.save(save_folder + f"A.pth")
             agent2.save(save_folder + f"B.pth")
-
-    envs.close()
-    print(f"Total logs: {kek}")
-    TimerRegistry.report()
