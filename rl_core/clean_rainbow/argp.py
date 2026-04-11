@@ -13,11 +13,11 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 10000000
+    total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 0.0000625
     """the learning rate of the optimizer"""
-    num_envs: int = 1
+    num_envs: int = 64
     """the number of parallel game environments"""
     buffer_size: int = 1000000
     """the replay memory buffer size"""
@@ -73,6 +73,10 @@ def read_args():
     if args.debug:
         args.learning_starts = args.batch_size
         args.save = False
-        args.total_timesteps = args.learning_starts * 2
+        args.num_envs = 5
+        # args.total_checkpoints = 1
+        args.total_timesteps = args.learning_starts * args.num_envs + 2
+    
+    assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
 
     return args

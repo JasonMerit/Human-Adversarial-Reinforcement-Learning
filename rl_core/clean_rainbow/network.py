@@ -122,6 +122,11 @@ class Rainbow:
 
         self.rb = PrioritizedReplayBuffer(args, device)
     
+    def save(self, path, verbose=True):
+        torch.save(self.q_network.state_dict(), path)
+        if verbose:
+            print(f"Model saved to {path}")
+    
     def act(self, obs: np.ndarray):
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         with torch.no_grad():
@@ -131,13 +136,11 @@ class Rainbow:
 
     @TimerRegistry.wrap_fn("agent_learn")
     def learn(self):
-    # reset the noise for both networks
         self.q_network.reset_noise()
         self.target_network.reset_noise()
 
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample()
 
-        TimerRegistry.start()
         with torch.no_grad():
             next_dist = self.target_network(next_obs)  # [B, num_actions, n_atoms]
             support = self.target_network.support  # [n_atoms]
@@ -153,6 +156,7 @@ class Rainbow:
             next_atoms = rewards + gamma_n * support * (1 - dones.float())
             tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
 
+            TimerRegistry.start()
             # projection
             b = (tz - self.q_network.v_min) / self.q_network.delta_z  # shape: [B, n_atoms]
             l = b.floor().clamp(0, self.q_network.n_atoms - 1)
@@ -167,7 +171,7 @@ class Rainbow:
             for i in range(target_pmfs.size(0)):
                 target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
                 target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
-        TimerRegistry.stop("A")
+            TimerRegistry.stop("projection")
 
         TimerRegistry.start()
         dist = self.q_network(obs)  # [B, num_actions, n_atoms]
@@ -176,18 +180,17 @@ class Rainbow:
 
         loss_per_sample = -(target_pmfs * log_pred).sum(dim=1)
         loss = (loss_per_sample * weights.squeeze()).mean()
+        TimerRegistry.stop("loss")
 
         # update priorities
         new_priorities = loss_per_sample.detach().cpu().numpy()
         self.rb.update(indices, new_priorities)
-        TimerRegistry.stop("B")
 
         TimerRegistry.start()
-        # optimize the model
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        TimerRegistry.stop("C")
+        TimerRegistry.stop("backward")
 
     def update_target(self):
         self.target_network.load_state_dict(self.q_network.state_dict())

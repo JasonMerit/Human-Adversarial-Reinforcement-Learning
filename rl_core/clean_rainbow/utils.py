@@ -1,4 +1,4 @@
-import time
+import time, json
 from collections import defaultdict
 from functools import wraps
 from rich import print
@@ -50,3 +50,15 @@ class TimerRegistry:
         for name, total in items:
             calls = TimerRegistry._calls[name]
             print(f"{name:20s} | {calls:8d} | {total:10.3f} | {total / calls*1000:10.3f}")
+    
+    @staticmethod
+    def export(path):
+        with open(path, "w") as f:
+            json.dump({
+                name: {
+                    "calls": TimerRegistry._calls[name],
+                    "total": TimerRegistry._total[name],
+                    "avg": TimerRegistry._total[name] / TimerRegistry._calls[name],
+                }
+                for name in TimerRegistry._total
+            }, f, indent=4)
