@@ -88,16 +88,16 @@ if __name__ == "__main__":
     obs1, obs2 = obs[:, 0], obs[:, 1]
     for global_step in range(1, total_loops + 1):
         agent1.q_network.reset_noise()
+        agent2.q_network.reset_noise()
+        
         a1 = agent1.act(obs1)
-        # a2 = agent2.act(obs2)
-        a2 = np.random.randint(0, n_actions, size=args.num_envs)  # FULL RANDOM ADVERSARY
-        # a1 = np.random.randint(0, n_actions, size=args.num_envs)  # FULL RANDOM ADVERSARY
+        a2 = agent2.act(obs2)
 
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-        # explore_mask = np.random.rand(args.num_envs) < epsilon
-        # a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+        explore_mask = np.random.rand(args.num_envs) < epsilon
+        a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
         actions = np.stack([a1, a2], axis=1) 
         next_obs, rewards, dones, _, infos = envs.step(actions)
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
         r = .01
         agent1.rb.add(obs1, a1, rewards + r, next_obs1, dones)
-        # agent2.rb.add(obs2, a2, -rewards + r, next_obs2, dones)
+        agent2.rb.add(obs2, a2, -rewards + r, next_obs2, dones)
 
         obs1, obs2 = next_obs1, next_obs2
         episode_lengths += 1
@@ -114,13 +114,13 @@ if __name__ == "__main__":
         # if global_step > burnin:
         for _ in range(train_count):
             agent1.learn()
-            # agent2.learn()
+            agent2.learn()
 
         # update target network
         if global_step % target_every == 0:
             kek += 1
             agent1.update_target()
-            # agent2.update_target()
+            agent2.update_target()
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
