@@ -1,6 +1,6 @@
 # From https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rainbow_atari.py
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rainbow/#rainbow_ataripy
-import random, os, time
+import random, os, time, shutil
 
 from tqdm import tqdm
 import gymnasium as gym
@@ -140,24 +140,28 @@ if __name__ == "__main__":
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
             print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} {eta/60:.1f} minutes left...")
         
-        env_step = global_step * args.num_envs
-        if args.save and global_step % save_every == 0:
-            agent1.save(save_folder + f"A_{env_step}.pth")
-            agent2.save(save_folder + f"B_{env_step}.pth")
+        # env_step = global_step * args.num_envs
+        # if args.save and global_step % save_every == 0:
+        #     agent1.save(save_folder + f"A_{env_step}.pth")
+        #     agent2.save(save_folder + f"B_{env_step}.pth")
 
     if args.track:
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
                 "results": results, 
-                "steps_taken": env_step, 
+                "steps_taken": global_step * args.num_envs, 
                 "training_time_hours": (time.time() - start_time) / 3600,
                 }, f)
         writer.close()
         TimerRegistry.export(save_folder + "timers.json")
+
+        if device.type == "cuda":  # Duplicate logs
+            shutil.copy("rl_core/HPC/Output.out", save_folder + "Output.out")
+            shutil.copy("rl_core/HPC/Error.err", save_folder + "Error.err")
         
         if args.save:
-            agent1.save(save_folder + f"A_{env_step}.pth")
-            agent2.save(save_folder + f"B_{env_step}.pth")
+            agent1.save(save_folder + f"A.pth")
+            agent2.save(save_folder + f"B.pth")
 
     envs.close()
     print(f"Total logs: {kek}")

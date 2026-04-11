@@ -13,7 +13,7 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 100_000#10_000_000
+    total_timesteps: int = 100_000
     """total timesteps of the experiments"""
     learning_rate: float = 0.0000625
     """the learning rate of the optimizer"""
@@ -23,8 +23,6 @@ class Args:
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
-    tau: float = 1.0
-    """the target network update rate"""
     target_network_frequency: int = 8000
     """the timesteps it takes to update the target network"""
     batch_size: int = 32
@@ -49,9 +47,9 @@ class Args:
     """epsilon parameter for prioritized replay buffer"""
     n_atoms: int = 51
     """the number of atoms"""
-    v_min: float = -10
+    v_min: float = -1
     """the return lower bound"""
-    v_max: float = 10
+    v_max: float = 1
     """the return upper bound"""
 
     # Jason's additions
