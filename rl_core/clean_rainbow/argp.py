@@ -13,7 +13,7 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 10_000#10_000_000
+    total_timesteps: int = 100_000#10_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 0.0000625
     """the learning rate of the optimizer"""
@@ -31,9 +31,9 @@ class Args:
     """the batch size of sample from the reply memory"""
     start_e: float = 1
     """the starting epsilon for exploration"""
-    end_e: float = 0.01
+    end_e: float = 0.1
     """the ending epsilon for exploration"""
-    exploration_fraction: float = 0.10
+    exploration_fraction: float = 0.80
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
     learning_starts: int = 80000
     """timestep to start learning"""
@@ -65,6 +65,8 @@ class Args:
     """if true, will manually set a few values to make the code run faster for debugging purposes"""
     tron: bool = True
     """if true, will use the Tron-specific network architecture"""
+    render: bool = False
+    """if true, will render the 1st environment"""
 
 def read_args():
     args = tyro.cli(Args)
@@ -73,11 +75,16 @@ def read_args():
         args.seed = random.randint(0, 1e6)
 
     if args.debug:
-        args.learning_starts = args.batch_size
+        args.learning_starts = 1e6
         args.save = False
         args.num_envs = 5
         # args.total_checkpoints = 1
-        args.total_timesteps = args.learning_starts * args.num_envs + 2
+        args.total_timesteps = 400
+        args.render = True
+
+        args.start_e = 1.0
+        args.end_e = 0.0
+        args.exploration_fraction = 1.0
     
     assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"

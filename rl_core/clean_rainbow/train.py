@@ -13,11 +13,13 @@ import yaml
 from .argp import read_args
 from .network import Rainbow
 from .utils import TimerRegistry
-from rl_core.env import TronDuoEnv
+from rl_core.env import TronDuoEnv, TronView
 
-def make_envs(indx, seed):
+def make_envs(indx, seed, render):
     def thunk():
         env = TronDuoEnv()
+        if render and indx==0:
+            env = TronView(env, fps=10000)
         env.action_space.seed(seed + indx)
         return env
     return thunk
@@ -68,9 +70,8 @@ if __name__ == "__main__":
             print("Models will NOT be saved!")
 
 
-
     # Envs and agents
-    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.num_envs)])
+    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.render) for i in range(args.num_envs)])
     n_actions = envs.single_action_space.nvec[0]
     agent1 = Rainbow(n_actions, args, device, writer, "A")
     agent2 = Rainbow(n_actions, args, device, writer, "B")
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         a1 = agent1.act(obs1)
         a2 = agent2.act(obs2)
 
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step * args.num_envs)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
         explore_mask = np.random.rand(args.num_envs) < epsilon
@@ -108,15 +109,15 @@ if __name__ == "__main__":
         episode_lengths += 1
 
         # Training
-        if global_step > burnin:
-            for _ in range(train_count):
-                agent1.learn()
-                agent2.learn()
+        # if global_step > burnin:
+        for _ in range(train_count):
+            agent1.learn()
+            agent2.learn()
 
-            # update target network
-            if global_step % target_every == 0:
-                agent1.update_target()
-                agent2.update_target()
+        # update target network
+        if global_step % target_every == 0:
+            agent1.update_target()
+            agent2.update_target()
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
@@ -136,15 +137,15 @@ if __name__ == "__main__":
             elapsed = time.time() - start_time
             progress = global_step / total_loops
             eta = elapsed * (1/progress - 1)
+            # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
             print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} {eta/60:.1f} minutes left...")
         
+        env_step = global_step * args.num_envs
         if args.save and global_step % save_every == 0:
-            env_step = global_step * args.num_envs
             agent1.save(save_folder + f"A_{env_step}.pth")
             agent2.save(save_folder + f"B_{env_step}.pth")
 
     if args.track:
-        env_step = global_step * args.num_envs
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
                 "results": results, 
