@@ -79,6 +79,7 @@ if __name__ == "__main__":
     results = [0, 0, 0]
     total_episodes = 0
     total_episode_lengths = 0
+    episode_lengths = np.zeros(args.num_envs)
 
     start_time = time.time()
 
@@ -100,9 +101,10 @@ if __name__ == "__main__":
         next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
 
         agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
-        agent2.rb.add(obs2, a2, rewards, next_obs2, dones)
+        agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
         obs1, obs2 = next_obs1, next_obs2
+        episode_lengths += 1
 
         # Training
         if global_step > burnin:
@@ -118,8 +120,9 @@ if __name__ == "__main__":
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
             results[infos["result"][i]] += 1
-            total_episode_lengths += obs1[i][0].sum() // 2
+            total_episode_lengths += episode_lengths[i]
             total_episodes += 1
+            episode_lengths[i] = 0
             if writer:
                 writer.add_scalar("charts/draw_percentage", results[0] / total_episodes, total_episodes)
                 writer.add_scalar("charts/agent1_win_percentage", results[1] / total_episodes, total_episodes)
