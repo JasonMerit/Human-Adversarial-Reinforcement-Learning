@@ -42,7 +42,8 @@ if __name__ == "__main__":
     log_every = max(1, total_loops // 100)
     save_every = max(1, total_loops // args.total_checkpoints)
     
-    if args.save:
+    writer = None
+    if args.track:
         i = 0
         save_folder = f"runs/{args.exp_name}"
         while os.path.exists(save_folder + f"_{i}"):
@@ -50,22 +51,31 @@ if __name__ == "__main__":
         save_folder += f"_{i}/"
         os.makedirs(save_folder)
         with open(save_folder + "args.yml", "w") as f:
-                yaml.dump(vars(args), f)
+            yaml.dump(vars(args), f)
+        
         run_name = f"{args.exp_name}__{args.seed}__{int(time.time())}"
         writer = SummaryWriter(save_folder)
         writer.add_text("hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])))
-        print(f"Models will be saved to {save_folder}!")
-    else:
-        print("Models will NOT be saved!")
+
+        if args.save:
+            print(f"Models will be saved to {save_folder}!")
+        else:
+            print("Models will NOT be saved!")
 
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
-    # env setup
+    # Envs and agents
     envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.num_envs)])
     n_actions = envs.single_action_space.nvec[0]
-    agent1 = Rainbow(n_actions, args, device)
-    agent2 = Rainbow(n_actions, args, device)
+    agent1 = Rainbow(n_actions, args, device, writer, "A")
+    agent2 = Rainbow(n_actions, args, device, writer, "B")
+
+    # Logging
+    results = [0, 0, 0]
+    total_episodes = 0
+    total_episode_lengths = 0
 
     start_time = time.time()
 
@@ -102,7 +112,16 @@ if __name__ == "__main__":
                 agent1.update_target()
                 agent2.update_target()
         
-        
+        # Logging
+        for i in np.where(dones)[0]:  # Update results for any env that is done
+            results[infos["result"][i]] += 1
+            total_episode_lengths += obs1[i][0].sum() // 2
+            total_episodes += 1
+            if writer:
+                writer.add_scalar("charts/draw_percentage", results[0] / total_episodes, total_episodes)
+                writer.add_scalar("charts/agent1_win_percentage", results[1] / total_episodes, total_episodes)
+                writer.add_scalar("charts/agent2_win_percentage", results[2] / total_episodes, total_episodes)
+                writer.add_scalar("charts/avg_episode_length", total_episode_lengths / total_episodes, total_episodes)
 
         if global_step % log_every == 0:
             sps = int(global_step * args.num_envs / (time.time() - start_time))
@@ -116,13 +135,20 @@ if __name__ == "__main__":
             agent1.save(save_folder + f"A_{env_step}.pth")
             agent2.save(save_folder + f"B_{env_step}.pth")
 
-    if args.save:
+    if args.track:
         env_step = global_step * args.num_envs
-        agent1.save(save_folder + f"A_{env_step}.pth")
-        agent2.save(save_folder + f"B_{env_step}.pth")
+        with open(save_folder + "results.yml", "w") as f:
+            yaml.dump({
+                "results": results, 
+                "steps_taken": env_step, 
+                "training_time_hours": (time.time() - start_time) / 3600,
+                }, f)
+        writer.close()
+        TimerRegistry.export(save_folder + "timers.json")
+        
+        if args.save:
+            agent1.save(save_folder + f"A_{env_step}.pth")
+            agent2.save(save_folder + f"B_{env_step}.pth")
 
     envs.close()
     TimerRegistry.report()
-    if args.save:
-        writer.close()
-        TimerRegistry.export(save_folder + "timers.json")

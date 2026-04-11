@@ -109,7 +109,7 @@ class NoisyDuelingDistributionalNetwork(nn.Module):
 
 class Rainbow:
 
-    def __init__(self, n_actions, args, device):
+    def __init__(self, n_actions, args, device, writer, name):
         self.device = device
         self.batch_size = args.batch_size
         self.gamma = args.gamma
@@ -121,6 +121,11 @@ class Rainbow:
         self.target_network.load_state_dict(self.q_network.state_dict())
 
         self.rb = PrioritizedReplayBuffer(args, device)
+        
+        self.name = name
+        self.writer = writer
+        self.learning_steps = 0
+
     
     def save(self, path, verbose=True):
         torch.save(self.q_network.state_dict(), path)
@@ -136,6 +141,7 @@ class Rainbow:
 
     @TimerRegistry.wrap_fn("agent_learn")
     def learn(self):
+        self.learning_steps += 1
         self.q_network.reset_noise()
         self.target_network.reset_noise()
 
@@ -189,8 +195,31 @@ class Rainbow:
         TimerRegistry.start()
         self.optimizer.zero_grad()
         loss.backward()
+
+        # Nudged between backward and optimizer for grad logging
+        if self.writer:
+        # if self.writer and self.learning_steps % 100 == 0:
+            grad, weight = self.grad_weight_norm()
+            self.writer.add_scalar(f"gradients/{self.name}_grad_norm", grad, self.learning_steps)
+            self.writer.add_scalar(f"gradients/{self.name}_weight_norm", weight, self.learning_steps)
+            self.writer.add_scalar(f"losses/{self.name}_td_loss_mean", loss_per_sample.mean().item(), self.learning_steps)
+            self.writer.add_scalar(f"losses/{self.name}_td_loss_std", loss_per_sample.std().item(), self.learning_steps)
+            q_values = (pred_dist * self.q_network.support).sum(dim=1)  # [B]
+            self.writer.add_scalar(f"losses/{self.name}_q_values_mean", q_values.mean().item(), self.learning_steps)
+            self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
+
+
         self.optimizer.step()
         TimerRegistry.stop("backward")
 
+
     def update_target(self):
         self.target_network.load_state_dict(self.q_network.state_dict())
+    
+    def grad_weight_norm(self):
+        weight, grad = 0.0, 0.0
+        for p in self.q_network.parameters():
+            if p.grad is not None:
+                grad += p.grad.data.norm(2).item() ** 2
+            weight += p.data.norm(2).item() ** 2
+        return grad ** 0.5, weight ** 0.5

@@ -57,6 +57,8 @@ class Args:
     # Jason's additions
     save: bool = True
     """whether to save the final model"""
+    track: bool = True
+    """whether to track the experiment with Tensorboard and save hyperparameters and results to `runs{exp_name}`"""
     total_checkpoints: int = 10
     """the number of checkpoints to save (computed in runtime)"""
     debug: bool = False
@@ -78,5 +80,6 @@ def read_args():
         args.total_timesteps = args.learning_starts * args.num_envs + 2
     
     assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
+    assert not args.save or (args.save and args.track), "If save is true, track must also be true"
 
     return args
