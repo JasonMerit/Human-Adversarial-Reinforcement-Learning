@@ -26,6 +26,7 @@ python -m rl_core.battle runs/self_train_6 runs/self_train_gamma_0
 python -m rl_core.battle runs\BenchMark_2 runs\BenchMark_2
 python -m rl_core.train_ppo --no-save --num-envs 3 --total-timesteps 1000
 python -m rl_core.rainbow.train --save False --num_envs 5
+python -m rl_core.clean_rainbow.train --debug
 
 
 conda env create -f environment.yml
@@ -36,8 +37,3 @@ snakeviz rl_core\\rainbow\\rainbow.prof
 
 python -m cProfile -o rl_core/dqn.prof -m rl_core.self_train --debug --no-save
 snakeviz rl_core\\dqn.prof
-
-python -m cProfile -o rl_core/rainbow/impala.prof -m rl_core.rainbow.train --debug True
-python -m cProfile -o rl_core/rainbow/tron.prof -m rl_core.rainbow.train --debug True --tron True
-snakeviz rl_core\\rainbow\\tron.prof
-snakeviz rl_core\\rainbow\\impala.prof
