@@ -156,7 +156,7 @@ if __name__ == "__main__":
             yaml.dump({
                 "results": results, 
                 "steps_taken": global_step * args.num_envs, 
-                "training_time_hours": (time.time() - start_time) / 3600,
+                "training_time_mins": (time.time() - start_time) / 60,
                 }, f)
         writer.close()
         TimerRegistry.export(save_folder + "timers.json")
