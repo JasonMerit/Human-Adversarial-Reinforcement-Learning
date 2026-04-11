@@ -166,8 +166,6 @@ class Rainbow:
             # compute the n-step Bellman update.
             gamma_n = self.gamma**self.n_step
             next_atoms = rewards + gamma_n * support * (1 - dones.float())
-            assert next_atoms < self.q_network.v_max, f"Expected next_atoms < {self.q_network.v_max}, got {next_atoms.max().item()}"
-            assert next_atoms > self.q_network.v_min, f"Expected next_atoms > {self.q_network.v_min}, got {next_atoms.min().item()}"
             tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
 
             TimerRegistry.start()

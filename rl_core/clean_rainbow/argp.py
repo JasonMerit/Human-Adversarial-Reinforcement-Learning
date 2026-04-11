@@ -47,9 +47,9 @@ class Args:
     """epsilon parameter for prioritized replay buffer"""
     n_atoms: int = 51
     """the number of atoms"""
-    v_min: float = -1
+    v_min: float = -100  # R_min / (1 - gamma)
     """the return lower bound"""
-    v_max: float = 1
+    v_max: float = 100
     """the return upper bound"""
 
     # Jason's additions
@@ -78,7 +78,7 @@ def read_args():
         args.num_envs = 5
         # args.total_checkpoints = 1
         args.total_timesteps = 400
-        args.render = True
+        # args.render = True
 
         args.exp_name = "debug_" + args.exp_name
     
