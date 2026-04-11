@@ -79,7 +79,8 @@ if __name__ == "__main__":
     results = [0, 0, 0]
     total_episodes = 0
     total_episode_lengths = 0
-    episode_lengths = np.zeros(args.num_envs)
+    episode_lengths = np.zeros(args.num_envs, dtype=int)
+    kek = 0
 
     start_time = time.time()
 
@@ -130,11 +131,12 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/avg_episode_length", total_episode_lengths / total_episodes, total_episodes)
 
         if global_step % log_every == 0:
+            kek += 1
             sps = int(global_step * args.num_envs / (time.time() - start_time))
             elapsed = time.time() - start_time
             progress = global_step / total_loops
             eta = elapsed * (1/progress - 1)
-            print(f"{progress*100:.1f}% - SPS: {sps} - {eta/60:.1f} minutes left...")
+            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} {eta/60:.1f} minutes left...")
         
         if args.save and global_step % save_every == 0:
             env_step = global_step * args.num_envs
@@ -157,4 +159,5 @@ if __name__ == "__main__":
             agent2.save(save_folder + f"B_{env_step}.pth")
 
     envs.close()
+    print(f"Total logs: {kek}")
     TimerRegistry.report()
