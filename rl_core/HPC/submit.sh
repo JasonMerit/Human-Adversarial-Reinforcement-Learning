@@ -19,7 +19,7 @@
 
 cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
 module purge
-# source ~/miniconda3/etc/profile.d/conda.sh
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 # python -m rl_core.self_train --exp-name $LSB_JOBNAME
