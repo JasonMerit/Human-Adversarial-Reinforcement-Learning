@@ -73,7 +73,6 @@ def read_args():
         args.seed = random.randint(0, 1e6)
 
     if args.debug:
-        args.learning_starts = 1e6
         args.save = False
         args.num_envs = 5
         # args.total_checkpoints = 1

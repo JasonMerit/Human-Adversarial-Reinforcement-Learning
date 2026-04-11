@@ -91,6 +91,7 @@ if __name__ == "__main__":
         a1 = agent1.act(obs1)
         # a2 = agent2.act(obs2)
         a2 = np.random.randint(0, n_actions, size=args.num_envs)  # FULL RANDOM ADVERSARY
+        print(a2)
         # a1 = np.random.randint(0, n_actions, size=args.num_envs)  # FULL RANDOM ADVERSARY
 
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
@@ -112,8 +113,8 @@ if __name__ == "__main__":
 
         # Training
         # if global_step > burnin:
-        for _ in range(train_count):
-            agent1.learn()
+        # for _ in range(train_count):
+        #     agent1.learn()
             # agent2.learn()
 
         # update target network
