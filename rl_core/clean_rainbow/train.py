@@ -42,10 +42,15 @@ if __name__ == "__main__":
     log_every = max(1, total_loops // 100)
     save_every = max(1, total_loops // args.total_checkpoints)
     
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
+
     writer = None
     if args.track:
         i = 0
         save_folder = f"runs/{args.exp_name}"
+        if device.type == "cuda":
+            save_folder = os.path.join("rl_core/HPC/", save_folder)
         while os.path.exists(save_folder + f"_{i}"):
             i += 1
         save_folder += f"_{i}/"
@@ -58,13 +63,11 @@ if __name__ == "__main__":
         writer.add_text("hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 
         if args.save:
-            print(f"Models will be saved to {save_folder}!")
+            print(f"Models will be saved to {save_folder}")
         else:
             print("Models will NOT be saved!")
 
 
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-    print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
     # Envs and agents
     envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed) for i in range(args.num_envs)])
