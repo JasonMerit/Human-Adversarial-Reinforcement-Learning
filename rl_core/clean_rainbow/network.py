@@ -125,7 +125,7 @@ class Rainbow:
     def act(self, obs: np.ndarray):
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         with torch.no_grad():
-            q_dist = self.q_network(torch.Tensor(obs).to(self.device))
+            q_dist = self.q_network(torch.as_tensor(obs).to(self.device))
             q_values = torch.sum(q_dist * self.q_network.support, dim=2)
             return torch.argmax(q_values, dim=1).cpu().numpy()
 
