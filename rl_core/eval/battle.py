@@ -8,13 +8,18 @@ from rich import print
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.agents import QNetwork, ActorCriticNetwork
 from rl_core.env.wrappers import TorchObservationWrapper
-from rl_core.rainbow.common.rainbow import Rainbow
+
 # from rl_core.rainbow.common.networks import get_model
 
 
 
 def make_rainbow(path):
+    from rl_core.rainbow.common.rainbow import Rainbow
     return Rainbow.from_checkpoint(path, obs_shape=(3, 25, 25), n_actions=3, device="cpu")
+
+def make_clean_rainbow(path):
+    from rl_core.clean_rainbow.network import NoisyDuelingDistributionalNetwork
+    return NoisyDuelingDistributionalNetwork.from_checkpoint(path, n_actions=3, device="cpu")
 
 def get_agent_files(agent_folder, num_agents):
     # Select the appropriate agent class based on the file name
@@ -39,17 +44,22 @@ def rainbow_act(policy, obs):
     with torch.no_grad():
         action_values = policy(obs, advantages_only=True)
         actions = torch.argmax(action_values, dim=1)
-    #  tensor([0]), Agent 2 action: tensor([2])
-    # return the integer value of the action, e.g. 0, 1, or 2
     return actions.item()
 
-def play(agent1, agent2, env):
+def cleanrain_act(policy, obs):
+    with torch.no_grad():
+        q_dist = policy(torch.as_tensor(obs))
+        q_values = torch.sum(q_dist * policy.support, dim=2)
+        return torch.argmax(q_values, dim=1).cpu().numpy().item()
+
+
+def play(agent1, agent2, env: TronDuoEnv):
     obs, _ = env.reset()
     while True:
-        obs0, obs1 = obs[:, 0], obs[:, 1]
-        a0, a1 = rainbow_act(agent2, obs0), rainbow_act(agent1, obs1)  # Use the loaded model to select an action
-        # a0, a1 = rainbow_act(agent1, obs0), rainbow_act(agent2, obs1)  # Use the loaded model to select an action
-        obs, reward, done, _, info = env.step([a0, a1])
+        obs1, obs2 = obs[:, 0], obs[:, 1]
+        a1, a2 = cleanrain_act(agent1, obs1), cleanrain_act(agent2, obs2)
+        # a1, a2 = rainbow_act(agent1, obs1), rainbow_act(agent2, obs1)  # Use the loaded model to select an action
+        obs, _, done, _, info = env.step([a1, a2])
 
         if done:
             obs, _ = env.reset()
@@ -63,7 +73,8 @@ def battle(folder1, folder2):
 
     if folder2 == "":
         path1, path2 = get_agent_files(folder1, num_agents=2)
-        agent1, agent2 = make_rainbow(path1), make_rainbow(path2)
+        agent1, agent2 = make_clean_rainbow(path1), make_clean_rainbow(path2)
+        # agent1, agent2 = make_rainbow(path1), make_rainbow(path2)
     else:
         raise Exception("Currently only supports self-play. Please provide a single folder with two checkpoints for the agents.")
         path1 = get_agent_files(folder1, num_agents=1)[0]

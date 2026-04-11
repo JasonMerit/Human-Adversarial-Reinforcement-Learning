@@ -106,6 +106,12 @@ class NoisyDuelingDistributionalNetwork(nn.Module):
         for layer in self.advantage_head:
             if isinstance(layer, NoisyLinear):
                 layer.reset_noise()
+    
+    @classmethod
+    def from_checkpoint(cls, path, n_actions, device):
+        net = cls(n_actions=n_actions, n_atoms=51, v_min=-10, v_max=10).to(device)
+        net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
+        return net
 
 class Rainbow:
 
