@@ -3,7 +3,7 @@
 #BSUB -q gpuv100
 ###BSUB -J CleanRain
 ###BSUB -J RainbowSimpler
-#BSUB -J CleanRain[1-1]%5  # Job array with 5 tasks - remove the loop in the script if using this
+#BSUB -J CleanRain[1-2]%5  # Job array with 5 tasks - remove the loop in the script if using this
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
@@ -23,7 +23,7 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME --job-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --total-timesteps 1000
+python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --total-timesteps 1000
 # for i in {1..5}
 # do
 #     echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
