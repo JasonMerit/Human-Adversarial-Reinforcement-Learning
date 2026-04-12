@@ -45,6 +45,10 @@ class Args:
     """beta parameter for prioritized replay buffer"""
     prioritized_replay_eps: float = 1e-6
     """epsilon parameter for prioritized replay buffer"""
+
+    # Distributional
+    c51: bool = False
+    """whether to use the C51 distributional RL algorithm"""
     n_atoms: int = 51
     """the number of atoms"""
     v_min: float = -100  # R_min / (1 - gamma)
@@ -52,9 +56,10 @@ class Args:
     v_max: float = 100
     """the return upper bound"""
 
-    # Rainbow modules
-    c51: bool = False
-    """whether to use the C51 distributional RL algorithm"""
+    # Noisy Nets
+    noisy: bool = False
+    """whether to use noisy linear layers"""
+
 
     # Jason's additions
     save: bool = True

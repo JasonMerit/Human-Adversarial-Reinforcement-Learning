@@ -47,8 +47,8 @@ class NoisyLinear(nn.Module):
         return F.linear(input, weight, bias)
     
 
-class NoisyDuelingNetwork(nn.Module):
-    def __init__(self, n_actions):
+class DuelingNetwork(nn.Module):
+    def __init__(self, n_actions, linear):
         super().__init__()
 
         self.n_actions = n_actions
@@ -68,15 +68,15 @@ class NoisyDuelingNetwork(nn.Module):
         size = 512
 
         self.value_head = nn.Sequential(
-            NoisyLinear(conv_out, size),
+            linear(conv_out, size),
             nn.ReLU(),
-            NoisyLinear(size, 1)
+            linear(size, 1)
         )
 
         self.adv_head = nn.Sequential(
-            NoisyLinear(conv_out, size),
+            linear(conv_out, size),
             nn.ReLU(),
-            NoisyLinear(size, n_actions)
+            linear(size, n_actions)
         )
 
     def forward(self,x) -> torch.Tensor:
@@ -91,18 +91,18 @@ class NoisyDuelingNetwork(nn.Module):
             if isinstance(m, NoisyLinear):
                 m.reset_noise()
 
-class NoisyDuelingDistributionalNetwork(nn.Module):
-    def __init__(self, n_actions, n_atoms, v_min, v_max):
+class DuelingDistributionalNetwork(nn.Module):
+    def __init__(self, n_actions, linear, args):
         super().__init__()
 
-        self.n_atoms = n_atoms
-        self.v_min = v_min
-        self.v_max = v_max
-        self.delta_z = (v_max - v_min) / (n_atoms - 1)
+        self.n_atoms = args.n_atoms
+        self.v_min = args.v_min
+        self.v_max = args.v_max
+        self.delta_z = (self.v_max - self.v_min) / (self.n_atoms - 1)
         
         self.n_actions = n_actions
 
-        self.register_buffer("support", torch.linspace(v_min, v_max, n_atoms))
+        self.register_buffer("support", torch.linspace(self.v_min, self.v_max, self.n_atoms))
 
         self.network = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
@@ -118,15 +118,15 @@ class NoisyDuelingDistributionalNetwork(nn.Module):
         
         size = 512
         self.value_head = nn.Sequential(
-            NoisyLinear(conv_output_size, size),
+            linear(conv_output_size, size),
             nn.ReLU(),
-            NoisyLinear(size, n_atoms)
+            linear(size, self.n_atoms)
         )
 
         self.advantage_head = nn.Sequential(
-            NoisyLinear(conv_output_size, size),
+            linear(conv_output_size, size),
             nn.ReLU(),
-            NoisyLinear(size, n_atoms * self.n_actions)
+            linear(size, self.n_atoms * self.n_actions)
         )
 
     @TimerRegistry.wrap_fn("network_forward")
@@ -165,13 +165,16 @@ class Rainbow:
         self.gamma = args.gamma
         self.n_step = args.n_step
 
+        
+        linear = NoisyLinear if args.noisy else nn.Linear
+
         self.c51 = args.c51
         if self.c51:
-            self.q_network = NoisyDuelingDistributionalNetwork(n_actions, args.n_atoms, args.v_min, args.v_max).to(device)
-            self.target_network = NoisyDuelingDistributionalNetwork(n_actions, args.n_atoms, args.v_min, args.v_max).to(device)
+            self.q_network = DuelingDistributionalNetwork(n_actions, linear, args).to(device)
+            self.target_network = DuelingDistributionalNetwork(n_actions, linear, args).to(device)
         else:
-            self.q_network = NoisyDuelingNetwork(n_actions).to(device)
-            self.target_network = NoisyDuelingNetwork(n_actions).to(device)
+            self.q_network = DuelingNetwork(n_actions, linear).to(device)
+            self.target_network = DuelingNetwork(n_actions, linear).to(device)
         
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
@@ -207,9 +210,9 @@ class Rainbow:
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample()
 
         if self.c51:
-            loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones, weights)
+            loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones)
         else:
-            loss_per_sample = self._dqn_loss(obs, actions, rewards, next_obs, dones, weights)
+            loss_per_sample = self._dqn_loss(obs, actions, rewards, next_obs, dones)
         loss = (loss_per_sample * weights.squeeze()).mean()
             # loss_per_sample, loss = self._dqn_loss(obs, actions, rewards, next_obs, dones)
 
@@ -236,7 +239,7 @@ class Rainbow:
         TimerRegistry.stop("backward")
 
     TimerRegistry.wrap_fn("dqn_loss")
-    def _dqn_loss(self, obs, actions, rewards, next_obs, dones, weights):
+    def _dqn_loss(self, obs, actions, rewards, next_obs, dones):
         with torch.no_grad():
             next_q_target = self.target_network(next_obs)
             next_q_online = self.q_network(next_obs)
@@ -252,7 +255,7 @@ class Rainbow:
         return loss_per_sample
 
     TimerRegistry.wrap_fn("c51_loss")
-    def _c51_loss(self, obs, actions, rewards, next_obs, dones, weights):
+    def _c51_loss(self, obs, actions, rewards, next_obs, dones):
         with torch.no_grad():
             next_dist = self.target_network(next_obs)  # [B, num_actions, n_atoms]
             support = self.target_network.support  # [n_atoms]
