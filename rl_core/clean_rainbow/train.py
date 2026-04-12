@@ -101,9 +101,8 @@ if __name__ == "__main__":
         next_obs, rewards, dones, _, infos = envs.step(actions)
         next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
 
-        r = .01
-        agent1.rb.add(obs1, a1, rewards + r, next_obs1, dones)
-        agent2.rb.add(obs2, a2, -rewards + r, next_obs2, dones)
+        agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
+        agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
         obs1, obs2 = next_obs1, next_obs2
         episode_lengths += 1

@@ -64,6 +64,9 @@ class DQNAgent:
         self.target_network = QNetwork(obs_shape, n_actions).to(device)
         self.target_network.load_state_dict(self.q_network.state_dict())
 
+    def get_num_params(self):
+        return sum(p.numel() for p in self.q_network.parameters())
+
     def select_action(self, obs):
         with torch.no_grad():
             q_values = self.q_network.forward(obs)

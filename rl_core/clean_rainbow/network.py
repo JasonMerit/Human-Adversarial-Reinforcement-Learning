@@ -50,33 +50,31 @@ class NoisyLinear(nn.Module):
 class DuelingNetwork(nn.Module):
     def __init__(self, n_actions, linear):
         super().__init__()
-
         self.n_actions = n_actions
 
         self.network = nn.Sequential(
-            nn.Conv2d(3, 32, 3, 1, 1),
+            nn.Conv2d(3, 16, 3, 1, 1),
             nn.ReLU(),
-            nn.Conv2d(32, 64, 3, 1, 1),
+            nn.Conv2d(16, 32, 3, 1, 1),
             nn.ReLU(),
             nn.Flatten(),
         )
 
         with torch.no_grad():
             dummy = torch.zeros(1,3,25,25)
-            conv_out = self.network(dummy).shape[1]
+            n_flatten = self.network(dummy).shape[1]
 
-        size = 512
-
+        hidden = 32
         self.value_head = nn.Sequential(
-            linear(conv_out, size),
+            linear(n_flatten, hidden),
             nn.ReLU(),
-            linear(size, 1)
+            linear(hidden, 1)
         )
 
         self.adv_head = nn.Sequential(
-            linear(conv_out, size),
+            linear(n_flatten, hidden),
             nn.ReLU(),
-            linear(size, n_actions)
+            linear(hidden, n_actions)
         )
 
     def forward(self,x) -> torch.Tensor:
@@ -94,40 +92,43 @@ class DuelingNetwork(nn.Module):
 class DuelingDistributionalNetwork(nn.Module):
     def __init__(self, n_actions, linear, args):
         super().__init__()
+        self.n_actions = n_actions
 
         self.n_atoms = args.n_atoms
         self.v_min = args.v_min
         self.v_max = args.v_max
-        self.delta_z = (self.v_max - self.v_min) / (self.n_atoms - 1)
-        
-        self.n_actions = n_actions
+        self.support = torch.linspace(self.v_min, self.v_max, self.n_atoms)
 
-        self.register_buffer("support", torch.linspace(self.v_min, self.v_max, self.n_atoms))
-
-        self.network = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 16, 3, stride=2, padding=1),  # 25 → 13
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 32, 3, stride=2, padding=1), # 13 → 7
+            nn.ReLU(),
+            nn.Conv2d(32, 32, 3, stride=2, padding=1), # 7 → 4
             nn.ReLU(),
             nn.Flatten(),
         )
 
         with torch.no_grad():
             dummy = torch.zeros(1, 3, 25, 25)
-            conv_output_size = self.network(dummy).shape[1]
-        
-        size = 512
-        self.value_head = nn.Sequential(
-            linear(conv_output_size, size),
+            n_flatten = self.features(dummy).shape[1]  # ~512
+
+        hidden = 64
+
+        # --- Value stream ---
+        self.value = nn.Sequential(
+            linear(n_flatten, hidden),
             nn.ReLU(),
-            linear(size, self.n_atoms)
+            linear(hidden, self.n_atoms)
         )
 
-        self.advantage_head = nn.Sequential(
-            linear(conv_output_size, size),
+        # --- Advantage stream ---
+        self.adv = nn.Sequential(
+            linear(n_flatten, hidden),
             nn.ReLU(),
-            linear(size, self.n_atoms * self.n_actions)
+            linear(hidden, self.n_atoms * n_actions)
         )
+
 
     @TimerRegistry.wrap_fn("network_forward")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -183,6 +184,8 @@ class Rainbow:
         self.writer = writer
         self.learning_steps = 0
 
+    def get_num_params(self):
+        return sum(p.numel() for p in self.q_network.parameters())
     
     def save(self, path, verbose=True):
         torch.save(self.q_network.state_dict(), path)
