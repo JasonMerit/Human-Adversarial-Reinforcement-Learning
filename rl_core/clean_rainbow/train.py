@@ -35,17 +35,16 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
-
     writer = None
     if args.track:
         i = 0
-        save_folder = f"runs/{args.exp_name}"
         if args.hpc:
-            if "[" in save_folder:  # If using job arrays, remove brackets for folder name
-                save_folder = save_folder.split("[")[0]
-            save_folder = os.path.join("rl_core/HPC/", save_folder)  # Move to HPC folder
+            if "[" in args.exp_name:  # If using job arrays, remove brackets for folder name
+                args.exp_name = args.exp_name.split("[")[0]
+            save_folder = f"rl_core/HPC/runs/{args.exp_name}"  # Move to HPC folder
+        else:
+            save_folder = f"runs/{args.exp_name}"
+
         while os.path.exists(save_folder + f"_{i}"):
             i += 1
         save_folder += f"_{i}/"
@@ -61,6 +60,9 @@ if __name__ == "__main__":
             print(f"Models will be saved to {save_folder}")
         else:
             print("Models will NOT be saved!")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
     # Handle parallel envs
     total_loops = args.total_timesteps // args.num_envs
@@ -138,7 +140,7 @@ if __name__ == "__main__":
             progress = global_step / total_loops
             eta = elapsed * (1/progress - 1)
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
-            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - avg_episode_length: {total_episode_lengths / total_episodes} - {eta/60:.1f} minutes left...")
+            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - epi_len: {total_episode_lengths/total_episodes:.2f} - {eta/60:.1f} minutes left...")
         
         # env_step = global_step * args.num_envs
         # if args.save and global_step % save_every == 0:
