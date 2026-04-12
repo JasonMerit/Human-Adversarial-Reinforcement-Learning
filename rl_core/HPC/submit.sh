@@ -7,10 +7,11 @@
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
-### BSUB -R "rusage[mem=32GB]"
-#BSUB -R "select[gpu32gb]"
-#BSUB -M 32GB
-#BSUB -W 2:00
+# BSUB -R "rusage[mem=10GB]"
+###BSUB -R "select[gpu32gb]"  # For max storage
+#BSUB -M 10GB
+#BSUB -W 0:02
+###BSUB -W 1:00
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N

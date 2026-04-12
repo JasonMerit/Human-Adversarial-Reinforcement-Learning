@@ -88,6 +88,12 @@ class DuelingNetwork(nn.Module):
         for m in self.modules():
             if isinstance(m, NoisyLinear):
                 m.reset_noise()
+    
+    @classmethod
+    def from_checkpoint(cls, path, n_actions, linear, device):
+        net = cls(n_actions=n_actions, linear=linear).to(device)
+        net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
+        return net
 
 class DuelingDistributionalNetwork(nn.Module):
     def __init__(self, n_actions, linear, args):
@@ -153,8 +159,8 @@ class DuelingDistributionalNetwork(nn.Module):
                 layer.reset_noise()
     
     @classmethod
-    def from_checkpoint(cls, path, n_actions, device):
-        net = cls(n_actions=n_actions, n_atoms=51, v_min=-10, v_max=10).to(device)
+    def from_checkpoint(cls, path, n_actions, linear, args, device):
+        net = cls(n_actions=n_actions, linear=linear, args=args).to(device)
         net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
         return net
 
