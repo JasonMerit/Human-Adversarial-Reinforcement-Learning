@@ -23,7 +23,7 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --total-timesteps 1000
+python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc
 # for i in {1..5}
 # do
 #     echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"

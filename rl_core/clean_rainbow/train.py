@@ -43,7 +43,9 @@ if __name__ == "__main__":
         i = 0
         save_folder = f"runs/{args.exp_name}"
         if args.hpc:
-            save_folder = os.path.join("rl_core/HPC/", save_folder)
+            if "[" in save_folder:  # If using job arrays, remove brackets for folder name
+                save_folder = save_folder.split("[")[0]
+            save_folder = os.path.join("rl_core/HPC/", save_folder)  # Move to HPC folder
         while os.path.exists(save_folder + f"_{i}"):
             i += 1
         save_folder += f"_{i}/"
