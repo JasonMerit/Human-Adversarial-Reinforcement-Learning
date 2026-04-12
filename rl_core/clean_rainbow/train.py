@@ -138,7 +138,7 @@ if __name__ == "__main__":
             progress = global_step / total_loops
             eta = elapsed * (1/progress - 1)
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
-            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} {eta/60:.1f} minutes left...")
+            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - avg_episode_length: {total_episode_lengths / total_episodes} - {eta/60:.1f} minutes left...")
         
         # env_step = global_step * args.num_envs
         # if args.save and global_step % save_every == 0:

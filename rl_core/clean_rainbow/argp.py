@@ -13,7 +13,7 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 1_000_000
+    total_timesteps: int = 1_0000_000  # 1_000_000 ~ 1 hour on HPC
     """total timesteps of the experiments"""
     learning_rate: float = 0.0000625
     """the learning rate of the optimizer"""
