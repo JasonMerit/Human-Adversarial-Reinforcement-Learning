@@ -10,7 +10,7 @@
 # BSUB -R "rusage[mem=10GB]"
 ###BSUB -R "select[gpu32gb]"  # For max storage
 #BSUB -M 10GB
-#BSUB -W 1:00
+#BSUB -W 10:00  # 10 hours wall time for 10_000_000
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
