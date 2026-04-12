@@ -30,6 +30,9 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 if __name__ == "__main__":
     args = read_args()
 
+    print(f"=>=>=>==>>= rl_core/HPC/Out_{args.job_index}.out")
+    print(f"=>=>=>==>>= rl_core/HPC/Err_{args.job_index}.err")
+
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -162,6 +165,6 @@ if __name__ == "__main__":
         TimerRegistry.export(save_folder + "timers.json")
 
         if args.hpc:  # Duplicate logs
-            shutil.copy(f"rl_core/HPC/Out{args.job_index}.out", save_folder + "Output.out")
-            shutil.copy(f"rl_core/HPC/Err{args.job_index}.err", save_folder + "Error.err")
+            shutil.copy(f"rl_core/HPC/Out_{args.job_index}.out", save_folder + "Out.out")
+            shutil.copy(f"rl_core/HPC/Err_{args.job_index}.err", save_folder + "Err.err")
         

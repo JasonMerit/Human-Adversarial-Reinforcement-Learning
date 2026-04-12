@@ -15,16 +15,15 @@
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
-#BSUB -oo rl_core/HPC/Out_$LSB_JOBINDEX.out
-#BSUB -eo rl_core/HPC/Err_$LSB_JOBINDEX.err
+#BSUB -oo rl_core/HPC/Out_%I.out
+#BSUB -eo rl_core/HPC/Err_%I.err
 
 cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
 module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME --job-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc
-python -m rl_core.clean_rainbow.train --exp-name HI --job-name kek --job-index 2 --debug
+python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME --job-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --total-timesteps 1000
 # for i in {1..5}
 # do
 #     echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
