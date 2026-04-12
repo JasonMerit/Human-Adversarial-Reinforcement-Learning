@@ -77,8 +77,9 @@ class Args:
     """if true, will render the 1st environment"""
 
     # Set by HPC
+    hpc: bool = False
     job_name: str = ""
-    job_id: str = ""    
+    job_index: str = ""    
 
 def read_args():
     args = tyro.cli(Args)

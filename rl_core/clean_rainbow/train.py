@@ -42,7 +42,7 @@ if __name__ == "__main__":
     if args.track:
         i = 0
         save_folder = f"runs/{args.exp_name}"
-        if device.type == "cuda":
+        if args.hpc:
             save_folder = os.path.join("rl_core/HPC/", save_folder)
         while os.path.exists(save_folder + f"_{i}"):
             i += 1
@@ -161,7 +161,7 @@ if __name__ == "__main__":
         writer.close()
         TimerRegistry.export(save_folder + "timers.json")
 
-        if device.type == "cuda":  # Duplicate logs
+        if args.hpc:  # Duplicate logs
             shutil.copy(f"rl_core/HPC/Out{args.job_index}.out", save_folder + "Output.out")
             shutil.copy(f"rl_core/HPC/Err{args.job_index}.err", save_folder + "Error.err")
         
