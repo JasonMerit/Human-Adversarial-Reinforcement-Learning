@@ -48,13 +48,15 @@ class TronEnvBase(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.tron.reset()
+        self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
             
         return self._get_state(), {'result': 0}
     
     def step(self, action : int):
         assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
         
-        dir1 = self.action_mapping[get_best_action(self._get_state())]  # Human's action
+        dir1 = self.action_mapping[self._semi_random_act(*self._get_state())]  # Human's action
+        # dir1 = self.action_mapping[get_best_action(self._get_state())]  # Human's action
         dir2 = self.action_mapping[action]
     
         result = self.tron.tick(dir1, dir2)
@@ -68,7 +70,17 @@ class TronEnvBase(gym.Env):
         walls, you, opp = self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos
         return walls, you, opp
 
-    
+    def _semi_random_act(self, walls, bike1, bike2):
+        # Search if action is valid, if not take best action, with some randomness
+        candidates = [0, 1, 2, 3]
+        candidates.remove((self.heading2 + 2) % 4)  # Can't turn back
+
+        for action in candidates:
+            new_pos = bike2 + self.action_mapping[action]
+            if not self.tron.bike2.is_hit(walls, *new_pos):
+                return action
+        
+        raise Exception("Jason! No valid moves for the human player - this should never happen")
 class TronDuoEnv(gym.Env):
     """
     TronEnv with both players controlled by the same agent. Action is a tuple of (action1, action2)

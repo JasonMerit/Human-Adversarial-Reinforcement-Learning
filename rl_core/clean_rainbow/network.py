@@ -47,6 +47,50 @@ class NoisyLinear(nn.Module):
         return F.linear(input, weight, bias)
     
 
+class NoisyDuelingNetwork(nn.Module):
+    def __init__(self, n_actions):
+        super().__init__()
+
+        self.n_actions = n_actions
+
+        self.network = nn.Sequential(
+            nn.Conv2d(3, 32, 3, 1, 1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 3, 1, 1),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+
+        with torch.no_grad():
+            dummy = torch.zeros(1,3,25,25)
+            conv_out = self.network(dummy).shape[1]
+
+        size = 512
+
+        self.value_head = nn.Sequential(
+            NoisyLinear(conv_out, size),
+            nn.ReLU(),
+            NoisyLinear(size, 1)
+        )
+
+        self.adv_head = nn.Sequential(
+            NoisyLinear(conv_out, size),
+            nn.ReLU(),
+            NoisyLinear(size, n_actions)
+        )
+
+    def forward(self,x) -> torch.Tensor:
+        h = self.network(x)
+        v = self.value_head(h)
+        a = self.adv_head(h)
+        q = v + a - a.mean(dim=1, keepdim=True)
+        return q
+
+    def reset_noise(self):
+        for m in self.modules():
+            if isinstance(m, NoisyLinear):
+                m.reset_noise()
+
 class NoisyDuelingDistributionalNetwork(nn.Module):
     def __init__(self, n_actions, n_atoms, v_min, v_max):
         super().__init__()
@@ -86,7 +130,7 @@ class NoisyDuelingDistributionalNetwork(nn.Module):
         )
 
     @TimerRegistry.wrap_fn("network_forward")
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, 3, H, W)
         assert isinstance(x, torch.Tensor), f"Expected input to be a torch.Tensor, got {type(x)}"
         assert x.dim() == 4 and x.shape[1] == 3, f"Expected input shape (B, 3, H, W), got {x.shape}"
@@ -121,10 +165,16 @@ class Rainbow:
         self.gamma = args.gamma
         self.n_step = args.n_step
 
-        self.q_network = NoisyDuelingDistributionalNetwork(n_actions, args.n_atoms, args.v_min, args.v_max).to(device)
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
-        self.target_network = NoisyDuelingDistributionalNetwork(n_actions, args.n_atoms, args.v_min, args.v_max).to(device)
+        self.c51 = args.c51
+        if self.c51:
+            self.q_network = NoisyDuelingDistributionalNetwork(n_actions, args.n_atoms, args.v_min, args.v_max).to(device)
+            self.target_network = NoisyDuelingDistributionalNetwork(n_actions, args.n_atoms, args.v_min, args.v_max).to(device)
+        else:
+            self.q_network = NoisyDuelingNetwork(n_actions).to(device)
+            self.target_network = NoisyDuelingNetwork(n_actions).to(device)
+        
         self.target_network.load_state_dict(self.q_network.state_dict())
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
         self.rb = PrioritizedReplayBuffer(args, device)
         
@@ -141,9 +191,12 @@ class Rainbow:
     def act(self, obs: np.ndarray):
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         with torch.no_grad():
-            q_dist = self.q_network(torch.as_tensor(obs).to(self.device))
-            q_values = torch.sum(q_dist * self.q_network.support, dim=2)
-            return torch.argmax(q_values, dim=1).cpu().numpy()
+            q = self.q_network(torch.as_tensor(obs).to(self.device))
+            
+            if self.c51:
+                q = torch.sum(q * self.q_network.support, dim=2)
+                
+            return torch.argmax(q, dim=1).cpu().numpy()
 
     @TimerRegistry.wrap_fn("agent_learn")
     def learn(self):
@@ -153,46 +206,12 @@ class Rainbow:
 
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample()
 
-        with torch.no_grad():
-            next_dist = self.target_network(next_obs)  # [B, num_actions, n_atoms]
-            support = self.target_network.support  # [n_atoms]
-
-            # double q-learning
-            next_dist_online = self.q_network(next_obs)  # [B, num_actions, n_atoms]
-            next_q_online = torch.sum(next_dist_online * support, dim=2)  # [B, num_actions]
-            best_actions = torch.argmax(next_q_online, dim=1)  # [B]
-            next_pmfs = next_dist[torch.arange(self.batch_size), best_actions]  # [B, n_atoms]
-
-            # compute the n-step Bellman update.
-            gamma_n = self.gamma**self.n_step
-            next_atoms = rewards + gamma_n * support * (1 - dones.float())
-            tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
-
-            TimerRegistry.start()
-            # projection
-            b = (tz - self.q_network.v_min) / self.q_network.delta_z  # shape: [B, n_atoms]
-            l = b.floor().clamp(0, self.q_network.n_atoms - 1)
-            u = b.ceil().clamp(0, self.q_network.n_atoms - 1)
-
-            # (l == u).float() handles the case where bj is exactly an integer
-            # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
-            d_m_l = (u.float() + (l == b).float() - b) * next_pmfs  # [B, n_atoms]
-            d_m_u = (b - l) * next_pmfs  # [B, n_atoms]
-
-            target_pmfs = torch.zeros_like(next_pmfs)
-            for i in range(target_pmfs.size(0)):
-                target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
-                target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
-            TimerRegistry.stop("projection")
-
-        TimerRegistry.start()
-        dist = self.q_network(obs)  # [B, num_actions, n_atoms]
-        pred_dist = dist.gather(1, actions.unsqueeze(-1).expand(-1, -1, self.q_network.n_atoms)).squeeze(1)
-        log_pred = torch.log(pred_dist.clamp(min=1e-5, max=1 - 1e-5))
-
-        loss_per_sample = -(target_pmfs * log_pred).sum(dim=1)
+        if self.c51:
+            loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones, weights)
+        else:
+            loss_per_sample = self._dqn_loss(obs, actions, rewards, next_obs, dones, weights)
         loss = (loss_per_sample * weights.squeeze()).mean()
-        TimerRegistry.stop("loss")
+            # loss_per_sample, loss = self._dqn_loss(obs, actions, rewards, next_obs, dones)
 
         # update priorities
         new_priorities = loss_per_sample.detach().cpu().numpy()
@@ -209,12 +228,67 @@ class Rainbow:
             self.writer.add_scalar(f"gradients/{self.name}_weight_norm", weight, self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_td_loss_mean", loss_per_sample.mean().item(), self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_td_loss_std", loss_per_sample.std().item(), self.learning_steps)
-            q_values = (pred_dist * self.q_network.support).sum(dim=1)  # [B]
-            self.writer.add_scalar(f"losses/{self.name}_q_values_mean", q_values.mean().item(), self.learning_steps)
-            self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
+            # q_values = (pred_dist * self.q_network.support).sum(dim=1)  # [B]
+            # self.writer.add_scalar(f"losses/{self.name}_q_values_mean", q_values.mean().item(), self.learning_steps)
+            # self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
 
         self.optimizer.step()
         TimerRegistry.stop("backward")
+
+    TimerRegistry.wrap_fn("dqn_loss")
+    def _dqn_loss(self, obs, actions, rewards, next_obs, dones, weights):
+        with torch.no_grad():
+            next_q_target = self.target_network(next_obs)
+            next_q_online = self.q_network(next_obs)
+            best_actions = torch.argmax(next_q_online, dim=1)
+            next_q = next_q_target.gather(1, best_actions.unsqueeze(1)).squeeze(1)
+
+            gamma_n = self.gamma ** self.n_step
+            target = rewards + gamma_n * next_q * (1 - dones.float())
+
+        q = self.q_network(obs)
+        pred = q.gather(1, actions).squeeze(1)
+        loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
+        return loss_per_sample
+
+    TimerRegistry.wrap_fn("c51_loss")
+    def _c51_loss(self, obs, actions, rewards, next_obs, dones, weights):
+        with torch.no_grad():
+            next_dist = self.target_network(next_obs)  # [B, num_actions, n_atoms]
+            support = self.target_network.support  # [n_atoms]
+
+            # double q-learning
+            next_dist_online = self.q_network(next_obs)  # [B, num_actions, n_atoms]
+            next_q_online = torch.sum(next_dist_online * support, dim=2)  # [B, num_actions]
+            best_actions = torch.argmax(next_q_online, dim=1)  # [B]
+            next_pmfs = next_dist[torch.arange(self.batch_size), best_actions]  # [B, n_atoms]
+
+            # compute the n-step Bellman update.
+            gamma_n = self.gamma**self.n_step
+            next_atoms = rewards + gamma_n * support * (1 - dones.float())
+            tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
+
+            # projection
+            b = (tz - self.q_network.v_min) / self.q_network.delta_z  # shape: [B, n_atoms]
+            l = b.floor().clamp(0, self.q_network.n_atoms - 1)
+            u = b.ceil().clamp(0, self.q_network.n_atoms - 1)
+
+            # (l == u).float() handles the case where bj is exactly an integer
+            # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
+            d_m_l = (u.float() + (l == b).float() - b) * next_pmfs  # [B, n_atoms]
+            d_m_u = (b - l) * next_pmfs  # [B, n_atoms]
+
+            target_pmfs = torch.zeros_like(next_pmfs)
+            for i in range(target_pmfs.size(0)):
+                target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
+                target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
+
+        dist = self.q_network(obs)  # [B, num_actions, n_atoms]
+        pred_dist = dist.gather(1, actions.unsqueeze(-1).expand(-1, -1, self.q_network.n_atoms)).squeeze(1)
+        log_pred = torch.log(pred_dist.clamp(min=1e-5, max=1 - 1e-5))
+
+        loss_per_sample = -(target_pmfs * log_pred).sum(dim=1)
+        return loss_per_sample
 
 
     def update_target(self):

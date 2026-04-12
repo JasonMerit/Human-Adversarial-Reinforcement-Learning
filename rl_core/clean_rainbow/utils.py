@@ -8,6 +8,7 @@ class TimerRegistry:
     _calls = defaultdict(int)
     _t0 = time.time()
     _time = 0
+    _active = False
 
     @staticmethod
     def record(name, dt):
@@ -16,11 +17,17 @@ class TimerRegistry:
     
     @staticmethod
     def start():
+        if TimerRegistry._active:
+            raise RuntimeError("Timer already active")
         TimerRegistry._time = time.perf_counter()
+        TimerRegistry._active = True
     
     @staticmethod
     def stop(name):
+        if not TimerRegistry._active:
+            raise RuntimeError(f"Timer not active for {name}")
         TimerRegistry.record(name, time.perf_counter() - TimerRegistry._time)
+        TimerRegistry._active = False
 
     @staticmethod
     def wrap_fn(name):

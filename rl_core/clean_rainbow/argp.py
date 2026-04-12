@@ -52,6 +52,10 @@ class Args:
     v_max: float = 100
     """the return upper bound"""
 
+    # Rainbow modules
+    c51: bool = False
+    """whether to use the C51 distributional RL algorithm"""
+
     # Jason's additions
     save: bool = True
     """whether to save the final model"""

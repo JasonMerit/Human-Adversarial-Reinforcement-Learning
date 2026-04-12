@@ -5,7 +5,7 @@ import os
 
 from rich import print
 
-from rl_core.env import TronDuoEnv, TronView
+from rl_core.env import TronDuoEnv, TronView, TronEnv
 from rl_core.agents import QNetwork, ActorCriticNetwork
 from rl_core.env.wrappers import TorchObservationWrapper
 
@@ -52,27 +52,32 @@ def cleanrain_act(policy, obs):
         q_values = torch.sum(q_dist * policy.support, dim=2)
         return torch.argmax(q_values, dim=1).cpu().numpy().item()
 
-
 def play(agent1, agent2, env: TronDuoEnv):
     obs, _ = env.reset()
+    kek = 0
     while True:
         obs1, obs2 = obs[:, 0], obs[:, 1]
         a1, a2 = cleanrain_act(agent1, obs1), cleanrain_act(agent2, obs2)
         # a1, a2 = rainbow_act(agent1, obs1), rainbow_act(agent2, obs1)  # Use the loaded model to select an action
+        # obs, _, done, _, info = env.step(a1)
         obs, _, done, _, info = env.step([a1, a2])
+        kek += 1
 
         if done:
             obs, _ = env.reset()
-            print(info.get("result"))
+            print(info.get("result"), f"Total steps: {kek}")
+            kek = 0
     
 def battle(folder1, folder2):
     # env = TronDuoEnv()
+    # env = TronView(TronEnv())
     env = TronView(TronDuoEnv())
     env = TorchObservationWrapper(env, device="cpu")
-    obs, _ = env.reset()
 
     if folder2 == "":
-        path1, path2 = get_agent_files(folder1, num_agents=2)
+        folder = Path("runs") / folder1
+        path1, path2 = folder / "A.pth", folder / "B.pth"
+        # path1, path2 = get_agent_files(folder1, num_agents=2)
         agent1, agent2 = make_clean_rainbow(path1), make_clean_rainbow(path2)
         # agent1, agent2 = make_rainbow(path1), make_rainbow(path2)
     else:
