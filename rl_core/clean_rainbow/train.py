@@ -148,6 +148,10 @@ if __name__ == "__main__":
     TimerRegistry.report()
 
     if args.track:
+        if args.save:
+            agent1.save(save_folder + f"A.pth")
+            agent2.save(save_folder + f"B.pth")
+
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
                 "results": results, 
@@ -158,9 +162,6 @@ if __name__ == "__main__":
         TimerRegistry.export(save_folder + "timers.json")
 
         if device.type == "cuda":  # Duplicate logs
-            shutil.copy("rl_core/HPC/Output.out", save_folder + "Output.out")
-            shutil.copy("rl_core/HPC/Error.err", save_folder + "Error.err")
+            shutil.copy(f"rl_core/HPC/Out{args.job_index}.out", save_folder + "Output.out")
+            shutil.copy(f"rl_core/HPC/Err{args.job_index}.err", save_folder + "Error.err")
         
-        if args.save:
-            agent1.save(save_folder + f"A.pth")
-            agent2.save(save_folder + f"B.pth")
