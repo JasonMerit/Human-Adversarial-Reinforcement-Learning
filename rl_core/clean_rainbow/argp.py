@@ -84,6 +84,7 @@ def read_args():
 
     if args.debug:
         args.save = False
+        args.track = False
         args.num_envs = 5
         # args.total_checkpoints = 1
         args.total_timesteps = 400

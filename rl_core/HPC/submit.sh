@@ -1,16 +1,16 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J CleanRain
+###BSUB -J CleanRain
 ###BSUB -J RainbowSimpler
-###BSUB -J Rainbow[1-5]  # Job array with 5 tasks - remove the loop in the script if using this
+#BSUB -J CleanRain[1-5]  # Job array with 5 tasks - remove the loop in the script if using this
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
 ### BSUB -R "rusage[mem=32GB]"
 #BSUB -R "select[gpu32gb]"
 #BSUB -M 32GB
-#BSUB -W 5:00
+#BSUB -W 2:00
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
@@ -23,7 +23,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 # python -m rl_core.self_train --exp-name $LSB_JOBNAME
-python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME
+python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME_$LSB_JOBINDEX
 # python -m rl_core.rainbow.train --prioritized_er False --debug True
 # for i in {1..5}
 # do
