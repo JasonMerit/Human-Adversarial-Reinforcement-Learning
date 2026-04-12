@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
-from .buffer import PrioritizedReplayBuffer
+from .buffer import PrioritizedReplayBuffer, ReplayBuffer
 from .utils import TimerRegistry
 from rich import print
 
@@ -163,8 +163,6 @@ class Rainbow:
         self.device = device
         self.batch_size = args.batch_size
         self.gamma = args.gamma
-        self.n_step = args.n_step
-
         
         linear = NoisyLinear if args.noisy else nn.Linear
 
@@ -179,7 +177,7 @@ class Rainbow:
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(args, device)
+        self.rb = PrioritizedReplayBuffer(args, device) if args.per else ReplayBuffer(args, device)
         
         self.name = name
         self.writer = writer
@@ -240,14 +238,15 @@ class Rainbow:
 
     TimerRegistry.wrap_fn("dqn_loss")
     def _dqn_loss(self, obs, actions, rewards, next_obs, dones):
+        rewards = rewards.squeeze(1)
+        dones = dones.squeeze(1)
         with torch.no_grad():
             next_q_target = self.target_network(next_obs)
             next_q_online = self.q_network(next_obs)
             best_actions = torch.argmax(next_q_online, dim=1)
             next_q = next_q_target.gather(1, best_actions.unsqueeze(1)).squeeze(1)
 
-            gamma_n = self.gamma ** self.n_step
-            target = rewards + gamma_n * next_q * (1 - dones.float())
+            target = rewards + self.gamma * next_q * (1 - dones.float())
 
         q = self.q_network(obs)
         pred = q.gather(1, actions).squeeze(1)
@@ -267,8 +266,7 @@ class Rainbow:
             next_pmfs = next_dist[torch.arange(self.batch_size), best_actions]  # [B, n_atoms]
 
             # compute the n-step Bellman update.
-            gamma_n = self.gamma**self.n_step
-            next_atoms = rewards + gamma_n * support * (1 - dones.float())
+            next_atoms = rewards + self.gamma * support * (1 - dones.float())
             tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
 
             # projection

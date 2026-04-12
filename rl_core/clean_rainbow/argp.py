@@ -37,8 +37,10 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
-    n_step: int = 3
-    """the number of steps to look ahead for n-step Q learning"""
+
+    # Prioritized replay buffer
+    per: bool = True
+    """whether to use a prioritized experience replay buffer"""
     prioritized_replay_alpha: float = 0.5
     """alpha parameter for prioritized replay buffer"""
     prioritized_replay_beta: float = 0.4
@@ -59,7 +61,6 @@ class Args:
     # Noisy Nets
     noisy: bool = False
     """whether to use noisy linear layers"""
-
 
     # Jason's additions
     save: bool = True
@@ -87,6 +88,8 @@ def read_args():
         # args.total_checkpoints = 1
         args.total_timesteps = 400
         # args.render = True
+        # args.buffer_size *= 1e89
+        args.buffer_size = args.batch_size * 10
 
         args.exp_name = "debug_" + args.exp_name
     

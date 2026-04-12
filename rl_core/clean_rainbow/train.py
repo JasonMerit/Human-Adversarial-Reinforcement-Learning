@@ -35,14 +35,6 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    # Handle parallel envs
-    total_loops = args.total_timesteps // args.num_envs
-    burnin = args.learning_starts // args.num_envs
-    target_every = args.target_network_frequency // args.num_envs
-    train_count = args.num_envs // args.train_frequency
-    log_every = max(1, total_loops // 100)
-    save_every = max(1, total_loops // args.total_checkpoints)
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
@@ -68,6 +60,13 @@ if __name__ == "__main__":
         else:
             print("Models will NOT be saved!")
 
+    # Handle parallel envs
+    total_loops = args.total_timesteps // args.num_envs
+    burnin = args.learning_starts // args.num_envs
+    target_every = args.target_network_frequency // args.num_envs
+    train_count = args.num_envs // args.train_frequency
+    log_every = max(1, total_loops // 100)
+    save_every = max(1, total_loops // args.total_checkpoints)
 
     # Envs and agents
     envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.render) for i in range(args.num_envs)])
@@ -76,13 +75,12 @@ if __name__ == "__main__":
     agent2 = Rainbow(n_actions, args, device, writer, "B")
 
     # Logging
+    start_time = time.time()
     results = [0, 0, 0]
     total_episodes = 0
     total_episode_lengths = 0
     episode_lengths = np.zeros(args.num_envs, dtype=int)
     kek = 0
-
-    start_time = time.time()
 
     obs, _ = envs.reset()
     obs1, obs2 = obs[:, 0], obs[:, 1]
@@ -111,7 +109,6 @@ if __name__ == "__main__":
         episode_lengths += 1
 
         # Training
-        # if global_step > burnin:
         for _ in range(train_count):
             agent1.learn()
             agent2.learn()
@@ -140,7 +137,7 @@ if __name__ == "__main__":
             progress = global_step / total_loops
             eta = elapsed * (1/progress - 1)
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
-            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} {eta/60:.1f} minutes left...")
+            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} {eta/60:.1f} minutes left... - Beta {agent1.rb.beta:.3f}")
         
         # env_step = global_step * args.num_envs
         # if args.save and global_step % save_every == 0:
