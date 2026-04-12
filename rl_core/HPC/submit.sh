@@ -22,9 +22,7 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-# python -m rl_core.self_train --exp-name $LSB_JOBNAME
-python -m rl_core.clean_rainbow.train --exp-name $LSB_JOBNAME_$LSB_JOBINDEX
-# python -m rl_core.rainbow.train --prioritized_er False --debug True
+python -m rl_core.clean_rainbow.train --exp-name "${LSB_JOBNAME}_${LSB_JOBINDEX}"
 # for i in {1..5}
 # do
 #     echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
