@@ -30,9 +30,6 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 if __name__ == "__main__":
     args = read_args()
 
-    print(f"=>=>=>==>>= rl_core/HPC/Out_{args.job_index}.out")
-    print(f"=>=>=>==>>= rl_core/HPC/Err_{args.job_index}.err")
-
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

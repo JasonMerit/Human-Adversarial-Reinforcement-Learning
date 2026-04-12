@@ -18,8 +18,8 @@ def make_rainbow(path):
     return Rainbow.from_checkpoint(path, obs_shape=(3, 25, 25), n_actions=3, device="cpu")
 
 def make_clean_rainbow(path):
-    from rl_core.clean_rainbow.network import NoisyDuelingDistributionalNetwork
-    return NoisyDuelingDistributionalNetwork.from_checkpoint(path, n_actions=3, device="cpu")
+    from rl_core.clean_rainbow.network import DuelingNetwork
+    return DuelingNetwork.from_checkpoint(path, n_actions=3, device="cpu")
 
 def get_agent_files(agent_folder, num_agents):
     # Select the appropriate agent class based on the file name
@@ -48,9 +48,10 @@ def rainbow_act(policy, obs):
 
 def cleanrain_act(policy, obs):
     with torch.no_grad():
-        q_dist = policy(torch.as_tensor(obs))
-        q_values = torch.sum(q_dist * policy.support, dim=2)
-        return torch.argmax(q_values, dim=1).cpu().numpy().item()
+        q = policy(torch.as_tensor(obs))
+        if len(q.shape) == 3:  # Distributional case
+            q = torch.sum(q * policy.support, dim=2)
+        return torch.argmax(q, dim=1).cpu().numpy().item()
 
 def play(agent1, agent2, env: TronDuoEnv):
     obs, _ = env.reset()
