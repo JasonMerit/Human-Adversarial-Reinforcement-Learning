@@ -94,7 +94,7 @@ def read_args():
         args.num_envs = 5
         # args.total_checkpoints = 1
         args.total_timesteps = 400
-        # args.render = True
+        args.render = True
         # args.buffer_size *= 1e89
         args.buffer_size = args.batch_size * 10
 

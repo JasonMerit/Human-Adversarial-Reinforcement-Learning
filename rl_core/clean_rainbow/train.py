@@ -18,7 +18,7 @@ def make_envs(indx, seed, size, render):
     def thunk():
         env = TronDuoEnv(size)
         if render and indx==0:
-            env = TronView(env, fps=10000)
+            env = TronView(env, fps=1000000)
         env.action_space.seed(seed + indx)
         return env
     return thunk
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
     n_actions = envs.single_action_space.nvec[0]
     agent1 = Rainbow(obs_shape, n_actions, args, device, writer, "A")
-    # agent2 = Rainbow(obs_shape, n_actions, args, device, writer, "B")
+    agent2 = Rainbow(obs_shape, n_actions, args, device, writer, "B")
 
     # Logging
     start_time = time.time()
@@ -91,24 +91,24 @@ if __name__ == "__main__":
     obs1, obs2 = obs[:, 0], obs[:, 1]
     for global_step in range(1, total_loops + 1):
         agent1.q_network.reset_noise()
-        # agent2.q_network.reset_noise()
+        agent2.q_network.reset_noise()
         
         a1 = agent1.act(obs1)
-        a2 = np.random.randint(0, n_actions, size=args.num_envs)  # Random actions for agent2
-        # a2 = agent2.act(obs2)
+        # a2 = np.random.randint(0, n_actions, size=args.num_envs)  # Random actions for agent2
+        a2 = agent2.act(obs2)
 
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-        # explore_mask = np.random.rand(args.num_envs) < epsilon
-        # a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+        explore_mask = np.random.rand(args.num_envs) < epsilon
+        a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
         actions = np.stack([a1, a2], axis=1) 
         next_obs, rewards, dones, _, infos = envs.step(actions)
         next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
 
         agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
-        # agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
+        agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
         obs1, obs2 = next_obs1, next_obs2
         episode_lengths += 1
@@ -116,14 +116,14 @@ if __name__ == "__main__":
         # Training
         for _ in range(train_count):
             agent1.learn()
-            # agent2.learn()
+            agent2.learn()
 
         # update target network
         if global_step % target_every == 0:
             kek += 1
             agent1.update_target()
-            # agent2.update_target()
-        quit()  # JASON
+            agent2.update_target()
+        
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     if args.track:
         if args.save:
             agent1.save(save_folder + f"A.pth")
-            # agent2.save(save_folder + f"B.pth")
+            agent2.save(save_folder + f"B.pth")
 
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
