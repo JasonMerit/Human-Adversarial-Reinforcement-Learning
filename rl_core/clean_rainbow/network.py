@@ -48,12 +48,13 @@ class NoisyLinear(nn.Module):
     
 
 class DuelingNetwork(nn.Module):
-    def __init__(self, n_actions, linear=nn.Linear):
+    def __init__(self, obs_shape, n_actions, linear=nn.Linear):
         super().__init__()
+        channels, size, _ = obs_shape
         self.n_actions = n_actions
 
         self.network = nn.Sequential(
-            nn.Conv2d(3, 16, 3, 1, 1),
+            nn.Conv2d(channels, 16, 3, 1, 1),
             nn.ReLU(),
             nn.Conv2d(16, 32, 3, 1, 1),
             nn.ReLU(),
@@ -61,7 +62,7 @@ class DuelingNetwork(nn.Module):
         )
 
         with torch.no_grad():
-            dummy = torch.zeros(1,3,25,25)
+            dummy = torch.zeros(1, channels, size, size)
             n_flatten = self.network(dummy).shape[1]
 
         hidden = 32
@@ -96,8 +97,9 @@ class DuelingNetwork(nn.Module):
         return net
 
 class DuelingDistributionalNetwork(nn.Module):
-    def __init__(self, n_actions, args, linear=nn.Linear):
+    def __init__(self, obs_shape, n_actions, args, linear=nn.Linear):
         super().__init__()
+        channels, size, _ = obs_shape
         self.n_actions = n_actions
 
         self.n_atoms = args.n_atoms
@@ -106,7 +108,7 @@ class DuelingDistributionalNetwork(nn.Module):
         self.support = torch.linspace(self.v_min, self.v_max, self.n_atoms)
 
         self.features = nn.Sequential(
-            nn.Conv2d(3, 16, 3, stride=2, padding=1),  # 25 → 13
+            nn.Conv2d(channels, 16, 3, stride=2, padding=1),  # 25 → 13
             nn.ReLU(),
             nn.Conv2d(16, 32, 3, stride=2, padding=1), # 13 → 7
             nn.ReLU(),
@@ -116,7 +118,7 @@ class DuelingDistributionalNetwork(nn.Module):
         )
 
         with torch.no_grad():
-            dummy = torch.zeros(1, 3, 25, 25)
+            dummy = torch.zeros(1, channels, size, size)
             n_flatten = self.features(dummy).shape[1]  # ~512
 
         hidden = 64
@@ -166,7 +168,7 @@ class DuelingDistributionalNetwork(nn.Module):
 
 class Rainbow:
 
-    def __init__(self, n_actions, args, device, writer, name):
+    def __init__(self, obs_shape, n_actions, args, device, writer, name):
         self.device = device
         self.batch_size = args.batch_size
         self.gamma = args.gamma
@@ -175,16 +177,16 @@ class Rainbow:
 
         self.c51 = args.c51
         if self.c51:
-            self.q_network = DuelingDistributionalNetwork(n_actions, linear, args).to(device)
-            self.target_network = DuelingDistributionalNetwork(n_actions, linear, args).to(device)
+            self.q_network = DuelingDistributionalNetwork(obs_shape, n_actions, linear, args).to(device)
+            self.target_network = DuelingDistributionalNetwork(obs_shape, n_actions, linear, args).to(device)
         else:
-            self.q_network = DuelingNetwork(n_actions, linear).to(device)
-            self.target_network = DuelingNetwork(n_actions, linear).to(device)
+            self.q_network = DuelingNetwork(obs_shape, n_actions, linear).to(device)
+            self.target_network = DuelingNetwork(obs_shape, n_actions, linear).to(device)
         
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(args, device) if args.per else ReplayBuffer(args, device)
+        self.rb = PrioritizedReplayBuffer(obs_shape, args, device) if args.per else ReplayBuffer(obs_shape, args, device)
         
         self.name = name
         self.writer = writer

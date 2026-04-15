@@ -6,14 +6,14 @@ from .utils import TimerRegistry
 
 class ReplayBuffer:
 
-    def __init__(self, args, device):
+    def __init__(self, obs_shape, args, device):
         self.device = device
         self.batch_size = args.batch_size
         env_dict = {
-            "obs": {"shape": (3, 25, 25), "dtype": np.uint8}, 
+            "obs": {"shape": obs_shape, "dtype": np.uint8}, 
             "act": {"dtype": np.uint8}, 
             "rew": {"dtype": np.uint8}, 
-            "next_obs": {"shape": (3, 25, 25), "dtype": np.uint8}, 
+            "next_obs": {"shape": obs_shape, "dtype": np.uint8}, 
             "done": {"dtype": np.bool_}
             }
         self._rb = cpprb.ReplayBuffer(args.buffer_size, env_dict)
@@ -41,7 +41,7 @@ class ReplayBuffer:
 
 class PrioritizedReplayBuffer:
 
-    def __init__(self, args, device):
+    def __init__(self, obs_shape, args, device):
         self.device = device
         self.batch_size = args.batch_size
         self.beta = args.prioritized_replay_beta
@@ -50,10 +50,10 @@ class PrioritizedReplayBuffer:
         self.beta_step = (1.0 - args.prioritized_replay_beta) / total_train_steps  # Linear annealing of beta over the course of training
 
         env_dict = {
-            "obs": {"shape": (3, 25, 25), "dtype": np.uint8}, 
+            "obs": {"shape": obs_shape, "dtype": np.uint8}, 
             "act": {"dtype": np.uint8}, 
             "rew": {"dtype": np.uint8}, 
-            "next_obs": {"shape": (3, 25, 25), "dtype": np.uint8}, 
+            "next_obs": {"shape": obs_shape, "dtype": np.uint8}, 
             "done": {"dtype": np.bool_}
             }
         self._rb = cpprb.PrioritizedReplayBuffer(args.buffer_size, env_dict, alpha=args.prioritized_replay_alpha, eps=args.prioritized_replay_eps)

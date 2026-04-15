@@ -75,6 +75,8 @@ class Args:
     """if true, will use the Tron-specific network architecture"""
     render: bool = False
     """if true, will render the 1st environment"""
+    size: int = 25
+    """set square size of Tron"""
 
     # Set by HPC
     hpc: bool = False
@@ -88,8 +90,7 @@ def read_args():
         args.seed = random.randint(0, 1e6)
 
     if args.debug:
-        args.save = False
-        args.track = False
+        args.save = args.track = False
         args.num_envs = 5
         # args.total_checkpoints = 1
         args.total_timesteps = 400

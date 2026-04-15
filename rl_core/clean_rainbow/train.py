@@ -14,9 +14,9 @@ from .network import Rainbow
 from .utils import TimerRegistry
 from rl_core.env import TronDuoEnv, TronView
 
-def make_envs(indx, seed, render):
+def make_envs(indx, seed, size, render):
     def thunk():
-        env = TronDuoEnv()
+        env = TronDuoEnv(size)
         if render and indx==0:
             env = TronView(env, fps=10000)
         env.action_space.seed(seed + indx)
@@ -73,10 +73,11 @@ if __name__ == "__main__":
     save_every = max(1, total_loops // args.total_checkpoints)
 
     # Envs and agents
-    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.render) for i in range(args.num_envs)])
+    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.size, args.render) for i in range(args.num_envs)])
+    obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
     n_actions = envs.single_action_space.nvec[0]
-    agent1 = Rainbow(n_actions, args, device, writer, "A")
-    # agent2 = Rainbow(n_actions, args, device, writer, "B")
+    agent1 = Rainbow(obs_shape, n_actions, args, device, writer, "A")
+    # agent2 = Rainbow(obs_shape, n_actions, args, device, writer, "B")
 
     # Logging
     start_time = time.time()
@@ -122,6 +123,7 @@ if __name__ == "__main__":
             kek += 1
             agent1.update_target()
             # agent2.update_target()
+        quit()  # JASON
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
