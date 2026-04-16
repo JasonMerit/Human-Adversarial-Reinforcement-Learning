@@ -12,11 +12,11 @@ import yaml
 from .argp import read_args
 from .network import Rainbow
 from .utils import TimerRegistry
-from rl_core.env import TronDuoEnv, TronView
+from rl_core.env import TronDuoEnv, TronView, PoLEnv
 
-def make_envs(indx, seed, size, render):
+def make_envs(indx, seed, size, render, Env=TronDuoEnv):
     def thunk():
-        env = TronDuoEnv(size)
+        env = Env(size)
         if render and indx==0:
             env = TronView(env, fps=1000000)
         env.action_space.seed(seed + indx)
@@ -73,7 +73,8 @@ if __name__ == "__main__":
     save_every = max(1, total_loops // args.total_checkpoints)
 
     # Envs and agents
-    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.size, args.render) for i in range(args.num_envs)])
+    Env = TronDuoEnv if not args.pol else PoLEnv
+    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.size, args.render, Env) for i in range(args.num_envs)])
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
     n_actions = envs.single_action_space.nvec[0]
     agent1 = Rainbow(obs_shape, n_actions, args, device, writer, "A")

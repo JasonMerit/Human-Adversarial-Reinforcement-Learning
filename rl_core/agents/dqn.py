@@ -12,12 +12,19 @@ class QNetwork(nn.Module):
         c, h, w = obs_shape
 
         # --- CNN Feature Extractor ---
+        # self.cnn = nn.Sequential(
+        #     nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Flatten(),
+        # )
+
+        # For testing on simpler environment, just make a single layer MLP instead of CNN
         self.cnn = nn.Sequential(
-            nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
             nn.Flatten(),
+            nn.Linear(c * h * w, 64),
+            nn.ReLU(),
         )
 
         # Compute flattened size dynamically
@@ -79,7 +86,7 @@ class DQNAgent:
         data = self.rb.sample(self.batch_size)
         with torch.no_grad():
             target_max, _ = self.target_network.forward(data.next_observations).max(dim=1)
-            td_target = data.rewards.flatten() + target_max * (1 - data.dones.flatten())
+            td_target = data.rewards.flatten() + .99 * target_max * (1 - data.dones.flatten())
         old_val = self.q_network.forward(data.observations).gather(1, data.actions).squeeze()
         loss = F.mse_loss(td_target, old_val)
 
@@ -96,9 +103,6 @@ class DQNAgent:
         if verbose:
             print(f"Model saved to {path}")
     
-def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
-    slope = (end_e - start_e) / duration
-    return max(slope * t + start_e, end_e)
 
 if __name__ == "__main__":
     from rl_core.env import TronEnv, Tron2ChannelEnv

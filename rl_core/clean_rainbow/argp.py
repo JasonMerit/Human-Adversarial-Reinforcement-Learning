@@ -77,6 +77,8 @@ class Args:
     """if true, will render the 1st environment"""
     size: int = 25
     """set square size of Tron"""
+    pol: bool = False
+    """Whether to use the proof of learning environment"""
 
     # Set by HPC
     hpc: bool = False
@@ -99,6 +101,7 @@ def read_args():
         args.buffer_size = args.batch_size * 10
 
         args.exp_name = "debug_" + args.exp_name
+        args.pol = True  # Test PoL environment in debug mode
     
     assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"

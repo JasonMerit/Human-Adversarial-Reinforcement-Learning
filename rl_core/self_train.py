@@ -17,7 +17,7 @@ from tqdm import tqdm
 from rl_core.agents.buffers import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent
-from rl_core.env import TronView, TronDuoEnv, Tron2ChannelEnv
+from rl_core.env import TronView, TronDuoEnv, Tron2ChannelEnv, PoLEnv
 
 
 @dataclass
@@ -32,7 +32,7 @@ class Args:
     """whether to save model into the `runs/{exp_name}` folder"""
     render: bool = False
     """whether to render the environment during training (slows down training!)"""
-    total_checkpoints: int = 10
+    total_checkpoints: int = 1
     """the total number of checkpoints to save during training"""
     environment: str = "TronDuo"
     """the environment to train on (TronDuo or Tron2Channel)"""
@@ -60,14 +60,20 @@ class Args:
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
     learning_starts: int = 10000
     """timestep to start learning"""
+
+    # Jason specific arguments
+    pol: bool = False
+    """Whether to use the proof of learning environment"""
+    size: int = 5
+    """the size of the PoL environment (size x size grid)"""
     # train_frequency: int = 10
     # """the frequency of training"""
 
 
-def make_env(seed, idx, environment, render=False):
-    Env = TronDuoEnv if environment == "TronDuo" else Tron2ChannelEnv
+def make_env(seed, idx, args, render=False):
     def thunk():
-        env = Env()
+        Env = TronDuoEnv if not args.pol else PoLEnv
+        env = Env(args.size)  # TODO
         if render and idx == 0:
             env = TronView(env)
 
@@ -101,16 +107,17 @@ if __name__ == "__main__":
     print(f"=====|  Training with seed {args.seed} on device {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.seed + i, i, args.environment, render=args.render) for i in range(args.num_envs)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.seed + i, i, args, render=args.render) for i in range(args.num_envs)])
 
-    n_actions = envs.single_action_space.nvec[0]  # Either is fine (symmetric environment)
+    n_actions = envs.single_action_space.n  # Either is fine (symmetric environment)
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the stacked observations
+    print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
     buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
     buffer_args = {"buffer_size": args.buffer_size, "observation_space": buffer_obs_space, "device": device, "n_envs": args.num_envs}
     agent_args = {"obs_shape": obs_shape, "n_actions": n_actions, "lr": args.learning_rate, "rb": ReplayBuffer(**buffer_args), "batch_size": args.batch_size, "device": device}
     agent1 = DQNAgent(**agent_args)
-    agent2 = DQNAgent(**agent_args)
+    # agent2 = DQNAgent(**agent_args)
     
     obs, _ = envs.reset(seed=args.seed)
 
@@ -148,27 +155,30 @@ if __name__ == "__main__":
         for global_step in range(1, total_loops+1):
         # for global_step in pbar:
             env_step = global_step * args.num_envs
-            obs0, obs1 = obs[:, 0], obs[:, 1]
+            # obs0, obs1 = obs[:, 0], obs[:, 1]
 
-            a0 = agent1.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
-            a1 = agent2.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
+            a0 = agent1.select_action(torch.tensor(obs, dtype=torch.float32, device=device))
+            # a0 = agent1.select_action(torch.tensor(obs0, dtype=torch.float32, device=device))
+            # a1 = agent2.select_action(torch.tensor(obs1, dtype=torch.float32, device=device))
             
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, env_step)
             explore_mask = np.random.rand(args.num_envs) < epsilon
             a0[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-            explore_mask = np.random.rand(args.num_envs) < epsilon
-            a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+            # explore_mask = np.random.rand(args.num_envs) < epsilon
+            # a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
-            actions = np.stack([a0, a1], axis=1)
+            actions = a0
+            # actions = np.stack([a0, a1], axis=1)
             next_obs, rewards, terminations, _, infos = envs.step(actions)
 
             # Iterate over terminations to log episode results
-            for i in np.where(terminations)[0]:  # Update results for any env that is done
-                results[infos["final_info"][i]['result']] += 1
+            # for i in np.where(terminations)[0]:  # Update results for any env that is done
+            #     results[infos["final_info"][i]['result']] += 1
 
             r0, r1 = rewards, -rewards
-            agent1.add_to_buffer(obs0, next_obs[:, 0], a0, r0, terminations, infos)
-            agent2.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
+            agent1.add_to_buffer(obs, next_obs, a0, r0, terminations, infos)
+            # agent1.add_to_buffer(obs, next_obs[:, 0], a0, r0, terminations, infos)
+            # agent2.add_to_buffer(obs1, next_obs[:, 1], a1, r1, terminations, infos)
 
             obs = next_obs
 
@@ -176,17 +186,17 @@ if __name__ == "__main__":
             if global_step > learn_start_loop:
                 if global_step % learn_every == 0:
                     agent1.learn()
-                    agent2.learn()
+                    # agent2.learn()
 
                 # update target network
                 if global_step % target_every == 0:
                     agent1.update_target_network()
-                    agent2.update_target_network()
+                    # agent2.update_target_network()
             
             # Saving
-            if args.save and global_step % save_every == 0:
-                agent1.save(save_folder + f"A_{env_step}.pth")
-                agent2.save(save_folder + f"B_{env_step}.pth")
+            # if args.save and global_step % save_every == 0:
+            #     agent1.save(save_folder + f"A_{env_step}.pth")
+            #     agent2.save(save_folder + f"B_{env_step}.pth")
             
             # Logging
             # if global_step % log_interval == 0:
@@ -214,8 +224,8 @@ if __name__ == "__main__":
                     "steps_taken": env_step, 
                     "training_time_hours": (time.time() - start_time) / 3600,
                     }, f)
-            agent1.save(save_folder + f"A_{env_step}.pth", verbose=True)
-            agent2.save(save_folder + f"B_{env_step}.pth", verbose=True)
+            agent1.save(save_folder + "A.pth", verbose=True)
+            # agent2.save(save_folder + "B.pth", verbose=True)
 
         envs.close()
         print(f"Training completed after {env_step} steps and {(time.time() - start_time) / 3600:.2f} hours!")

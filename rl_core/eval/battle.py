@@ -6,20 +6,22 @@ import os
 from rich import print
 
 from rl_core.env import TronDuoEnv, TronView, TronEnv
-from rl_core.agents import QNetwork, ActorCriticNetwork
 from rl_core.env.wrappers import TorchObservationWrapper
 
 # from rl_core.rainbow.common.networks import get_model
 
 
+def make_dqn(path, obs_shape, n_actions):
+    from rl_core.agents.dqn import QNetwork
+    return QNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
 def make_rainbow(path):
     from rl_core.rainbow.common.rainbow import Rainbow
     return Rainbow.from_checkpoint(path, obs_shape=(3, 25, 25), n_actions=3, device="cpu")
 
-def make_clean_rainbow(path):
+def make_clean_rainbow(path, obs_shape):
     from rl_core.clean_rainbow.network import DuelingNetwork
-    return DuelingNetwork.from_checkpoint(path, n_actions=3, device="cpu")
+    return DuelingNetwork.from_checkpoint(path, obs_shape, n_actions=3, device="cpu")
 
 def get_agent_files(agent_folder, num_agents):
     # Select the appropriate agent class based on the file name
@@ -30,16 +32,6 @@ def get_agent_files(agent_folder, num_agents):
     files.sort(key=lambda x: int(x.split("_")[1].split(".")[0]), reverse=True)
     return [os.path.join(agent_folder, f) for f in files[:num_agents]]
     
-def load_agent(agent_path1, agent_path2, env):
-    # Select the appropriate agent class based on the file name
-    # e.g. runs\self_train_595179
-    human_file = agent_path1 + "/adversary.pth"
-    adv_file = agent_path2 + "/adversary.pth"
-
-    obs_shape = env.observation_space.shape[-3:]  # (3, H, W)
-    n_actions = env.action_space.nvec[0]           # should be 3
-    return QNetwork.from_checkpoint(human_file, obs_shape, n_actions), QNetwork.from_checkpoint(adv_file, obs_shape, n_actions)
-
 def rainbow_act(policy, obs):
     with torch.no_grad():
         action_values = policy(obs, advantages_only=True)
@@ -72,15 +64,21 @@ def play(agent1, agent2, env: TronDuoEnv):
 def battle(folder1, folder2):
     # env = TronDuoEnv()
     # env = TronView(TronEnv())
-    env = TronView(TronDuoEnv())
+    size = 25
+    env = TronView(TronDuoEnv(size))
     env = TorchObservationWrapper(env, device="cpu")
+
+    n_actions = env.action_space.nvec[0]           # should be 3
+    obs_shape = env.observation_space.shape[-3:]  # Ignore the stacked observations
 
     if folder2 == "":
         folder = Path("runs") / folder1
         path1, path2 = folder / "A.pth", folder / "B.pth"
-        # path1, path2 = get_agent_files(folder1, num_agents=2)
-        agent1, agent2 = make_clean_rainbow(path1), make_clean_rainbow(path2)
+        path1, path2 = get_agent_files(folder1, num_agents=2)
+        # agent1, agent2 = make_clean_rainbow(path1, obs_shape), make_clean_rainbow(path2, obs_shape)
         # agent1, agent2 = make_rainbow(path1), make_rainbow(path2)
+        agent1, agent2 = make_dqn(path1, obs_shape), make_dqn(path2, obs_shape)
+
     else:
         raise Exception("Currently only supports self-play. Please provide a single folder with two checkpoints for the agents.")
         path1 = get_agent_files(folder1, num_agents=1)[0]

@@ -237,8 +237,108 @@ class Tron2ChannelEnv(gym.Env):
         assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
         return obs
 
+class PoLEnv(gym.Env):
+    """
+    Serves as a proof of concept that the agent actually can learn to go to a square
+    Spawns top left (0, 0) and must reach bottom right (size-1, size-1). 
+    Action is absolute (left, forward, right). 
+    Rewards are minus manhatten distance to goal per step and +1 for reaching the goal. 
+    No adversary or walls.
+    """
+    
+    reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: 1, Result.BIKE1_CRASH: -1, Result.PLAYING: 0 }
+    dirs = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
+
+    def __init__(self, size=25):
+        super().__init__()
+        self.size = size
+        self.action_space = gym.spaces.Discrete(4)  # (left, forward, right) for each bike relative to their current heading
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32)
+        
+        self.goal = np.array([size-1, size-1], dtype=np.int8)
+        self.walls = np.zeros((size, size), dtype=np.int8)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.pos = np.array([0, 0], dtype=np.int8)
+        self.walls.fill(0)
+        return self._get_state(), {'result': 0}
+    
+    def step(self, action : int):
+        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+
+        old_dist = self._manhattan_distance(self.pos, self.goal)
+        self.walls[self.pos[1], self.pos[0]] = 1  # Mark current position as wall
+
+        self.pos += self.dirs[action]
+        self.pos = np.clip(self.pos, 0, self.size-1)
+
+        new_dist = self._manhattan_distance(self.pos, self.goal)
+
+        crash = self.walls[self.pos[1], self.pos[0]]
+        goal = np.array_equal(self.pos, [self.size-1, self.size-1])
+        progress = (old_dist - new_dist) * .1
+
+        reward = 1.0 if goal else -1.0 if crash else progress
+        done = goal or crash
+
+        info = {"result": "WIN"} if done else {}
+        return self._get_state(), reward, done, False, info
+    
+    def _get_state(self):
+        obs = np.zeros(self.observation_space.shape, dtype=np.float32) # 3, size, size
+        obs[0] = self.walls
+        obs[1, self.pos[1], self.pos[0]] = 1.0
+        obs[2, self.goal[1], self.goal[0]] = 1.0
+        return obs
+
+    def _manhattan_distance(self, pos1, pos2):
+        return np.abs(pos1 - pos2).sum()
+    
+    def peek_reward(self, action):
+        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+
+        old_dist = self._manhattan_distance(self.pos, self.goal)
+        new_pos = self.pos + self.dirs[action]
+        new_pos = np.clip(new_pos, 0, self.size-1)
+        new_dist = self._manhattan_distance(new_pos, self.goal)
+
+        done = np.array_equal(new_pos, [self.size-1, self.size-1])
+        oob = -0.1 if np.any(new_pos < 0) or np.any(new_pos >= self.size) else 0
+        reward = 1.0 if done else (old_dist - new_dist) * .1 + oob
+        return reward
+
 if __name__ == "__main__":
-    env = TronDuoEnv()
-    print(env.observation_space.shape[-3:])
-    # obs, info = env.reset()
-    # print(obs.shape)
+    def view(obs, action, reward):
+        clear()
+        print(f"Action: {action}, Reward: {reward}")
+        board = np.full((env.size, env.size), ".", dtype=str)
+        board[obs[0] == 1] = "W"
+        board[obs[1] == 1] = "A"
+        board[obs[2] == 1] = "G"
+
+        for row in board:
+            print(" ".join(row))
+        time.sleep(0.01)
+
+    env = PoLEnv(5)
+    obs, info = env.reset()
+    import time
+    import os
+    clear = lambda: os.system('cls')
+    
+    history = []
+    while True:
+        action = env.action_space.sample()
+        obs, reward, done, _, info = env.step(action)
+        history.append(action)
+        view(obs, action, reward)
+        
+        if done:
+            if reward == 1.0:
+                print("WIN!", history)
+                break
+            print("RESET")
+            obs, _ = env.reset()
+            history.clear()
+        clear()
