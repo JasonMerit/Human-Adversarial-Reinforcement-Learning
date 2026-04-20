@@ -2,7 +2,7 @@
 import cpprb
 import torch
 import numpy as np
-from .utils import TimerRegistry
+from ..agents.utils import TimerRegistry
 
 class ReplayBuffer:
 
@@ -23,8 +23,8 @@ class ReplayBuffer:
         self._rb.add(obs=obs, act=act, rew=rew, next_obs=next_obs, done=done)
 
     @TimerRegistry.wrap_fn("buffer_sample")
-    def sample(self):
-        sample = self._rb.sample(self.batch_size)
+    def sample(self, batch_size):
+        sample = self._rb.sample(batch_size)
 
         obs_t    = torch.as_tensor(sample["obs"], device=self.device, dtype=torch.float32)
         next_obs = torch.as_tensor(sample["next_obs"], device=self.device, dtype=torch.float32)
@@ -33,7 +33,7 @@ class ReplayBuffer:
         dones    = torch.as_tensor(sample["done"], dtype=torch.float32, device=self.device)
         weights  = torch.ones_like(rewards, device=self.device)  # Uniform weights for non-prioritized buffer
         indices  = None  # No indices needed for non-prioritized buffer
-
+        
         return obs_t, actions, rewards, next_obs, dones, weights, indices
 
     def update(self, indices, priorities):
@@ -41,7 +41,7 @@ class ReplayBuffer:
 
 class PrioritizedReplayBuffer:
 
-    def __init__(self, obs_shape, args, device, infos=None):
+    def __init__(self, obs_shape, args, device):
         self.device = device
         self.batch_size = args.batch_size
         self.beta = args.prioritized_replay_beta
@@ -92,7 +92,7 @@ class PrioritizedReplayBuffer:
         self._rb.update_priorities(indices, priorities)
 
 if __name__ == "__main__":
-    from .argp import read_args
+    from ..argp import read_args
     import numpy as np
     args = read_args()
     rb = ReplayBuffer(args, "cpu")

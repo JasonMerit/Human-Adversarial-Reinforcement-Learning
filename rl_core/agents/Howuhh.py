@@ -4,22 +4,21 @@ import torch
 import random
 
 class ReplayBuffer:
-    def __init__(self, obs_shape, n_actions, buffer_size, device, n_envs):
+    def __init__(self, obs_shape, args, device):
         self.device = device
-        self.size = buffer_size
-        self.n_envs = n_envs
+        self.size = args.buffer_size
+        self.num_envs = args.num_envs
 
-        self.state = np.empty((buffer_size, *obs_shape), dtype=np.uint8)
-        self.next_state = np.empty((buffer_size, *obs_shape), dtype=np.uint8)
-
-        self.action = np.empty((buffer_size,), dtype=np.int64)
-        self.reward = np.empty((buffer_size,), dtype=np.float32)
-        self.done = np.empty((buffer_size,), dtype=np.bool_)
+        self.state = np.empty((args.buffer_size, *obs_shape), dtype=np.uint8)
+        self.next_state = np.empty((args.buffer_size, *obs_shape), dtype=np.uint8)
+        self.action = np.empty((args.buffer_size,), dtype=np.int8)
+        self.reward = np.empty((args.buffer_size,), dtype=np.float32)
+        self.done = np.empty((args.buffer_size,), dtype=np.bool_)
 
         self.count = 0
         self.real_size = 0
 
-    def add(self, state, action, reward, next_state, done):
+    def add(self, state, action, reward, next_state, done, infos=None):
         batch_size = state.shape[0]
 
         idxs = (np.arange(batch_size) + self.count) % self.size
@@ -38,48 +37,52 @@ class ReplayBuffer:
 
         idxs = np.random.randint(0, self.real_size, size=batch_size)
 
-        states = torch.from_numpy(self.state[idxs]).to(self.device).float()
-        actions = torch.from_numpy(self.action[idxs]).to(self.device)
-        rewards = torch.from_numpy(self.reward[idxs]).to(self.device)
-        next_states = torch.from_numpy(self.next_state[idxs]).to(self.device).float()
-        dones = torch.from_numpy(self.done[idxs]).to(self.device)
+        obs = torch.from_numpy(self.state[idxs]).to(self.device).float()
+        actions = torch.from_numpy(self.action[idxs]).to(self.device).long().unsqueeze(1)
+        rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
+        dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
+        next_obs = torch.from_numpy(self.next_state[idxs]).to(self.device).float()
+        weights = torch.ones((batch_size, 1), device=self.device)
+        indices = None
 
-        return states, actions, rewards, next_states, dones
+        return obs, actions, rewards, next_obs, dones, weights, indices
+    
+    def update(self, data_idxs, priorities):
+        pass  # No priorities to update in a standard replay buffer
 
 class PrioritizedReplayBuffer:
-    def __init__(self, obs_shape, n_actions, buffer_size, device, eps=1e-2, alpha=0.1, beta=0.1):
-        self.tree = SumTree(size=buffer_size)
+    def __init__(self, obs_shape, args, device):
+        self.tree = SumTree(size=args.buffer_size)
         self.device = device
 
         # PER params
-        self.eps = eps
-        self.alpha = alpha
-        self.beta = beta
-        self.max_priority = eps
+        self.eps = args.per_eps
+        self.alpha = args.per_alpha
+        self.beta = args.per_beta
+        self.max_priority = 1.0
 
         # replay storage (NUMPY)
-        self.state = np.empty((buffer_size, *obs_shape), dtype=np.float32)
-        self.action = np.empty((buffer_size, n_actions), dtype=np.float32)
-        self.reward = np.empty(buffer_size, dtype=np.float32)
-        self.next_state = np.empty((buffer_size, *obs_shape), dtype=np.float32)
-        self.done = np.empty(buffer_size, dtype=np.int32)
+        self.state = np.empty((args.buffer_size, *obs_shape), dtype=np.uint8)
+        self.next_state = np.empty((args.buffer_size, *obs_shape), dtype=np.uint8)
+        self.action = np.empty((args.buffer_size,), dtype=np.int8)
+        self.reward = np.empty((args.buffer_size,), dtype=np.float32)
+        self.done = np.empty((args.buffer_size,), dtype=np.bool_)
 
         self.count = 0
         self.real_size = 0
-        self.size = buffer_size
+        self.size = args.buffer_size
 
-    def add(self, transition):
-        states, actions, rewards, next_states, dones = transition
-        batch_size = states.shape[0]  # should equal num_envs
+    def add(self, state, action, reward, next_state, done, infos=None):
+        batch_size = state.shape[0]  # should equal num_envs
 
         idxs = (np.arange(batch_size) + self.count) % self.size
 
         # store transitions
-        self.state[idxs] = states
-        self.action[idxs] = actions
-        self.reward[idxs] = rewards
-        self.next_state[idxs] = next_states
-        self.done[idxs] = dones
+        self.state[idxs] = state
+        self.action[idxs] = action
+        self.reward[idxs] = reward
+        self.next_state[idxs] = next_state
+        self.done[idxs] = done
 
         # add priorities
         for idx in idxs:
@@ -115,20 +118,16 @@ class PrioritizedReplayBuffer:
         weights = (self.real_size * probs) ** (-self.beta)
         weights /= weights.max()
 
-        # convert to torch here
-        batch = (
-            torch.tensor(self.state[sample_idxs], device=self.device),
-            torch.tensor(self.action[sample_idxs], device=self.device),
-            torch.tensor(self.reward[sample_idxs], device=self.device),
-            torch.tensor(self.next_state[sample_idxs], device=self.device),
-            torch.tensor(self.done[sample_idxs], device=self.device),
-        )
-
+        obs = torch.from_numpy(self.state[sample_idxs]).to(self.device).float()
+        actions = torch.from_numpy(self.action[sample_idxs]).to(self.device).long().unsqueeze(1)
+        rewards = torch.from_numpy(self.reward[sample_idxs]).to(self.device).unsqueeze(1)
+        dones = torch.from_numpy(self.done[sample_idxs]).to(self.device).unsqueeze(1)
+        next_obs = torch.from_numpy(self.next_state[sample_idxs]).to(self.device).float()
         weights = torch.tensor(weights, dtype=torch.float32, device=self.device).unsqueeze(1)
 
-        return batch, weights, tree_idxs
+        return obs, actions, rewards, next_obs, dones, weights, tree_idxs
 
-    def update_priorities(self, data_idxs, priorities):
+    def update(self, data_idxs, priorities):
         if isinstance(priorities, torch.Tensor):
             priorities = priorities.detach().cpu().numpy()
 

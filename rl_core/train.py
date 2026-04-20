@@ -10,9 +10,9 @@ from rich import print
 import yaml
 
 from .argp import read_args
-from .network import Rainbow
-from .utils import TimerRegistry
-from rl_core.env import TronDuoEnv, TronView, PoLEnv
+from .agents import RainbowAgent, DQNAgent
+from .agents.utils import TimerRegistry
+from .env import TronDuoEnv, TronView, PoLEnv
 
 def make_env(idx, args):
     def thunk():
@@ -63,7 +63,7 @@ if __name__ == "__main__":
             print("Models will NOT be saved!")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"=====| {args.exp_name} on {device}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
+    print(f"=====| {args.exp_name} on {device} with seed {args.seed}", "[yellow bold](debug mode)[/yellow bold]" if args.debug else "", "|=====")
 
     # Handle parallel envs
     total_loops = args.total_timesteps // args.num_envs
@@ -80,14 +80,9 @@ if __name__ == "__main__":
     n_actions = envs.single_action_space.nvec[0] if not args.pol else envs.single_action_space.n
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
-    # agent1 = Rainbow(obs_shape, n_actions, args, device, writer, "A")
-    buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
-    buffer_args = {"buffer_size": args.buffer_size, "observation_space": buffer_obs_space, "device": device, "n_envs": args.num_envs}
-    from rl_core.agents.dqn import DQNAgent
-    from rl_core.agents.buffers import ReplayBuffer
-    agent_args = {"obs_shape": obs_shape, "n_actions": n_actions, "lr": args.learning_rate, "rb": ReplayBuffer(**buffer_args), "batch_size": args.batch_size, "device": device}
-    agent1 = DQNAgent(**agent_args)
-    # agent2 = Rainbow(obs_shape, n_actions, args, device, writer, "B")
+    # agent1 = RainbowAgent(obs_shape, n_actions, args, device, writer, "A")
+    Agent = RainbowAgent if args.rain else DQNAgent
+    agent1 = Agent(obs_shape, n_actions, args, device, writer, "A")
 
     # PoL Specific
     env_eval = PoLEnv(args.size) if args.pol else None
@@ -101,8 +96,11 @@ if __name__ == "__main__":
     start_time = time.time()
     results = [0, 0, 0]
     total_episodes = 0
-    total_episode_lengths = 0
+    # total_episode_lengths = 0
     episode_lengths = np.zeros(args.num_envs, dtype=int)
+
+    from collections import deque
+    ep_lens = deque(maxlen=100)
 
     obs, _ = envs.reset()
     for global_step in range(1, total_loops + 1):
@@ -161,7 +159,8 @@ if __name__ == "__main__":
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
             # results[infos["result"][i]] += 1
-            total_episode_lengths += episode_lengths[i]
+            # total_episode_lengths += episode_lengths[i]
+            ep_lens.append(episode_lengths[i])
             total_episodes += 1
             episode_lengths[i] = 0
         #     if writer:
@@ -176,8 +175,9 @@ if __name__ == "__main__":
             progress = global_step / total_loops
             eta = elapsed * (1/progress - 1)
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
-            epi_len = total_episode_lengths / total_episodes if total_episodes > 0 else 0
-            print(f"{progress*100:.1f}% - SPS: {sps} - epi_len: {epi_len:.2f} - eval_len {shortest_path} (x{win_combo}) - {eta/60:.1f} minutes left...")
+            # epi_len = total_episode_lengths / total_episodes if total_episodes > 0 else 0
+            avg = sum(ep_lens) / 100
+            print(f"{progress*100:.1f}% - SPS: {sps} - epi_len: {avg:.2f} - eval_len {shortest_path} (x{win_combo}) - {eta/60:.1f} minutes left...")
             # print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - epi_len: {epi_len:.2f} - {eta/60:.1f} minutes left...")
         
         # env_step = global_step * args.num_envs

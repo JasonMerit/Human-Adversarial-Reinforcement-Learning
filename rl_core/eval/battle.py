@@ -15,12 +15,8 @@ def make_dqn(path, obs_shape, n_actions):
     from rl_core.agents.dqn import QNetwork
     return QNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
-def make_rainbow(path):
-    from rl_core.rainbow.common.rainbow import Rainbow
-    return Rainbow.from_checkpoint(path, obs_shape=(3, 25, 25), n_actions=3, device="cpu")
-
-def make_clean_rainbow(path, obs_shape, n_actions):
-    from rl_core.clean_rainbow.network import DuelingNetwork
+def make_rainbow(path, obs_shape, n_actions):
+    from rl_core.agents.rainbow import DuelingNetwork
     return DuelingNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
 def get_agent_files(agent_folder, num_agents):

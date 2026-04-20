@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import gymnasium as gym
 
 from .buffers import ReplayBuffer
 
@@ -62,13 +63,16 @@ class QNetwork(nn.Module):
         return model
 
 class DQNAgent:
-    def __init__(self, obs_shape, n_actions, lr, rb, batch_size, device):
-        self.rb = rb
-        self.batch_size = batch_size
+    def __init__(self, obs_shape, n_actions, args, device, writer=None, name=""):
+        buffer_args = {"buffer_size": args.buffer_size,
+                       "observation_space": gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32), 
+                       "device": device, "n_envs": args.num_envs}
+        self.rb = ReplayBuffer(**buffer_args)
+        self.batch_size = args.batch_size
         self.device = device
         
         self.q_network = QNetwork(obs_shape, n_actions).to(device)
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate)
         self.target_network = QNetwork(obs_shape, n_actions).to(device)
         self.target_network.load_state_dict(self.q_network.state_dict())
 

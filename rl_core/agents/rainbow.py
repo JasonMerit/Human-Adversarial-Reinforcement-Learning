@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 
 from .Howuhh import PrioritizedReplayBuffer, ReplayBuffer
-# from .buffer import PrioritizedReplayBuffer, ReplayBuffer
+# from rl_core.rainbow.buffer import PrioritizedReplayBuffer, ReplayBuffer
 from .utils import TimerRegistry
 from rich import print
 
@@ -179,7 +179,7 @@ class DuelingDistributionalNetwork(nn.Module):
         net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
         return net
 
-class Rainbow:
+class RainbowAgent:
 
     def __init__(self, obs_shape, n_actions, args, device, writer, name):
         self.device = device
@@ -199,7 +199,7 @@ class Rainbow:
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(obs_shape, n_actions, args.buffer_size, device) if args.per else ReplayBuffer(obs_shape, n_actions, args.buffer_size)
+        self.rb = PrioritizedReplayBuffer(obs_shape, args, device) if args.per else ReplayBuffer(obs_shape, args, device)
         
         self.name = name
         self.writer = writer
@@ -235,7 +235,7 @@ class Rainbow:
         self.q_network.reset_noise()
         self.target_network.reset_noise()
 
-        obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample()
+        obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample(self.batch_size)
 
         if self.c51:
             loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones)
@@ -268,20 +268,20 @@ class Rainbow:
 
     TimerRegistry.wrap_fn("dqn_loss")
     def _dqn_loss(self, obs, actions, rewards, next_obs, dones):
-        rewards = rewards.squeeze(1)
-        dones = dones.squeeze(1)
         with torch.no_grad():
             next_q_target = self.target_network(next_obs)
             next_q_online = self.q_network(next_obs)
-            best_actions = torch.argmax(next_q_online, dim=1)
-            next_q = next_q_target.gather(1, best_actions.unsqueeze(1)).squeeze(1)
+
+            best_actions = next_q_online.argmax(dim=1, keepdim=True)
+            next_q = next_q_target.gather(1, best_actions)
 
             target = rewards + self.gamma * next_q * (1 - dones.float())
 
         q = self.q_network(obs)
-        pred = q.gather(1, actions).squeeze(1)
+        pred = q.gather(1, actions)
+
         loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
-        return loss_per_sample
+        return loss_per_sample.squeeze(1)
 
     TimerRegistry.wrap_fn("c51_loss")
     def _c51_loss(self, obs, actions, rewards, next_obs, dones):

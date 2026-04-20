@@ -13,13 +13,13 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 1_0000_000  # 1_000_000 ~ 1 hour on HPC
+    total_timesteps: int = 4_000_000# 1_0000_000  # 1_000_000 ~ 1 hour on HPC
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4#0.0000625
     """the learning rate of the optimizer"""
     num_envs: int = 64
     """the number of parallel game environments"""
-    buffer_size: int = 500_000
+    buffer_size: int = 50_000#500_000
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
@@ -31,9 +31,9 @@ class Args:
     """the starting epsilon for exploration"""
     end_e: float = 0.05
     """the ending epsilon for exploration"""
-    exploration_fraction: float = 0.5
+    exploration_fraction: float = 0.2#0.5
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
-    learning_starts: int = 1000
+    learning_starts: int = 100#1000
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
@@ -41,11 +41,11 @@ class Args:
     # Prioritized replay buffer
     per: bool = False
     """whether to use a prioritized experience replay buffer"""
-    prioritized_replay_alpha: float = 0.5
+    per_alpha: float = 0.5
     """alpha parameter for prioritized replay buffer"""
-    prioritized_replay_beta: float = 0.4
+    per_beta: float = 0.4
     """beta parameter for prioritized replay buffer"""
-    prioritized_replay_eps: float = 1e-6
+    per_eps: float = 1e-6
     """epsilon parameter for prioritized replay buffer"""
 
     # Distributional
@@ -63,6 +63,8 @@ class Args:
     """whether to use noisy linear layers"""
 
     # Jason's additions
+    rain: bool = True
+    """whether to use Rainbow or the legacy DQN"""
     save: bool = True
     """whether to save the final model"""
     track: bool = True
