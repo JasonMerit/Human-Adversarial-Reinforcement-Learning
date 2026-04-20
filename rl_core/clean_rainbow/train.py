@@ -14,12 +14,13 @@ from .network import Rainbow
 from .utils import TimerRegistry
 from rl_core.env import TronDuoEnv, TronView, PoLEnv
 
-def make_envs(indx, seed, size, render, Env=TronDuoEnv):
+def make_env(idx, args):
     def thunk():
-        env = Env(size)
-        if render and indx==0:
-            env = TronView(env, fps=1000000)
-        env.action_space.seed(seed + indx)
+        Env = TronDuoEnv if not args.pol else PoLEnv
+        env = Env(args.size)
+        if args.render and idx == 0:
+            env = TronView(env, fps=100000)
+        env.action_space.seed(args.seed + idx)
         return env
     return thunk
 
@@ -66,77 +67,108 @@ if __name__ == "__main__":
 
     # Handle parallel envs
     total_loops = args.total_timesteps // args.num_envs
-    burnin = args.learning_starts // args.num_envs
+    learn_start_loop = args.learning_starts // args.num_envs
     target_every = args.target_network_frequency // args.num_envs
     train_count = args.num_envs // args.train_frequency
     log_every = max(1, total_loops // 100)
     save_every = max(1, total_loops // args.total_checkpoints)
+    
 
     # Envs and agents
-    Env = TronDuoEnv if not args.pol else PoLEnv
-    envs = gym.vector.SyncVectorEnv([make_envs(i, args.seed, args.size, args.render, Env) for i in range(args.num_envs)])
+    envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
     obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
-    n_actions = envs.single_action_space.nvec[0]
-    agent1 = Rainbow(obs_shape, n_actions, args, device, writer, "A")
-    agent2 = Rainbow(obs_shape, n_actions, args, device, writer, "B")
+    n_actions = envs.single_action_space.nvec[0] if not args.pol else envs.single_action_space.n
+    print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
+
+    # agent1 = Rainbow(obs_shape, n_actions, args, device, writer, "A")
+    buffer_obs_space = gym.spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
+    buffer_args = {"buffer_size": args.buffer_size, "observation_space": buffer_obs_space, "device": device, "n_envs": args.num_envs}
+    from rl_core.agents.dqn import DQNAgent
+    from rl_core.agents.buffers import ReplayBuffer
+    agent_args = {"obs_shape": obs_shape, "n_actions": n_actions, "lr": args.learning_rate, "rb": ReplayBuffer(**buffer_args), "batch_size": args.batch_size, "device": device}
+    agent1 = DQNAgent(**agent_args)
+    # agent2 = Rainbow(obs_shape, n_actions, args, device, writer, "B")
+
+    # PoL Specific
+    env_eval = PoLEnv(args.size) if args.pol else None
+    eval_every = 10  # Evaluate every 10 learning steps
+    shortest_path = float('inf')
+    win_combo = 0
+    from rl_core.eval.pol_eval import eval
 
     # Logging
+    TimerRegistry.disable()
     start_time = time.time()
     results = [0, 0, 0]
     total_episodes = 0
     total_episode_lengths = 0
     episode_lengths = np.zeros(args.num_envs, dtype=int)
-    kek = 0
 
     obs, _ = envs.reset()
-    obs1, obs2 = obs[:, 0], obs[:, 1]
     for global_step in range(1, total_loops + 1):
-        agent1.q_network.reset_noise()
-        agent2.q_network.reset_noise()
-        
-        a1 = agent1.act(obs1)
+        # agent1.q_network.reset_noise()
+        # agent2.q_network.reset_noise()
+        # obs1, obs2 = obs[:, 0], obs[:, 1]
+        a1 = agent1.select_action(obs)
+        # a1 = agent1.act(obs1)
         # a2 = np.random.randint(0, n_actions, size=args.num_envs)  # Random actions for agent2
-        a2 = agent2.act(obs2)
+        # a2 = agent2.act(obs2)
 
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-        explore_mask = np.random.rand(args.num_envs) < epsilon
-        a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+        # explore_mask = np.random.rand(args.num_envs) < epsilon
+        # a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
-        actions = np.stack([a1, a2], axis=1) 
+        # actions = np.stack([a1, a2], axis=1) 
+        actions = a1
+
         next_obs, rewards, dones, _, infos = envs.step(actions)
-        next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
+        # next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
 
-        agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
-        agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
+        agent1.rb.add(obs, a1, rewards, next_obs, dones, infos)
+        # agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
+        # agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
-        obs1, obs2 = next_obs1, next_obs2
+        # obs = next_obs
+        obs = next_obs
         episode_lengths += 1
 
         # Training
-        for _ in range(train_count):
+        if global_step > learn_start_loop:
+            # for _ in range(train_count):
             agent1.learn()
-            agent2.learn()
+                # agent2.learn()
 
-        # update target network
-        if global_step % target_every == 0:
-            kek += 1
-            agent1.update_target()
-            agent2.update_target()
+            # update target network
+            if global_step % target_every == 0:
+                agent1.update_target()
+                # agent2.update_target()
+            
+            if global_step % eval_every == 0:
+                eval_result = eval(agent1.q_network, env_eval, device)
+
+                shortest_path = min(shortest_path, eval_result)
+                if eval_result == env_eval.size * 2 - 2:  # Shortest path in an empty grid is size*2 - 2
+                    win_combo += 1
+                    if win_combo == 10:  # If the agent has solved the environment 10 times in a row
+                        print("[bold green] Agent has consistently solved the environment!")
+                        break
+                else:
+                    win_combo = 0
         
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
-            results[infos["result"][i]] += 1
+            # results[infos["result"][i]] += 1
             total_episode_lengths += episode_lengths[i]
             total_episodes += 1
             episode_lengths[i] = 0
-            if writer:
-                writer.add_scalar("charts/draw_percentage", results[0] / total_episodes, total_episodes)
-                writer.add_scalar("charts/agent1_win_percentage", results[1] / total_episodes, total_episodes)
-                writer.add_scalar("charts/agent2_win_percentage", results[2] / total_episodes, total_episodes)
-                writer.add_scalar("charts/avg_episode_length", total_episode_lengths / total_episodes, total_episodes)
+        #     if writer:
+        #         writer.add_scalar("charts/draw_percentage", results[0] / total_episodes, total_episodes)
+        #         writer.add_scalar("charts/agent1_win_percentage", results[1] / total_episodes, total_episodes)
+        #         writer.add_scalar("charts/agent2_win_percentage", results[2] / total_episodes, total_episodes)
+        #         writer.add_scalar("charts/avg_episode_length", total_episode_lengths / total_episodes, total_episodes)
 
         if global_step % log_every == 0:
             sps = int(global_step * args.num_envs / (time.time() - start_time))
@@ -145,7 +177,8 @@ if __name__ == "__main__":
             eta = elapsed * (1/progress - 1)
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
             epi_len = total_episode_lengths / total_episodes if total_episodes > 0 else 0
-            print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - epi_len: {epi_len:.2f} - {eta/60:.1f} minutes left...")
+            print(f"{progress*100:.1f}% - SPS: {sps} - epi_len: {epi_len:.2f} - eval_len {shortest_path} (x{win_combo}) - {eta/60:.1f} minutes left...")
+            # print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - epi_len: {epi_len:.2f} - {eta/60:.1f} minutes left...")
         
         # env_step = global_step * args.num_envs
         # if args.save and global_step % save_every == 0:
@@ -153,18 +186,18 @@ if __name__ == "__main__":
         #     agent2.save(save_folder + f"B_{env_step}.pth")
 
     envs.close()
-    print(f"Total target updates: {kek}")
     TimerRegistry.report()
 
     if args.track:
         if args.save:
             agent1.save(save_folder + f"A.pth")
-            agent2.save(save_folder + f"B.pth")
+            # agent2.save(save_folder + f"B.pth")
 
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
                 "results": results, 
-                "steps_taken": global_step * args.num_envs, 
+                "steps_taken": global_step * args.num_envs,
+                "global_steps": global_step,
                 "training_time_mins": (time.time() - start_time) / 60,
                 }, f)
         writer.close()

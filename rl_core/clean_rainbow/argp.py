@@ -15,31 +15,31 @@ class Args:
 
     total_timesteps: int = 1_0000_000  # 1_000_000 ~ 1 hour on HPC
     """total timesteps of the experiments"""
-    learning_rate: float = 0.0000625
+    learning_rate: float = 2.5e-4#0.0000625
     """the learning rate of the optimizer"""
     num_envs: int = 64
     """the number of parallel game environments"""
-    buffer_size: int = 1000000
+    buffer_size: int = 500_000
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
-    target_network_frequency: int = 8000
+    target_network_frequency: int = 1000#8000
     """the timesteps it takes to update the target network"""
-    batch_size: int = 32
+    batch_size: int = 128
     """the batch size of sample from the reply memory"""
     start_e: float = 1
     """the starting epsilon for exploration"""
-    end_e: float = 0.1
+    end_e: float = 0.05
     """the ending epsilon for exploration"""
-    exploration_fraction: float = 0.80
+    exploration_fraction: float = 0.5
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
-    learning_starts: int = 80000
+    learning_starts: int = 1000
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
 
     # Prioritized replay buffer
-    per: bool = True
+    per: bool = False
     """whether to use a prioritized experience replay buffer"""
     prioritized_replay_alpha: float = 0.5
     """alpha parameter for prioritized replay buffer"""
@@ -93,10 +93,10 @@ def read_args():
 
     if args.debug:
         args.save = args.track = False
-        args.num_envs = 5
+        # args.num_envs = 5
         # args.total_checkpoints = 1
-        args.total_timesteps = 400
-        args.render = True
+        # args.total_timesteps = 400
+        # args.render = True
         # args.buffer_size *= 1e89
         args.buffer_size = args.batch_size * 10
 

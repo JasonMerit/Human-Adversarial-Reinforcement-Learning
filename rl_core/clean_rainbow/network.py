@@ -5,7 +5,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
-from .buffer import PrioritizedReplayBuffer, ReplayBuffer
+from .Howuhh import PrioritizedReplayBuffer, ReplayBuffer
+# from .buffer import PrioritizedReplayBuffer, ReplayBuffer
 from .utils import TimerRegistry
 from rich import print
 
@@ -53,17 +54,23 @@ class DuelingNetwork(nn.Module):
         channels, size, _ = obs_shape
         self.n_actions = n_actions
 
-        self.network = nn.Sequential(
-            nn.Conv2d(channels, 16, 3, 1, 1),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, 3, 1, 1),
-            nn.ReLU(),
+        # self.cnn = nn.Sequential(
+        #     nn.Conv2d(channels, 16, 3, 1, 1),
+        #     nn.ReLU(),
+        #     nn.Conv2d(16, 32, 3, 1, 1),
+        #     nn.ReLU(),
+        #     nn.Flatten(),
+        # )
+
+        self.cnn = nn.Sequential(
             nn.Flatten(),
+            nn.Linear(channels * size * size, 64),
+            nn.ReLU(),
         )
 
         with torch.no_grad():
             dummy = torch.zeros(1, channels, size, size)
-            n_flatten = self.network(dummy).shape[1]
+            n_flatten = self.cnn(dummy).shape[1]
 
         hidden = 32
         self.value_head = nn.Sequential(
@@ -79,11 +86,17 @@ class DuelingNetwork(nn.Module):
         )
 
     def forward(self,x) -> torch.Tensor:
-        h = self.network(x)
+        h = self.cnn(x)
         v = self.value_head(h)
         a = self.adv_head(h)
         q = v + a - a.mean(dim=1, keepdim=True)
         return q
+
+    def act(self, obs):  # Called in play for singular action selection (no distributional)
+        with torch.no_grad():
+            q = self.forward(obs)
+                
+        return torch.argmax(q, dim=1).cpu().numpy().item()
 
     def reset_noise(self):
         for m in self.modules():
@@ -186,7 +199,7 @@ class Rainbow:
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(obs_shape, args, device) if args.per else ReplayBuffer(obs_shape, args, device)
+        self.rb = PrioritizedReplayBuffer(obs_shape, n_actions, args.buffer_size, device) if args.per else ReplayBuffer(obs_shape, n_actions, args.buffer_size)
         
         self.name = name
         self.writer = writer
@@ -200,7 +213,7 @@ class Rainbow:
         if verbose:
             print(f"Model saved to {path}")
     
-    def act(self, obs: np.ndarray):
+    def act(self, obs: np.ndarray):  # Legacy use select_action instead
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         with torch.no_grad():
             q = self.q_network(torch.as_tensor(obs).to(self.device))
@@ -209,6 +222,12 @@ class Rainbow:
                 q = torch.sum(q * self.q_network.support, dim=2)
                 
             return torch.argmax(q, dim=1).cpu().numpy()
+    
+    def select_action(self, obs):  # From self_play.py
+        assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
+        with torch.no_grad():
+            q = self.q_network(torch.as_tensor(obs).to(self.device))
+        return torch.argmax(q, dim=1).cpu().numpy()
 
     @TimerRegistry.wrap_fn("agent_learn")
     def learn(self):

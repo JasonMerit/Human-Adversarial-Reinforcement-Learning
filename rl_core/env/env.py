@@ -265,7 +265,7 @@ class PoLEnv(gym.Env):
         return self._get_state(), {'result': 0}
     
     def step(self, action : int):
-        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action}")
+        assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action} not in {self.action_space}")
 
         old_dist = self._manhattan_distance(self.pos, self.goal)
         self.walls[self.pos[1], self.pos[0]] = 1  # Mark current position as wall
@@ -276,13 +276,13 @@ class PoLEnv(gym.Env):
         new_dist = self._manhattan_distance(self.pos, self.goal)
 
         crash = self.walls[self.pos[1], self.pos[0]]
-        goal = np.array_equal(self.pos, [self.size-1, self.size-1])
+        goal = np.array_equal(self.pos, self.goal)
         progress = (old_dist - new_dist) * .1
 
         reward = 1.0 if goal else -1.0 if crash else progress
         done = goal or crash
 
-        info = {"result": "WIN"} if done else {}
+        info = {"result": 1} if done else {}
         return self._get_state(), reward, done, False, info
     
     def _get_state(self):
@@ -303,7 +303,7 @@ class PoLEnv(gym.Env):
         new_pos = np.clip(new_pos, 0, self.size-1)
         new_dist = self._manhattan_distance(new_pos, self.goal)
 
-        done = np.array_equal(new_pos, [self.size-1, self.size-1])
+        done = np.array_equal(new_pos, self.goal)
         oob = -0.1 if np.any(new_pos < 0) or np.any(new_pos >= self.size) else 0
         reward = 1.0 if done else (old_dist - new_dist) * .1 + oob
         return reward

@@ -1,4 +1,5 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqnpy
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -75,12 +76,10 @@ class DQNAgent:
         return sum(p.numel() for p in self.q_network.parameters())
 
     def select_action(self, obs):
+        assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         with torch.no_grad():
-            q_values = self.q_network.forward(obs)
+            q_values = self.q_network.forward(torch.as_tensor(obs).to(self.device))
         return torch.argmax(q_values, dim=1).cpu().numpy()
-    
-    def add_to_buffer(self, obs, next_obs, action, reward, done, info):
-        self.rb.add(obs, next_obs, action, reward, done, info)
     
     def learn(self):
         data = self.rb.sample(self.batch_size)
@@ -95,7 +94,7 @@ class DQNAgent:
         loss.backward()
         self.optimizer.step()
     
-    def update_target_network(self):
+    def update_target(self):
         self.target_network.load_state_dict(self.q_network.state_dict())
 
     def save(self, path, verbose=True):

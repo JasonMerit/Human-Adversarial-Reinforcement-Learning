@@ -336,12 +336,13 @@ class ReplayBuffer(BaseBuffer):
                     f"replay buffer {total_memory_usage:.2f}GB > {mem_available:.2f}GB"
                 )
 
+    # agent1.rb.add(obs, a0, r0, next_obs, terminations, infos)
     def add(
         self,
         obs: np.ndarray,
-        next_obs: np.ndarray,
         action: np.ndarray,
         reward: np.ndarray,
+        next_obs: np.ndarray,
         done: np.ndarray,
         infos: list[dict[str, Any]],
     ) -> None:

@@ -9,9 +9,16 @@ class TimerRegistry:
     _t0 = time.time()
     _time = 0
     _active = False
+    _disabled = False
+
+    @staticmethod
+    def disable():
+        TimerRegistry._disabled = True
 
     @staticmethod
     def record(name, dt):
+        if TimerRegistry._disabled:
+            return
         TimerRegistry._total[name] += dt
         TimerRegistry._calls[name] += 1
     
@@ -31,6 +38,8 @@ class TimerRegistry:
 
     @staticmethod
     def wrap_fn(name):
+        if TimerRegistry._disabled:
+            return lambda fn: fn
         def decorator(fn):
 
             @wraps(fn)
@@ -46,6 +55,8 @@ class TimerRegistry:
     
     @staticmethod
     def report():
+        if TimerRegistry._disabled:
+            return
         print(f"\nTiming Report over {int(time.time() - TimerRegistry._t0)}s:")
 
         print(f"{'name':20s} | {'calls':>8s} | {'total(s)':>10s} | {'avg(ms)':>10s}")
@@ -60,6 +71,8 @@ class TimerRegistry:
     
     @staticmethod
     def export(path):
+        if TimerRegistry._disabled:
+            return
         with open(path, "w") as f:
             json.dump({
                 name: {
