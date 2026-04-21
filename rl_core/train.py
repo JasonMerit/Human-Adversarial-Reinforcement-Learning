@@ -10,7 +10,7 @@ from rich import print
 import yaml
 
 from .argp import read_args
-from .agents import RainbowAgent, DQNAgent
+from .agents import RainbowAgent, DQNAgent, MCTSAgent
 from .agents.utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
     # agent1 = RainbowAgent(obs_shape, n_actions, args, device, writer, "A")
-    Agent = RainbowAgent if args.rain else DQNAgent
+    Agent = DQNAgent if args.dqn else MCTSAgent if args.mcts else RainbowAgent
     agent1 = Agent(obs_shape, n_actions, args, device, writer, "A")
 
     # PoL Specific
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     from rl_core.eval.pol_eval import eval
 
     # Logging
-    TimerRegistry.disable()
+    # TimerRegistry.disable()
     start_time = time.time()
     results = [0, 0, 0]
     total_episodes = 0
@@ -136,6 +136,8 @@ if __name__ == "__main__":
         if global_step > learn_start_loop:
             # for _ in range(train_count):
             agent1.learn()
+            # if agent1.learning_steps > 10:
+            #     break
                 # agent2.learn()
 
             # update target network

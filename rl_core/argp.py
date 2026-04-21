@@ -62,9 +62,19 @@ class Args:
     noisy: bool = False
     """whether to use noisy linear layers"""
 
+    # MCTS
+    mcts: bool = False
+    """whether to use MCTS agent"""
+    mcts_rollouts: int = 1
+    """the number of rollouts to perform in MCTS"""
+    mcts_c: float = 1.0
+    """the exploration constant for MCTS"""
+    mcts_depth: int = 1
+    """the maximum depth for MCTS"""
+
     # Jason's additions
-    rain: bool = True
-    """whether to use Rainbow or the legacy DQN"""
+    dqn: bool = False
+    """whether to use legacy DQN"""
     save: bool = True
     """whether to save the final model"""
     track: bool = True
@@ -107,5 +117,6 @@ def read_args():
     
     assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"
+    assert not (args.dqn and args.mcts), "Cannot specify both dqn and mcts agents"
 
     return args

@@ -4,36 +4,73 @@ from pathlib import Path
 import yaml
 import numpy as np
 from rich import print
+import gymnasium as gym
 
-from scipy.stats import mannwhitneyu
+from rl_core.env import PoLEnv
 
-def get_run_length(folder):
-    folders = [f for f in os.listdir("runs") if f.startswith(folder + "_")]
-    steps = []
-    for f in folders:
-        path = Path("runs") / f / "results.yml"
-        # Read steps_taken from file and add to toal_steps
-        # Check if exists
-        if not path.exists():
-            print(f"Warning: {path} does not exist, skipping...")
-            continue
-        with open(path) as stream:
-            steps.append(yaml.safe_load(stream)["global_steps"])
-    return np.array(steps)
+# NUM_ENVS = 3
+# SIZE = 4
+# SEED = 4222
 
-# H₀ (null hypothesis): A is not faster than B (A >= B)
-# H₁ (alternative hypothesis): A is faster than B (A < B)
+# np.random.seed(SEED)
 
-A = get_run_length("BufferPER")
-B = get_run_length("Buffer")
 
-# If p(A) = p(B), then p = p(a>=b) just by chance
-# if low chance, reject H₀ and accept H₁
+# def make_env(idx):
+#     def thunk():
+#         env = PoLEnv(SIZE)
+#         env.action_space.seed(idx)
+#         return env
+#     return thunk
 
-print(f"A.mean={A.mean():.2f}, B.mean={B.mean():.2f}")
-U1, p = mannwhitneyu(A, B, alternative="less", method="exact")
-print(f"{p:.3f}")
+# envs = gym.vector.SyncVectorEnv([make_env(i) for i in range(NUM_ENVS)])
+# obs, _ = envs.reset()
 
-# p < 0.05 → significant
-# p < 0.01 → strong evidence
-# p < 0.001 → very strong evidence
+# for _ in range(3):
+#     actions = np.random.randint(1, 3, size=NUM_ENVS)
+#     obs, rewards, terminateds, truncateds, infos = envs.step(actions)
+
+# # print(obs)
+
+# coords = np.where(obs[:, 1] == 1)
+# print(coords)
+# pos = np.stack([coords[1], coords[2]], axis=1).tolist()
+# print(pos)
+# pos = np.where(obs[:, 1] == 1)
+# pos = list(zip(coords[1], coords[2]))
+# print(pos)
+# quit()
+# # print(envs.get_attr("walls"))
+# walls = tuple(obs[:, 0].astype(np.int8))
+# # walls = tuple(obs[:, 0])
+# # print(walls)
+
+# # pos = np.asarray(np.where(obs[:, 1, :] == 1), dtype=np.int8).squeeze()
+# # print(pos)
+# # envs.call("set_state", obs[0])
+# # print("=========")
+# # obs = envs.call("_get_state")
+# # print(obs)
+
+# # pos = envs.get_attr("pos")
+# # walls = envs.get_attr("walls")
+# # print(pos)
+
+
+
+# # envs.set_attr("pos", pos[0])
+# # envs.set_attr("pos", pos[0])
+# envs.set_attr("walls", walls)
+
+# envs.set_attr("pos", pos)
+
+
+
+# # print(envs.get_attr("walls"))
+# obs = envs.call("_get_state")
+# print(obs)
+
+
+for i in range(10):
+    pass
+else:
+    print("break")

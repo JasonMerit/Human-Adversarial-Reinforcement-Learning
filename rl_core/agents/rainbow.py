@@ -151,7 +151,6 @@ class DuelingDistributionalNetwork(nn.Module):
         )
 
 
-    @TimerRegistry.wrap_fn("network_forward")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, 3, H, W)
         assert isinstance(x, torch.Tensor), f"Expected input to be a torch.Tensor, got {type(x)}"
@@ -164,7 +163,6 @@ class DuelingDistributionalNetwork(nn.Module):
 
         return F.softmax(q_atoms, dim=2)
 
-    @TimerRegistry.wrap_fn("network_reset_noise")
     def reset_noise(self):
         for layer in self.value_head:
             if isinstance(layer, NoisyLinear):
@@ -229,7 +227,7 @@ class RainbowAgent:
             q = self.q_network(torch.as_tensor(obs).to(self.device))
         return torch.argmax(q, dim=1).cpu().numpy()
 
-    @TimerRegistry.wrap_fn("agent_learn")
+    @TimerRegistry.wrap_fn("rainbow_learn")
     def learn(self):
         self.learning_steps += 1
         self.q_network.reset_noise()
@@ -248,7 +246,6 @@ class RainbowAgent:
         new_priorities = loss_per_sample.detach().cpu().numpy()
         self.rb.update(indices, new_priorities)
 
-        TimerRegistry.start()
         self.optimizer.zero_grad()
         loss.backward()
 
@@ -264,9 +261,7 @@ class RainbowAgent:
             # self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
 
         self.optimizer.step()
-        TimerRegistry.stop("backward")
 
-    TimerRegistry.wrap_fn("dqn_loss")
     def _dqn_loss(self, obs, actions, rewards, next_obs, dones):
         with torch.no_grad():
             next_q_target = self.target_network(next_obs)
@@ -283,7 +278,6 @@ class RainbowAgent:
         loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
         return loss_per_sample.squeeze(1)
 
-    TimerRegistry.wrap_fn("c51_loss")
     def _c51_loss(self, obs, actions, rewards, next_obs, dones):
         with torch.no_grad():
             next_dist = self.target_network(next_obs)  # [B, num_actions, n_atoms]
