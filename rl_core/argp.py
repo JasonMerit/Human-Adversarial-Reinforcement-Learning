@@ -73,8 +73,6 @@ class Args:
     """the maximum depth for MCTS"""
 
     # Jason's additions
-    dqn: bool = False
-    """whether to use legacy DQN"""
     save: bool = True
     """whether to save the final model"""
     track: bool = True
@@ -119,6 +117,6 @@ def read_args():
     
     # assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"
-    assert not (args.dqn and args.mcts), "Cannot specify both dqn and mcts agents"
+    # assert not (args.dqn and args.mcts), "Cannot specify both dqn and mcts agents"
 
     return args

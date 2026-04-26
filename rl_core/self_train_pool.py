@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import tyro
 
-from rl_core.agents.buffers import ReplayBuffer
+from rl_core.agents.buffers_dqn import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent, QNetwork
 from rl_core.env import TronView, TronDuoEnv, Tron2ChannelEnv

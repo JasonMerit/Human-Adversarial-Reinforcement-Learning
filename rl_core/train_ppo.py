@@ -13,7 +13,7 @@ from typing import Optional
 import yaml
 
 from rl_core.env import TronDuoEnv, TronView
-from rl_core.agents.buffers import RolloutBuffer
+from rl_core.agents.buffers_dqn import RolloutBuffer
 from rl_core.agents.ppo import PPOAgent
 
 @dataclass

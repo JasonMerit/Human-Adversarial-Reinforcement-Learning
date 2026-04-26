@@ -269,7 +269,7 @@ class PoLEnv(gym.Env):
         super().reset(seed=seed)
         self.pos = np.array([0, 0], dtype=np.int8)
         self.walls.fill(0)
-        return self._get_state(), {'result': 0}
+        return self._get_state(), {"result": 0, "state": (self.walls.copy(), self.pos.copy())} 
     
     def step(self, action : int):
         assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action} not in {self.action_space}")
@@ -296,7 +296,7 @@ class PoLEnv(gym.Env):
 
         if self.render:
             self.view()  # render
-        info = {"result": 1} if done else {}
+        info = {"result": int(done), "state": (self.walls.copy(), self.pos.copy())} 
         return self._get_state(), reward, done, False, info
     
     def _get_state(self):

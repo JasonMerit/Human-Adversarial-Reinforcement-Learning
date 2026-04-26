@@ -99,6 +99,21 @@ class MCTS:
 
         return total
     
+    @TimerRegistry.wrap_fn("MCTS.rollout_vec")
+    def rollout_vec(self, node, max_steps=200):
+        self.envs.set_state(node.state)
+
+        total = 0.0
+        for _ in range(max_steps):
+            a = np.random.randint(self.envs.n_actions)
+            _, r, done, _, _ = self.envs.step(a)
+
+            total += r
+            if done:
+                break
+
+        return total
+
     def backprop(self, node, value):
         while node is not None:
             node.N += 1

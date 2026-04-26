@@ -14,7 +14,7 @@ import torch
 import tyro
 from tqdm import tqdm
 
-from rl_core.agents.buffers import ReplayBuffer
+from rl_core.agents.buffers_dqn import ReplayBuffer
 
 from rl_core.agents.dqn import DQNAgent
 from rl_core.clean_rainbow.network import Rainbow

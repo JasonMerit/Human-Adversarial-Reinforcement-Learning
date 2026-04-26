@@ -16,11 +16,12 @@ class VecPoLEnv:
 
         self.obs_shape = (3, size, size)
         self.n_actions = 4  # up, right, down, left
+        self.state_shape = (self.num_envs, 3, self.size, self.size)
 
         # 0: up, 1: right, 2: down, 3: left
         self.dirs = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]], dtype=np.int8)
-        self.goal = np.array([self.size - 1, self.size - 1], dtype=np.int16)
-        self.pos = np.zeros((num_envs, 2), dtype=np.int16)
+        self.goal = np.array([self.size - 1, self.size - 1], dtype=np.int64)
+        self.pos = np.zeros((num_envs, 2), dtype=np.int64)
         self.walls = np.zeros((num_envs, size, size), dtype=np.int8)
         self.env_ids = np.arange(num_envs)
 
@@ -33,7 +34,7 @@ class VecPoLEnv:
         self.pos[mask] = 0
         self.walls[mask] = 0
 
-        return self._obs(), None
+        return self._obs(), {"result": 0, "state": (self.walls.copy(), self.pos.copy())} 
 
     def step(self, actions):
         assert actions.shape == (self.num_envs,), f"Wrong actions shape, expected ({self.num_envs},)"
@@ -75,7 +76,8 @@ class VecPoLEnv:
         if self.render:
             self.view()  # render
 
-        return self._obs(), reward, done, None, {}
+        infos = {"state": (self.walls.copy(), self.pos.copy())}
+        return self._obs(), reward, done, None, infos
 
     def _obs(self):
         obs = np.zeros((self.num_envs, 3, self.size, self.size), dtype=np.float32)
@@ -122,12 +124,32 @@ class VecPoLEnv:
     def close(self):
         pass
 
+    @staticmethod
+    def encode(state):
+        walls, pos = state
+        num_envs, size, _ = walls.shape
+        obs = np.zeros((num_envs, 3, size, size), dtype=np.float32)
+
+        # walls channel
+        obs[:, 0] = walls
+
+        # agent positions
+        env_ids = np.arange(num_envs)
+        obs[env_ids, 1, pos[:, 0], pos[:, 1]] = 1.0
+
+        # goal (same for all envs)
+        goal = np.array([size - 1, size - 1], dtype=np.int64)
+        obs[:, 2, goal[0], goal[1]] = 1.0
+
+        return obs
+
+
 
 if __name__ == "__main__":
     from tqdm import trange
     
     num_envs=2
-    envs = VecPoLEnv(num_envs, 11, True)
+    envs = VecPoLEnv(num_envs, 5, True)
     envs.reset()
     np.random.seed(21)
     
@@ -138,13 +160,22 @@ if __name__ == "__main__":
         steps += 1
         # print(f"=== {i} ====")
         actions = np.random.randint(1, 3, num_envs)
+        obs, reward, done, _, infos = envs.step(actions)
         if steps == 5:
-            copy_state = obs
-        elif steps > 5 and steps % 5 == 0:
+            # print(obs)
+            state = infos["state"]
+            # print(state)
+            print(obs)
+            print()
+            obs = VecPoLEnv.encode(state)
+            print(obs)
+
+            break
+            # copy_state = obs
+        if steps > 5 and steps % 5 == 0:
             envs.set_state(copy_state)
         # actions = np.array([0])
         # actions = np.array([1]*num_envs, dtype=np.int8)  # always move right
-        obs, reward, done, _, result = envs.step(actions)
         
         if done.all():
             break

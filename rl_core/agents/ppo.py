@@ -4,7 +4,7 @@ import numpy as np
 from torch.distributions import Categorical
 from torch import optim
 
-from .buffers import RolloutBuffer
+from .buffers_dqn import RolloutBuffer
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)

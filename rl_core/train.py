@@ -10,7 +10,7 @@ from rich import print
 import yaml
 
 from .argp import read_args
-from .agents import RainbowAgent, DQNAgent, MCTSAgent
+from .agents import RainbowAgent, MCTSAgent
 from .agents.utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
 from rl_core.MCTS.vec_pol import VecPoLEnv
@@ -86,14 +86,17 @@ if __name__ == "__main__":
         obs_shape = envs.single_observation_space.shape
         n_actions = envs.single_action_space.n
 
+    obs, infos = envs.reset()
+    state = infos["state"]
+
     # envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
     # obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
     # n_actions = envs.single_action_space.nvec[0] if not args.pol else envs.single_action_space.n
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
     # agent1 = RainbowAgent(obs_shape, n_actions, args, device, writer, "A")
-    Agent = DQNAgent if args.dqn else MCTSAgent if args.mcts else RainbowAgent
-    agent1 = Agent(obs_shape, n_actions, args, device, writer, "A")
+    Agent = MCTSAgent if args.mcts else RainbowAgent
+    agent1 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "A")
 
     # PoL Specific
     # env_eval = PoLEnv(args.size, True) if args.pol else None
@@ -114,7 +117,7 @@ if __name__ == "__main__":
     from collections import deque
     ep_lens = deque(maxlen=100)
 
-    obs, _ = envs.reset()
+    
     for global_step in range(1, total_loops + 1):
         # agent1.q_network.reset_noise()
         # agent2.q_network.reset_noise()
@@ -134,12 +137,14 @@ if __name__ == "__main__":
         actions = a1
 
         next_obs, rewards, dones, _, infos = envs.step(actions)
-        agent1.rb.add(obs, a1, rewards, next_obs, dones, infos)
+        next_state = infos["state"]
+        agent1.rb.add(state, a1, rewards, next_state, dones)
+        # agent1.rb.add(obs, a1, rewards, next_obs, dones, infos)
         # agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
         # agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
         # obs = next_obs
-        obs = next_obs
+        obs, state = next_obs, next_state
         episode_lengths += 1
 
         # Training
@@ -162,7 +167,7 @@ if __name__ == "__main__":
                 if eval_result == env_eval.size * 2 - 2:  # Shortest path in an empty grid is size*2 - 2
                     win_combo += 1
                     if win_combo == 10:  # If the agent has solved the environment 10 times in a row
-                        print("[bold green] Agent has consistently solved the environment!")
+                        print("[bold green]Agent has consistently solved the environment!")
                         break
                 else:
                     win_combo = 0
@@ -218,4 +223,9 @@ if __name__ == "__main__":
         if args.hpc:  # Duplicate logs
             shutil.copy(f"rl_core/HPC/Out_{args.job_index}.out", save_folder + "Out.out")
             shutil.copy(f"rl_core/HPC/Err_{args.job_index}.err", save_folder + "Err.err")
-        
+
+    # if isinstance(agent1, RainbowAgent):        
+    #     weights = agent1.q_network.adv_head[-1].weight.data.cpu().numpy().mean(axis=1)
+    #     expected = np.array( [ 0.00032227,  0.03281876,  0.03462983, -0.00111074])
+    #     # print("Agent1 last layer weights:", agent1.q_network.adv_head[-1].weight.data.cpu().numpy().mean(axis=1))
+    #     assert np.allclose(weights, expected, atol=1e-2), f"Unexpected weights {weights}, expected {expected}"

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import gymnasium as gym
 
-from .buffers import ReplayBuffer
+from .buffers_dqn import ReplayBuffer
 
 class QNetwork(nn.Module):
     def __init__(self, obs_shape, n_actions):

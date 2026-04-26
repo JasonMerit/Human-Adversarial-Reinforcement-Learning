@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
-from .Howuhh import PrioritizedReplayBuffer, ReplayBuffer
+from .buffers import PrioritizedReplayBuffer, ReplayBuffer
 # from rl_core.rainbow.buffer import PrioritizedReplayBuffer, ReplayBuffer
 from .utils import TimerRegistry
 from rich import print
@@ -179,7 +179,11 @@ class DuelingDistributionalNetwork(nn.Module):
 
 class RainbowAgent:
 
-    def __init__(self, obs_shape, n_actions, args, device, writer, name):
+    def __init__(self, 
+        obs_shape, n_actions, state_example: tuple, 
+        state_encode_fn, args, device, writer, name
+        ):
+
         self.device = device
         self.batch_size = args.batch_size
         self.gamma = args.gamma
@@ -197,7 +201,7 @@ class RainbowAgent:
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(obs_shape, args, device) if args.per else ReplayBuffer(obs_shape, args, device)
+        self.rb = PrioritizedReplayBuffer(state_example, state_encode_fn, args, device) if args.per else ReplayBuffer(state_example, state_encode_fn, args, device)
         
         self.name = name
         self.writer = writer
