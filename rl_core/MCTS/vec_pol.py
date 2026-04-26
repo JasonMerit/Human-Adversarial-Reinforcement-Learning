@@ -1,5 +1,6 @@
 import os, time
 import numpy as np
+from rl_core.agents.utils import TimerRegistry
 
 class VecPoLEnv:
     """
@@ -24,6 +25,9 @@ class VecPoLEnv:
         self.pos = np.zeros((num_envs, 2), dtype=np.int64)
         self.walls = np.zeros((num_envs, size, size), dtype=np.int8)
         self.env_ids = np.arange(num_envs)
+    
+    def sample_actions(self):
+        return np.random.randint(self.n_actions, size=self.num_envs)
 
     def reset(self, mask=None):
         if mask is None:
@@ -36,7 +40,9 @@ class VecPoLEnv:
 
         return self._obs(), {"result": 0, "state": (self.walls.copy(), self.pos.copy())} 
 
-    def step(self, actions):
+    @TimerRegistry.wrap_fn("vec_pol.step")
+    def step(self, actions: np.ndarray):
+        assert isinstance(actions, np.ndarray), f"Expected numpy array, got {type(actions)}"
         assert actions.shape == (self.num_envs,), f"Wrong actions shape, expected ({self.num_envs},)"
         actions = np.asarray(actions, dtype=np.int8)
 
@@ -49,12 +55,8 @@ class VecPoLEnv:
         # ---- dynamics ----
         delta = self.dirs[actions]
         new_pos = self.pos + delta
-
-        # clip for safe indexing
         new_pos[:, 0] = np.clip(new_pos[:, 0], 0, self.size - 1)
         new_pos[:, 1] = np.clip(new_pos[:, 1], 0, self.size - 1)
-        # for p, d in zip(self.pos, new_pos):
-        #     print(f"{p} => {d}")
         self.pos = new_pos
 
         # collisions
@@ -108,18 +110,24 @@ class VecPoLEnv:
             print("="*self.size*2)
         time.sleep(0.1)
     
-    def set_state(self, obs):
-        assert isinstance(obs, np.ndarray), f"Expected numpy array, got {type(obs)}"
-        assert obs.shape == (self.num_envs, 3, self.size, self.size), f"Expected shape {(self.num_envs, 3, self.size, self.size)}, got {obs.shape}"
-        assert obs.shape[1:] == (3, self.size, self.size), f"Expected {3, self.size, self.size}, received {obs.shape[1:]}"
+    def set_state(self, state):
+        assert isinstance(state, tuple), f"Expected tuple, got {type(state)}"
+        walls, pos = state
+        assert walls.shape == (self.size, self.size), f"Expected shape {(self.num_envs, self.size, self.size)}, got {walls.shape}"
+        assert pos.shape == (2,), f"Expected shape {(2,)}, got {pos.shape}"
 
-        self.walls = obs[:,0].astype(np.int8)
+        # Duplicate the walls num_envs times
+        self.walls = np.array([walls.copy() for _ in range(self.num_envs)], dtype=np.int8)
+        self.pos = np.array([pos.copy() for _ in range(self.num_envs)], dtype=np.int64)
+    
+    def set_states(self, states):
+        assert isinstance(states, tuple), f"Expected tuple, got {type(states)}"
+        walls, pos = states
+        assert walls.shape == (self.num_envs, self.size, self.size), f"Expected shape {(self.num_envs, self.size, self.size)}, got {walls.shape}"
+        assert pos.shape == (self.num_envs, 2), f"Expected shape {(self.num_envs, 2)}, got {pos.shape}"
 
-        flat = obs[:,1].reshape(self.num_envs, -1)
-        idx = flat.argmax(axis=1)
-
-        self.pos[:,0] = idx // self.size
-        self.pos[:,1] = idx % self.size
+        self.walls = walls
+        self.pos = pos
 
     def close(self):
         pass

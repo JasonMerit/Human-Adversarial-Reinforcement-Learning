@@ -8,9 +8,6 @@ import gymnasium as gym
 
 from rl_core.env import PoLEnv
 
-seed = 42
-num_envs = 4
-np.random.seed(seed)
-for _ in range(5):
-    actions = np.random.randint(0, 4, num_envs)
-    print(actions)
+children = [None] * 4
+
+if children: print("hi")
