@@ -91,6 +91,8 @@ class Args:
     """set square size of Tron"""
     pol: bool = False
     """Whether to use the proof of learning environment"""
+    vec: bool = False
+    """Whether to use vectorized environments (only applicable for PoL)"""
 
     # Set by HPC
     hpc: bool = False
@@ -113,9 +115,9 @@ def read_args():
         args.buffer_size = args.batch_size * 10
 
         args.exp_name = "debug_" + args.exp_name
-        args.pol = True  # Test PoL environment in debug mode
+        # args.pol = True  # Test PoL environment in debug mode
     
-    assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
+    # assert args.num_envs > args.train_frequency, "num_envs should be greater than train_frequency for correct training logic"
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"
     assert not (args.dqn and args.mcts), "Cannot specify both dqn and mcts agents"
 

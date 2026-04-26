@@ -13,6 +13,7 @@ from .argp import read_args
 from .agents import RainbowAgent, DQNAgent, MCTSAgent
 from .agents.utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
+from rl_core.MCTS.vec_pol import VecPoLEnv
 
 def make_env(idx, args):
     def thunk():
@@ -75,9 +76,19 @@ if __name__ == "__main__":
     
 
     # Envs and agents
-    envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
-    obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
-    n_actions = envs.single_action_space.nvec[0] if not args.pol else envs.single_action_space.n
+    if args.vec:
+        assert args.pol, "Vectorized environments are only implemented for the PoL environment"
+        envs = VecPoLEnv(args.num_envs, args.size, args.render)
+        obs_shape = envs.obs_shape
+        n_actions = envs.n_actions
+    else:
+        envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
+        obs_shape = envs.single_observation_space.shape
+        n_actions = envs.single_action_space.n
+
+    # envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
+    # obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
+    # n_actions = envs.single_action_space.nvec[0] if not args.pol else envs.single_action_space.n
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
     # agent1 = RainbowAgent(obs_shape, n_actions, args, device, writer, "A")
@@ -85,6 +96,7 @@ if __name__ == "__main__":
     agent1 = Agent(obs_shape, n_actions, args, device, writer, "A")
 
     # PoL Specific
+    # env_eval = PoLEnv(args.size, True) if args.pol else None
     env_eval = PoLEnv(args.size) if args.pol else None
     eval_every = 10  # Evaluate every 10 learning steps
     shortest_path = float('inf')
@@ -122,8 +134,6 @@ if __name__ == "__main__":
         actions = a1
 
         next_obs, rewards, dones, _, infos = envs.step(actions)
-        # next_obs1, next_obs2 = next_obs[:, 0], next_obs[:, 1]
-
         agent1.rb.add(obs, a1, rewards, next_obs, dones, infos)
         # agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
         # agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)

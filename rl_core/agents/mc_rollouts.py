@@ -6,6 +6,7 @@ from rich import print
 
 from .rainbow import RainbowAgent
 from rl_core.env import PoLEnv
+from rl_core.MCTS.vec_pol import VecPoLEnv
 from .utils import TimerRegistry
 
 def make_env(idx, size):
@@ -29,7 +30,8 @@ class MCTSAgent(RainbowAgent):
         self.rollout_depth = args.mcts_depth
         self.rollout_count = args.mcts_rollouts
         self.env = PoLEnv(args.size)
-        self.envs = gym.vector.SyncVectorEnv([make_env(i, args.size) for i in range(args.batch_size)])
+        self.envs = VecPoLEnv(args.batch_size, args.size)
+        # self.envs = gym.vector.SyncVectorEnv([make_env(i, args.size) for i in range(args.batch_size)])
 
     @TimerRegistry.wrap_fn("mcts_learn")
     def learn(self):
@@ -65,7 +67,6 @@ class MCTSAgent(RainbowAgent):
         Returns:
             Q_rollout: [B, n_actions]
         """
-
         B = obs_batch.size(0)
         n_actions = self.q_network.adv_head[-1].out_features
         q_targets = torch.zeros((B, n_actions), device=self.device)
@@ -82,7 +83,7 @@ class MCTSAgent(RainbowAgent):
     
     @torch.no_grad()
     def _single_rollout_parallel(self, obs_batch, action):
-        self._set_envs_state(obs_batch.cpu().numpy())
+        self.envs.set_state(obs_batch.cpu().numpy())
         
         actions = np.full((len(obs_batch),), action)
         obs, rewards, dones, _, _ = self.envs.step(actions)
@@ -91,16 +92,15 @@ class MCTSAgent(RainbowAgent):
         alive = ~dones
 
         discount = 1.0
-        while np.any(alive):
-        # for _ in range(self.rollout_depth):
-            # if not np.any(alive):
-            #     break
+        for _ in range(self.rollout_depth):
+            if not np.any(alive):
+                break
 
-            # obs_alive = torch.from_numpy(obs[alive]).to(self.device)
+            obs_alive = torch.from_numpy(obs[alive]).to(self.device)
             # obs_t = torch.from_numpy(obs).to(self.device)
 
-            actions[alive] = np.random.randint(4, size=alive.sum())
-            # actions[alive] = torch.argmax(self.q_network(obs_alive), dim=1).cpu().numpy()
+            # actions[alive] = np.random.randint(4, size=alive.sum())
+            actions[alive] = torch.argmax(self.q_network(obs_alive), dim=1).cpu().numpy()
             # actions = torch.argmax(self.target_network(obs_alive), dim=1).cpu().numpy()
 
             obs, rewards, dones, _, _ = self.envs.step(actions)
@@ -114,15 +114,6 @@ class MCTSAgent(RainbowAgent):
 
         return torch.from_numpy(total_rewards).to(self.device)
     
-    def _set_envs_state(self, obs_batch):
-        walls = tuple(obs_batch[:, 0].astype(np.int8))
-        coords = np.where(obs_batch[:, 1] == 1)
-        pos = np.stack([coords[1], coords[2]], axis=1).tolist()
-
-        self.envs.set_attr("walls", walls)
-        self.envs.set_attr("pos", pos)
-
-
     @TimerRegistry.wrap_fn("rollouts")
     def _compute_rollout_targets(self, obs_batch):
         """

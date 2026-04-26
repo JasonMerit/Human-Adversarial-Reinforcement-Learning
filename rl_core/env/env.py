@@ -1,5 +1,6 @@
 import os, time
 
+from rich import print
 import numpy as np
 import gymnasium as gym
 
@@ -254,8 +255,12 @@ class PoLEnv(gym.Env):
         super().__init__()
         self.size = size
         self.render = render
+        if render:
+            os.system('cls')
         self.action_space = gym.spaces.Discrete(4)  # (left, forward, right) for each bike relative to their current heading
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, size, size), dtype=np.float32)
+        self.obs_shape = (3, size, size)
+        self.n_actions = 4  # up, right, down, left
         
         self.goal = np.array([size-1, size-1], dtype=np.int8)
         self.walls = np.zeros((size, size), dtype=np.int8)
@@ -268,16 +273,21 @@ class PoLEnv(gym.Env):
     
     def step(self, action : int):
         assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action} not in {self.action_space}")
+        # print(f"Action: {action} from pos {self.pos}")
 
         old_dist = self._manhattan_distance(self.pos, self.goal)
-        self.walls[self.pos[0], self.pos[1]] = 1  # Mark current position as wall
+        self.walls[self.pos[1], self.pos[0]] = 1  # Mark current position as wall
+        # try:
+        #     self.walls[self.pos[1], self.pos[0]] = 1  # Mark current position as wall
+        # except IndexError:
+        #     raise IndexError(f"Jason! IndexError at position {self.pos} with action {action}")
 
         self.pos += self.dirs[action]
         self.pos = np.clip(self.pos, 0, self.size-1)
 
         new_dist = self._manhattan_distance(self.pos, self.goal)
 
-        crash = self.walls[self.pos[0], self.pos[1]]
+        crash = self.walls[self.pos[1], self.pos[0]]
         goal = np.array_equal(self.pos, self.goal)
         progress = (old_dist - new_dist) * .1
 
@@ -292,8 +302,8 @@ class PoLEnv(gym.Env):
     def _get_state(self):
         obs = np.zeros(self.observation_space.shape, dtype=np.float32) # 3, size, size
         obs[0] = self.walls
-        obs[1, self.pos[0], self.pos[1]] = 1.0
-        obs[2, self.goal[0], self.goal[1]] = 1.0
+        obs[1, self.pos[1], self.pos[0]] = 1.0
+        obs[2, self.goal[1], self.goal[0]] = 1.0
         return obs
 
     def _manhattan_distance(self, pos1, pos2):
@@ -316,37 +326,36 @@ class PoLEnv(gym.Env):
         clear()
         board = np.full((self.size, self.size), ".", dtype=str)
         board[self.walls == 1] = "#"
-        board[self.goal[0], self.goal[1]] = "G"
-        board[self.pos[0], self.pos[1]] = "A"
+        board[self.goal[1], self.goal[0]] = "G"
+        board[self.pos[1], self.pos[0]] = "A"
 
         for row in board:
             print(" ".join(row))
         time.sleep(0.1)
 
+    def set_state(self, state):
+        assert isinstance(state, tuple) and len(state) == 2, utils.red(f"Jason! Invalid state {state}, expected tuple of (walls, pos)")
+        assert state[0].shape == (self.size, self.size), utils.red(f"Jason! Invalid walls shape {state[0].shape}, expected {(self.size, self.size)}")
+        assert state[1].shape == (2,), utils.red(f"Jason! Invalid pos shape {state[1].shape}, expected {(2,)}")
+        # print(f"Setting state {self.pos} => {state[1]}")
+        self.walls = state[0].copy()
+        self.pos = state[1].copy()
+
+    @property
+    def state(self):
+        return self.walls.copy(), self.pos.copy()
+
 if __name__ == "__main__":
-    env = PoLEnv(5)
+    env = PoLEnv(7, True)
     obs, info = env.reset()
-    
-    clear = lambda: os.system('cls')
-    
+    np.random.seed(21)
+    history = np.array([2, 2, 1, 1, 1, 1, 1, 2, 1, 1])
     steps = 0
     while True:
         steps += 1
         action = np.random.randint(1, 3)
+        actions = history[steps-1]
         obs, reward, done, _, info = env.step(action)
         env.view()
-        if steps == 5:
-            print("COPYING....")
-            time.sleep(2)
-            env = PoLEnv.from_state(obs)
-            env.view()
-            print("COMPLETE")
-            time.sleep(2)
-            quit()
-        
         if done:
-            if reward == 1.0:
-                break
-            print("RESET")
-            obs, _ = env.reset()
-        clear()
+            break
