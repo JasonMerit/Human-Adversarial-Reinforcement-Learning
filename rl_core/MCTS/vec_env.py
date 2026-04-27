@@ -248,42 +248,42 @@ if __name__ == "__main__":
     #########################
     ##### Does it tick? #####
     #########################
-    # SIZE=6
-    # NUM_ENVS = 7
-    # envs = VecTronEnv(NUM_ENVS, SIZE, True)
-    # envs.reset()
-    # steps = 0
-    # while True:
-    #     actions = envs.sample_actions()
-    #     obs, reward, done, _, _ = envs.step(actions)
+    SIZE=6
+    NUM_ENVS = 7
+    envs = VecTronEnv(NUM_ENVS, SIZE)
+    envs.reset()
+    steps = 0
+    while True:
+        actions = envs.sample_actions()
+        obs, reward, done, _, _ = envs.step(actions)
 
-    #     steps += 1
-    #     if done.all():
-    #         break
+        steps += 1
+        if done.all():
+            break
 
     #############################
     ##### Verify set_states #####
     #############################
-    # SIZE=6
-    # NUM_ENVS = 64
-    # envs = VecTronEnv(NUM_ENVS, SIZE)
-    # envs.reset()
-    # actions = [0,1,2,3,1,0]
-    # states = []
-    # obs_list = []
+    SIZE=6
+    NUM_ENVS = 64
+    envs = VecTronEnv(NUM_ENVS, SIZE)
+    envs.reset()
+    actions = [0,1,2,3,1,0]
+    states = []
+    obs_list = []
 
-    # for a in actions:
-    #     states.append(envs.state)
-    #     obs, r, done, _, _ = envs.step(a)
-    #     obs_list.append(obs)
+    for a in actions:
+        states.append(envs.state)
+        obs, r, done, _, _ = envs.step(a)
+        obs_list.append(obs)
 
-    # # replay
-    # envs.set_states(states[2])
+    # replay
+    envs.set_states(states[2])
 
-    # for i,a in enumerate(actions[2:]):
-    #     obs2, r2, done2, _, _ = envs.step(a)
+    for i,a in enumerate(actions[2:]):
+        obs2, r2, done2, _, _ = envs.step(a)
 
-    #     assert (obs2 == obs_list[2+i]).all()
+        assert (obs2 == obs_list[2+i]).all()
     
     ######################################################
     #### Vectorized vs Single Environment Consistency ####
@@ -316,27 +316,19 @@ if __name__ == "__main__":
     ########################
     ### Reset with mask ####
     ########################
-
     # Reset only envs 0, 2, 4 and verify their walls sum to num_envs
-    # SIZE=7
-    # NUM_ENVS = 1
-    # render=False
-    # envs = VecTronEnv(NUM_ENVS, SIZE, render)
-    # obs, _ = envs.reset()
-    # print(obs)
+    SIZE=7
+    NUM_ENVS = 7
+    render=False
+    envs = VecTronEnv(NUM_ENVS, SIZE, render)
+    obs, _ = envs.reset()
 
-    # env = TronEnv(SIZE, None, render)
-    # obs, _ = env.reset()
-    # print(obs)
-    # mask = np.array([True, False, True, False, True, False, False])
-    # steps = 0
-    # while True:
-    #     actions = envs.sample_actions()
-    #     obs, reward, done, _, _ = envs.step(actions)
-    #     if steps == 5:
-    #         envs.reset(mask=mask)
-    #         assert (envs.walls[mask].sum() == 3).all(), f"Expected reset envs to have 3 wall cells, got {envs.walls[mask].sum(axis=(1,2))}"
+    mask = np.array([True, False, True, False, True, False, False])
+    steps = 2  # Can't kill self in 2 steps
+    for _ in range(steps):
+        actions = envs.sample_actions()
+        obs, reward, done, _, _ = envs.step(actions)
 
-    #     steps += 1
-    #     if done.all():
-    #         break
+    envs.reset(mask=mask)
+    assert envs.walls[mask].sum() == 0, f"Expected reset envs to have 3 wall cells, got {envs.walls[mask].sum(axis=(1,2))}"
+    assert envs.walls[~mask].sum() > 0, f"Expected non-reset envs to have wall cells, got {envs.walls[~mask].sum(axis=(1,2))}"
