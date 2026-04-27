@@ -159,10 +159,7 @@ if __name__ == "__main__":
             # print(obs)
             state = infos["state"]
             # print(state)
-            print(obs)
-            print()
             obs = VecPoLEnv.encode(state)
-            print(obs)
 
             break
             # copy_state = obs

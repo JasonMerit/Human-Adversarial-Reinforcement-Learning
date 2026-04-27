@@ -123,7 +123,7 @@ A = [
 
 if __name__ == "__main__":
     # os.system('cls')
-    TimerRegistry.disable()  # Disable timers for this test
+    # TimerRegistry.disable()  # Disable timers for this test
     from tqdm import trange
     SIZE=25
     NUM_ENVS = 64

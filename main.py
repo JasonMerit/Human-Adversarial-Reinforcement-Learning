@@ -8,6 +8,5 @@ import gymnasium as gym
 
 from rl_core.env import PoLEnv
 
-children = [None] * 4
-
-if children: print("hi")
+a = np.int8(128)
+print(a, a.dtype)

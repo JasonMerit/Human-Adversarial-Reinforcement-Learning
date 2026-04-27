@@ -54,8 +54,8 @@ class MCTS:
             node = self.expand(node)
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
-        value = node.reward if node.terminal else self.rollout(node, self.max_steps)
-        # value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
+        # value = node.reward if node.terminal else self.rollout(node, self.max_steps)
+        value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
         # if node.terminal:
             # print(f"Terminal ({value})")
 

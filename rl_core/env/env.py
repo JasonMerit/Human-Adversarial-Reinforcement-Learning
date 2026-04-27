@@ -25,6 +25,10 @@ class TronEnv(gym.Env):
     def __init__(self, size=25, adv_policy: callable =None, render=False):
         self.tron = Tron(size)
         self.size = size
+        if render:
+            os.system('cls')
+        self.render = render
+
 
         self.obs_shape = (3, size, size)
         self.n_actions = 3  # up, right, down, left
@@ -39,29 +43,26 @@ class TronEnv(gym.Env):
         return TronEnv.encode(self.state), {'result': 0, 'state': self.state}
     
     def step(self, action : int):
-        assert isinstance(action, int), f"expected int, got {type(action)}"
+        assert isinstance(action, int) or isinstance(action, np.int8), f"expected int, got {type(action)}"
         assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
         
-        # self.heading1 = self._kek_act(*self.state)
-        self.heading1 = self._semi_random_act(*self.state)
-        # self.heading1 = self.action_mapping[0]  # Human's action
-        # self.heading1 = self.action_mapping[get_best_action(self.state)]  # Human's action
-        # dir2 = self.action_mapping[action]
-
-        # self.heading1 = dir1
+        self.heading1 = self._adv_act(*self.state)
         self.heading2 = (self.heading2 + (action - 1)) % 4  # Because (left, forward, right)
     
         result = self.tron.tick(self.action_mapping[self.heading1], self.action_mapping[self.heading2])
         done = result != Result.PLAYING
         reward = self.reward_dict[result]
         info = {'result': result, 'state': self.state}
+
+        if self.render:
+            self.view()
         return TronEnv.encode(self.state), reward, done, False, info
     
     def set_state(self, state):
         tron = self.tron
         # tron.walls, tron.bike1.pos, tron.bike2.pos, self.heading2 = state
         walls, pos1, pos2, h1, h2 = state
-        tron.walls, tron.bike1.pos, tron.bike2.pos = walls.copy(), pos1.copy(), pos2.copy()
+        tron.walls, tron.pos1, tron.pos2 = walls.copy(), pos1.copy(), pos2.copy()
         self.heading1, self.heading2 = h1, h2
 
     @staticmethod
@@ -87,24 +88,41 @@ class TronEnv(gym.Env):
 
     @property
     def state(self):
-        return self.tron.walls.copy(), self.tron.bike1.pos.copy(), self.tron.bike2.pos.copy(), self.heading1, self.heading2
+        return self.tron.walls.copy(), self.tron.pos1.copy(), self.tron.pos2.copy(), self.heading1, self.heading2
     
     def sample_action(self):
         return np.random.randint(self.n_actions)
     
-    def _semi_random_act(self, walls, bike1, bike2, head1, head2) -> int:
+    def _adv_act(self, walls, bike1, bike2, head1, head2) -> int:
         # Search if action is valid, if not take best action, with some randomness
         candidates = [0, 1, 2, 3]
         candidates.remove((head1 + 2) % 4)  # Can't turn back
 
         for action in candidates:
             new_pos = bike1 + self.action_mapping[action]
-            if not self.tron.bike1.is_hit(walls, *new_pos):
+            if new_pos[0] < 0 or new_pos[0] >= self.size or \
+                  new_pos[1] < 0 or new_pos[1] >= self.size:
+                continue
+            if not walls[new_pos[1], new_pos[0]]:  # If not hit
                 return action
             
         return 1
     
-        # raise Exception("Jason! No valid moves for the human player - this should never happen")
+    def view(self):
+        # os.system('cls')
+        # print("\033[H", end="")  # move cursor to top (terminal animation)
+        board = np.full((self.size, self.size), ".", dtype=str)
+        board[self.tron.walls > 0] = "#"
+        x1, y1 = self.tron.pos1
+        x2, y2 = self.tron.pos2
+        board[y1, x1] = "A"
+        board[y2, x2] = "B"
+        for row in board:
+            print(" ".join(row))
+
+
+        time.sleep(0.4)
+    
 
 # class TronEnv(gym.Env):
 #     """Wraps TronEnvBase with all the wrappers"""
