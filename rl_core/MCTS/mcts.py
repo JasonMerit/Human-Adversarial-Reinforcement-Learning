@@ -4,6 +4,7 @@ import numpy as np
 from rl_core.env import PoLEnv  
 from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.agents.utils import TimerRegistry
+from rl_core.env.heuristic import voronoi
 
 class Node:
     def __init__(self, state, n_actions, parent=None, action=None, terminal=False, reward=0):
@@ -26,8 +27,9 @@ class Node:
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backprop"""
 
-    def __init__(self, env: PoLEnv, rollouts: int, max_steps=200):
+    def __init__(self, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
         self.env = env  # For structured search
+        self.envs = envs  # For structured search
         self.rollouts = rollouts
         self.max_steps = max_steps
 
@@ -54,8 +56,9 @@ class MCTS:
             node = self.expand(node)
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
-        value = node.reward if node.terminal else self.rollout(node, self.max_steps)
+        # value = node.reward if node.terminal else self.rollout(node, self.max_steps)
         # value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
+        value = node.reward if node.terminal else self.voronoi_value(node, self.max_steps)
         # if node.terminal:
             # print(f"Terminal ({value})")
 
@@ -100,37 +103,52 @@ class MCTS:
         node.children[action] = child
         return child
 
-    @TimerRegistry.wrap_fn("MCTS.rollout")
-    def rollout(self, node, max_steps):
-        total = 0.0
-        for _ in range(self.rollouts):
-            self.env.set_state(node.state)
-            for _ in range(max_steps):
-                _, r, done, _, _ = self.env.step(self.env.sample_action())
+    # @TimerRegistry.wrap_fn("MCTS.rollout")
+    # def rollout(self, node, max_steps):
+    #     total = 0.0
+    #     for _ in range(self.rollouts):
+    #         self.env.set_state(node.state)
+    #         # for _ in range(max_steps):
+    #         while True:
+    #             _, r, done, _, _ = self.env.step(self.env.sample_action())
 
-                total += r
-                if done:
-                    break
+    #             total += r
+    #             if done:
+    #                 break
         
-        return total / self.rollouts
+    #     return total / self.rollouts
     
     @TimerRegistry.wrap_fn("MCTS.rollout_vec")
     def rollout_vec(self, node, max_steps):
         self.envs.set_state(node.state)
-        B = self.envs.num_envs
 
-        alive = np.ones(B, dtype=np.float32)
-        total = np.zeros(B, dtype=np.float32)
-        for _ in range(max_steps):
+        runs = 0
+        total = 0.0
+        # returns = np.zeros(self.envs.num_envs, dtype=np.float32)
+        # for _ in range(max_steps):
+        while True:
             actions = self.envs.sample_actions()
             _, r, done, _, _ = self.envs.step(actions)
 
-            total += r * alive
-            alive *= (1.0 - done)
-            if not alive.any():
-                break
-
-        return total.mean()
+            # returns += r
+            if done.any():
+                self.envs.set_state(node.state, mask=done)
+                # total += returns[done].sum()
+                # assert (returns[~done] == 0).all(), "Non-done envs should have zero returns"
+                # returns[done] = 0.0
+                total += r.sum()
+                runs += done.sum()
+                if runs >= self.rollouts:
+                    break
+        
+        return total / runs
+    
+    @TimerRegistry.wrap_fn("MCTS.voronoi_value")
+    def voronoi_value(self, node, max_steps):
+        state = node.state
+        val = voronoi(state[0], state[2], state[1])  # flip positions because agent is bike2
+        print(f"{val:.2f}")
+        return val
 
     def backprop(self, node, value):
         while node is not None:
@@ -160,7 +178,7 @@ if __name__ == "__main__":
     runs = 1
     # for _ in range(runs):
     history = [[] for _ in range(runs)]
-    for i in trange(runs):
+    for i in range(runs):
         actual_env.reset()
         mcts = MCTS(sim_env, sim_envs)
         root = Node(actual_env.state, actual_env.n_actions)

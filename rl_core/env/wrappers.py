@@ -64,22 +64,22 @@ class TronView(gym.Wrapper):
                 
         self._render()
     
-        self.prev1 = self.tron.bike1.pos.copy()
-        self.prev2 = self.tron.bike2.pos.copy()
+        self.prev1 = self.tron.pos1.copy()
+        self.prev2 = self.tron.pos2.copy()
         return state, info
     
     def step(self, action):
         state, reward, done, _, info = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
-        self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)
-        self.trails_screen.set_at((self.tron.bike2.pos[0], self.tron.bike2.pos[1]), self.red_alt)
+        self.trails_screen.set_at((self.tron.pos1[0], self.tron.pos1[1]), self.green_alt)
+        self.trails_screen.set_at((self.tron.pos2[0], self.tron.pos2[1]), self.red_alt)
         self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
         self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
         self._render()
 
-        self.prev1 = self.tron.bike1.pos.copy()
-        self.prev2 = self.tron.bike2.pos.copy()
+        self.prev1 = self.tron.pos1.copy()
+        self.prev2 = self.tron.pos2.copy()
 
         # Input
         for event in self.pg.event.get():

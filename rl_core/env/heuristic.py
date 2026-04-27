@@ -86,10 +86,10 @@ def get_territories(trails, p1, p2):
     return territories
 
 def voronoi(trails, p1, p2):
-    height, width = trails.shape
+    size = trails.shape[0]
 
-    dist1 = np.full((height, width), INF)
-    dist2 = np.full((height, width), INF)
+    dist1 = np.full((size, size), INF)
+    dist2 = np.full((size, size), INF)
 
     flood_fill(trails, p1, dist1)
     flood_fill(trails, p2, dist2)
@@ -97,8 +97,8 @@ def voronoi(trails, p1, p2):
     region1 = 0
     region2 = 0
 
-    for y in range(height):
-        for x in range(width):
+    for y in range(size):
+        for x in range(size):
 
             if trails[y, x] != 0:
                 continue
@@ -115,4 +115,5 @@ def voronoi(trails, p1, p2):
                 region2 += 1
             # equal distance → ignored
 
-    return region1 - region2
+    # return (region1 - region2) 
+    return (region1 - region2) / (region1 + region2)  # Avoid division by zero

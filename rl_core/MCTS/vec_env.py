@@ -58,7 +58,7 @@ class VecTronEnv:
         self.h2[mask] = 3
 
         return VecTronEnv.encode(self.state), {"state": self.state}
-
+    
     def step(self, actions):
 
         actions = np.asarray(actions, dtype=np.int8)
@@ -159,19 +159,25 @@ class VecTronEnv:
 
         return actions
 
-    def set_state(self, state):
+    def set_state(self, state, mask=None):
         walls, p1, p2, h1, h2 = state
         assert walls.shape == (self.size, self.size), f"Expected shape {(self.size, self.size)}, got {walls.shape}"
         assert p1.shape == (2,), f"Expected shape {(2,)}, got {p1.shape}"
         assert p2.shape == (2,), f"Expected shape {(2,)}, got {p2.shape}"
         assert isinstance(h1, int) and isinstance(h2, int), f"Expected integer headings, got {type(h1)} and {type(h2)}" 
 
-        self.walls = np.repeat(walls[None], self.num_envs, axis=0).copy()
-        self.pos1 = np.repeat(p1[None], self.num_envs, axis=0).copy()
-        self.pos2 = np.repeat(p2[None], self.num_envs, axis=0).copy()
+        if mask is None:
+            mask = np.ones(self.num_envs, dtype=bool)
+        count = mask.sum()
+        if count == 0:
+            return  # No envs to set
 
-        self.h1 = np.full(self.num_envs, h1, dtype=np.int8)
-        self.h2 = np.full(self.num_envs, h2, dtype=np.int8)
+        self.walls[mask] = np.repeat(walls[None], count, axis=0).copy()
+        self.pos1[mask] = np.repeat(p1[None], count, axis=0).copy()
+        self.pos2[mask] = np.repeat(p2[None], count, axis=0).copy()
+
+        self.h1[mask] = h1
+        self.h2[mask] = h2
 
     def set_states(self, states):
         walls, p1, p2, h1, h2 = states
@@ -244,7 +250,6 @@ class VecTronEnv:
 
 if __name__ == "__main__":
     from rl_core.env.env import TronEnv
-
     #########################
     ##### Does it tick? #####
     #########################
@@ -252,14 +257,11 @@ if __name__ == "__main__":
     NUM_ENVS = 7
     envs = VecTronEnv(NUM_ENVS, SIZE)
     envs.reset()
-    steps = 0
-    while True:
+    for steps in range(100):
         actions = envs.sample_actions()
         obs, reward, done, _, _ = envs.step(actions)
 
-        steps += 1
-        if done.all():
-            break
+    print("[green]Pass[/green]")
 
     #############################
     ##### Verify set_states #####
@@ -284,6 +286,7 @@ if __name__ == "__main__":
         obs2, r2, done2, _, _ = envs.step(a)
 
         assert (obs2 == obs_list[2+i]).all()
+    print("[green]Pass[/green]")
     
     ######################################################
     #### Vectorized vs Single Environment Consistency ####
@@ -312,7 +315,8 @@ if __name__ == "__main__":
             assert r_v[i] == r_s, f"Reward mismatch at step {_} for env {i}: vectorized reward {r_v[i]} vs single env reward {r_s}"
             if done_s:
                 e.reset()
-    
+    print("[green]Pass[/green]")
+
     ########################
     ### Reset with mask ####
     ########################
@@ -332,3 +336,4 @@ if __name__ == "__main__":
     envs.reset(mask=mask)
     assert envs.walls[mask].sum() == 0, f"Expected reset envs to have 3 wall cells, got {envs.walls[mask].sum(axis=(1,2))}"
     assert envs.walls[~mask].sum() > 0, f"Expected non-reset envs to have wall cells, got {envs.walls[~mask].sum(axis=(1,2))}"
+    print("[green]Pass[/green]")
