@@ -6,7 +6,7 @@ DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]  # up, right, down, left
 
 def get_best_action(state):
     """ Returns the action that maximizes voronoi score. """
-    trails, you, other = state
+    trails, you, other, _ = state  # last is heading
 
     best_score = -np.inf
     best_action = None
