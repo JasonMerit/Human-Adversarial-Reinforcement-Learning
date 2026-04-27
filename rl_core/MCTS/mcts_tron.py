@@ -6,6 +6,7 @@ from rl_core.env import TronView, TronEnv
 from rl_core.agents.utils import TimerRegistry
 
 from .mcts import MCTS, Node
+from .vec_env import VecTronEnv
 
 import gymnasium as gym
 from rl_core.env import Tron, Result
@@ -132,24 +133,23 @@ if __name__ == "__main__":
     sim_env = TronEnv(SIZE)
     actual_env.reset()
     sim_env.reset()
-    sim_envs = None
 
     # np.random.seed(3)
 
     wins = 0
-    runs = 1
+    runs = 10
     # for _ in range(runs):
     history = [[] for _ in range(runs)]
     for i in trange(runs):
         actual_env.reset()
         sim_env.reset()
-        mcts = MCTS(sim_env, sim_envs)
+        mcts = MCTS(sim_env, 20)
         root = Node(actual_env.state, actual_env.n_actions)
 
         steps = 0
         while True:
             # with HiddenPrints():
-            action = mcts.plan(root, sims=1000)
+            action = mcts.plan(root, sims=200)
             # action = A[i][steps]
 
             obs, reward, done, _, _ = actual_env.step(action)
@@ -177,4 +177,9 @@ if __name__ == "__main__":
     length = sum(len(h) for h in history) / len(history)
     print(f"Win rate: {wins}/{runs} = {wins/runs:.2f} with an avg length {length:.2f}")
     TimerRegistry.report()
+
+    import winsound
+    winsound.Beep(800, 200)  # frequency (Hz), duration (ms)
+    winsound.Beep(700, 100)  # frequency (Hz), duration (ms)
+    winsound.Beep(800, 400)  # frequency (Hz), duration (ms)
 

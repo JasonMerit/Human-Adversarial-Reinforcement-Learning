@@ -458,7 +458,7 @@ class PoLEnv(gym.Env):
         return self.walls.copy(), self.pos.copy()
 
 if __name__ == "__main__":
-    env = TronEnv(25)
+    env = TronEnv(7)
     from .wrappers import TronView
     env = TronView(env, fps=40)
 

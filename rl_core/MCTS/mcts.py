@@ -26,9 +26,9 @@ class Node:
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backprop"""
 
-    def __init__(self, env: PoLEnv, envs: VecPoLEnv, max_steps=200):
+    def __init__(self, env: PoLEnv, rollouts: int, max_steps=200):
         self.env = env  # For structured search
-        self.envs = envs  # For parallel rollouts
+        self.rollouts = rollouts
         self.max_steps = max_steps
 
     @TimerRegistry.wrap_fn("MCTS.plan")
@@ -38,7 +38,7 @@ class MCTS:
         for _ in range(sims):
             # print("======", _, "=======")
             self.simulate(root)
-            print(_, self.best_action(root), end="\r")
+            # print(_, self.best_action(root), end="\r")
 
         return self.best_action(root)
 
@@ -54,8 +54,8 @@ class MCTS:
             node = self.expand(node)
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
-        # value = node.reward if node.terminal else self.rollout(node, self.max_steps)
-        value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
+        value = node.reward if node.terminal else self.rollout(node, self.max_steps)
+        # value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
         # if node.terminal:
             # print(f"Terminal ({value})")
 
@@ -102,20 +102,17 @@ class MCTS:
 
     @TimerRegistry.wrap_fn("MCTS.rollout")
     def rollout(self, node, max_steps):
-        repeats = 10
         total = 0.0
-        for j in range(repeats):
+        for _ in range(self.rollouts):
             self.env.set_state(node.state)
             for _ in range(max_steps):
-                a = np.random.randint(self.env.n_actions)
-                _, r, done, _, _ = self.env.step(a)
+                _, r, done, _, _ = self.env.step(self.env.sample_action())
 
                 total += r
                 if done:
                     break
         
-        # print(f"Rollout ({total / repeats:.2f})")
-        return total / repeats
+        return total / self.rollouts
     
     @TimerRegistry.wrap_fn("MCTS.rollout_vec")
     def rollout_vec(self, node, max_steps):
@@ -170,8 +167,7 @@ if __name__ == "__main__":
 
         steps = 0
         while True:
-            action = mcts.plan(root, sims=500)
-
+            action = mcts.plan(root, sims=200)
             obs, reward, done, _, _ = actual_env.step(action)
 
             child = root.children[action]  # Reuse the subtree if it exists
