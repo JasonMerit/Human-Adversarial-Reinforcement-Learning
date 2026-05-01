@@ -242,6 +242,33 @@ class TronDuoEnv(gym.Env):
     
     def _obs(self):
         # First encode to one hot image
+        walls, bike1, bike2 = TronDuoEnv(self.tron.walls, self.tron.pos1, self.tron.pos2)
+        obs1 = (walls, bike1, bike2)
+        obs2 = (walls, bike2, bike1)
+
+        # Then rotate according to heading so that bikes always face up
+        obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
+        obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
+
+        obs = np.stack([obs1, obs2], axis=0)
+        assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
+        return obs
+    
+    @staticmethod
+    def encode(state):
+        walls, bike1, bike2, h1, h2 = state
+        occ = (walls > 0).astype(np.float32)
+
+        you = np.zeros_like(occ)
+        other = np.zeros_like(occ)
+
+        x, y = bike1
+        you[y, x] = 1.0
+
+        x, y = bike2
+        other[y, x] = 1.0
+
+        return np.stack([occ, you, other], axis=0)
         walls, bike1, bike2 = encode_observation(self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos)
         obs1 = (walls, bike1, bike2)
         obs2 = (walls, bike2, bike1)
@@ -253,6 +280,34 @@ class TronDuoEnv(gym.Env):
         obs = np.stack([obs1, obs2], axis=0)
         assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
         return obs
+        assert type(state) == tuple
+        assert len(state) == 5
+
+        walls, bike1, bike2, _, heading2 = state
+        occ = (walls > 0).astype(np.float32)
+
+        you = np.zeros_like(occ)
+        other = np.zeros_like(occ)
+
+        x, y = bike1
+        you[y, x] = 1.0
+
+        x, y = bike2
+        other[y, x] = 1.0
+
+        obs = np.stack([occ, you, other], axis=0)
+
+        return np.rot90(obs, k=heading2, axes=(1, 2)).copy()
+    
+    @property
+    def state(self):        
+        return self.tron.walls.copy(), self.tron.pos1.copy(), self.tron.pos2.copy(), self.heading1, self.heading2
+
+    def set_state(self, state):
+        tron = self.tron
+        walls, pos1, pos2, h1, h2 = state
+        tron.walls, tron.pos1, tron.pos2 = walls.copy(), pos1.copy(), pos2.copy()
+        self.heading1, self.heading2 = h1, h2
 
 class TronCoreEnv(gym.Env):
     """TronEnv agnostic to state representation - for comparing different state representations"""
