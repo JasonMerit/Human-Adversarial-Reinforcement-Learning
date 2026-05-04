@@ -8,35 +8,151 @@ from .tron import Tron, Result
 from rich import print
 from . import utils
 from .heuristic import get_best_action
-from .wrappers import encode_observation
+# from .wrappers import encode_observation
 # from rl_core.agents import Agent
 
 clear = lambda: os.system('cls')
 
+
 class TronEnv(gym.Env):
     """Wraps TronEnvBase with all the wrappers"""
 
-    def __init__(self, size=25):
-        super().__init__()
-        from .wrappers import TronImage, TronEgo
-        env = TronEgo(TronImage(TronEnvBase(size)))
-        self.env = env
-        self.tron = env.unwrapped.tron
-        self.action_space = env.action_space
-        self.observation_space = env.observation_space
+    action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
+    # reward_dict = { Result.DRAW: -.5, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: 0 }
+    reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: 0 }
+    # reward_dict = { Result.DRAW: -1, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: .01 }
+
+    def __init__(self, size=25, adv_policy: callable =None, render=False):
+        self.tron = Tron(size)
+        self.size = size
+        if render:
+            os.system('cls')
+        self.render = render
+
+
+        self.obs_shape = (3, size, size)
+        self.n_actions = 3  # up, right, down, left
+        self.action_space = gym.spaces.Discrete(self.n_actions)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=self.obs_shape, dtype=np.float32)
 
     def reset(self, seed=None, options=None):
-        return self.env.reset(seed=seed, options=options)
+        super().reset(seed=seed)
+        self.tron.reset()
+        self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
+            
+        return TronEnv.encode(self.state), {'result': 0, 'state': self.state}
+    
+    def step(self, action : int):
+        assert isinstance(action, int) or isinstance(action, np.int8), f"expected int, got {type(action)}"
+        assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
+        
+        self.heading1 = self._adv_act(*self.state)
+        self.heading2 = (self.heading2 + (action - 1)) % 4  # Because (left, forward, right)
+    
+        result = self.tron.tick(self.action_mapping[self.heading1], self.action_mapping[self.heading2])
+        done = result != Result.PLAYING
+        reward = self.reward_dict[result]
+        info = {'result': result, 'state': self.state}
 
-    def step(self, action):
-        return self.env.step(action)
+        if self.render:
+            self.view()
+        return TronEnv.encode(self.state), reward, done, False, info
+    
+    def set_state(self, state):
+        tron = self.tron
+        # tron.walls, tron.bike1.pos, tron.bike2.pos, self.heading2 = state
+        walls, pos1, pos2, h1, h2 = state
+        tron.walls, tron.pos1, tron.pos2 = walls.copy(), pos1.copy(), pos2.copy()
+        self.heading1, self.heading2 = h1, h2
+
+    @staticmethod
+    def encode(state):
+        assert type(state) == tuple
+        assert len(state) == 5
+
+        walls, bike1, bike2, _, heading2 = state
+        occ = (walls > 0).astype(np.float32)
+
+        you = np.zeros_like(occ)
+        other = np.zeros_like(occ)
+
+        x, y = bike1
+        you[y, x] = 1.0
+
+        x, y = bike2
+        other[y, x] = 1.0
+
+        obs = np.stack([occ, you, other], axis=0)
+
+        return np.rot90(obs, k=heading2, axes=(1, 2)).copy()
+
+    @property
+    def state(self):
+        return self.tron.walls.copy(), self.tron.pos1.copy(), self.tron.pos2.copy(), self.heading1, self.heading2
+    
+    def sample_action(self):
+        return np.random.randint(self.n_actions)
+    
+    def _adv_act(self, walls, bike1, bike2, head1, head2) -> int:
+        # Search if action is valid, if not take best action, with some randomness
+        candidates = [0, 1, 2, 3]
+        candidates.remove((head1 + 2) % 4)  # Can't turn back
+
+        for action in candidates:
+            new_pos = bike1 + self.action_mapping[action]
+            if new_pos[0] < 0 or new_pos[0] >= self.size or \
+                  new_pos[1] < 0 or new_pos[1] >= self.size:
+                continue
+            if not walls[new_pos[1], new_pos[0]]:  # If not hit
+                return action
+            
+        return 1
+    
+    def view(self):
+        # os.system('cls')
+        # print("\033[H", end="")  # move cursor to top (terminal animation)
+        board = np.full((self.size, self.size), ".", dtype=str)
+        board[self.tron.walls > 0] = "#"
+        x1, y1 = self.tron.pos1
+        x2, y2 = self.tron.pos2
+        board[y1, x1] = "A"
+        board[y2, x2] = "B"
+        for row in board:
+            print(" ".join(row))
+
+
+        time.sleep(0.4)
+    
+
+# class TronEnv(gym.Env):
+#     """Wraps TronEnvBase with all the wrappers"""
+
+#     def __init__(self, size=25, render=False):
+#         super().__init__()
+#         from .wrappers import TronImage, TronEgo
+#         env = TronEgo(TronImage(TronEnvBase(size, render=render)))
+#         self.env = env
+#         self.tron = env.unwrapped.tron
+#         self.action_space = env.action_space
+#         self.observation_space = env.observation_space
+
+#         self.n_actions = 3
+
+#     def reset(self, seed=None, options=None):
+#         return self.env.reset(seed=seed, options=options)
+
+#     def step(self, action):
+#         return self.env.step(action)
+    
+#     def sample_action(self):
+#         return np.random.randint(self.n_actions)
 
 class TronEnvBase(gym.Env):
 
     action_mapping = np.array([(0, -1), (1, 0), (0, 1), (-1, 0)], dtype=np.int8)  # up, right, down, left
     reward_dict = { Result.DRAW: -1, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: .01 }
 
-    def __init__(self, size=25):
+    def __init__(self, size=25, render=False):
         self.tron = Tron(size)
         self.size = size
 
@@ -57,8 +173,8 @@ class TronEnvBase(gym.Env):
     def step(self, action : int):
         assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
         
-        dir1 = self.action_mapping[self._semi_random_act(*self._get_state())]  # Human's action
-        # dir1 = self.action_mapping[get_best_action(self._get_state())]  # Human's action
+        # dir1 = self.action_mapping[self._semi_random_act(*self._get_state())]  # Human's action
+        dir1 = self.action_mapping[get_best_action(self._get_state())]  # Human's action
         dir2 = self.action_mapping[action]
     
         result = self.tron.tick(dir1, dir2)
@@ -103,7 +219,7 @@ class TronDuoEnv(gym.Env):
         self.tron.reset()
         self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
             
-        return self._get_state(), {'result': 0}
+        return self._obs(), {'result': 0}
     
     def step(self, action : np.ndarray):
         assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
@@ -118,14 +234,41 @@ class TronDuoEnv(gym.Env):
     
         result = self.tron.tick(dir1, dir2)
         done = result != Result.PLAYING
-        state = self._get_state()
+        state = self._obs()
         reward = self.reward_dict[result]
 
         info = {"result": result} if done else {}
         return state, reward, done, False, info
     
-    def _get_state(self):
+    def _obs(self):
         # First encode to one hot image
+        walls, bike1, bike2 = TronDuoEnv(self.tron.walls, self.tron.pos1, self.tron.pos2)
+        obs1 = (walls, bike1, bike2)
+        obs2 = (walls, bike2, bike1)
+
+        # Then rotate according to heading so that bikes always face up
+        obs1 = np.rot90(obs1, k=self.heading1, axes=(1, 2)).copy()  # Copy to remove negative stride
+        obs2 = np.rot90(obs2, k=self.heading2, axes=(1, 2)).copy()  # Copy to remove negative stride
+
+        obs = np.stack([obs1, obs2], axis=0)
+        assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
+        return obs
+    
+    @staticmethod
+    def encode(state):
+        walls, bike1, bike2, h1, h2 = state
+        occ = (walls > 0).astype(np.float32)
+
+        you = np.zeros_like(occ)
+        other = np.zeros_like(occ)
+
+        x, y = bike1
+        you[y, x] = 1.0
+
+        x, y = bike2
+        other[y, x] = 1.0
+
+        return np.stack([occ, you, other], axis=0)
         walls, bike1, bike2 = encode_observation(self.tron.walls, self.tron.bike1.pos, self.tron.bike2.pos)
         obs1 = (walls, bike1, bike2)
         obs2 = (walls, bike2, bike1)
@@ -137,6 +280,34 @@ class TronDuoEnv(gym.Env):
         obs = np.stack([obs1, obs2], axis=0)
         assert obs.shape == self.observation_space.shape, utils.red(f"Jason! Obs shape mismatch {obs1.shape} vs {self.observation_space.shape}")
         return obs
+        assert type(state) == tuple
+        assert len(state) == 5
+
+        walls, bike1, bike2, _, heading2 = state
+        occ = (walls > 0).astype(np.float32)
+
+        you = np.zeros_like(occ)
+        other = np.zeros_like(occ)
+
+        x, y = bike1
+        you[y, x] = 1.0
+
+        x, y = bike2
+        other[y, x] = 1.0
+
+        obs = np.stack([occ, you, other], axis=0)
+
+        return np.rot90(obs, k=heading2, axes=(1, 2)).copy()
+    
+    @property
+    def state(self):        
+        return self.tron.walls.copy(), self.tron.pos1.copy(), self.tron.pos2.copy(), self.heading1, self.heading2
+
+    def set_state(self, state):
+        tron = self.tron
+        walls, pos1, pos2, h1, h2 = state
+        tron.walls, tron.pos1, tron.pos2 = walls.copy(), pos1.copy(), pos2.copy()
+        self.heading1, self.heading2 = h1, h2
 
 class TronCoreEnv(gym.Env):
     """TronEnv agnostic to state representation - for comparing different state representations"""
@@ -269,7 +440,7 @@ class PoLEnv(gym.Env):
         super().reset(seed=seed)
         self.pos = np.array([0, 0], dtype=np.int8)
         self.walls.fill(0)
-        return self._get_state(), {"result": 0, "state": (self.walls.copy(), self.pos.copy())} 
+        return self._get_state(), {"result": 0, "state": self.state} 
     
     def step(self, action : int):
         assert self.action_space.contains(action), utils.red(f"Jason! Invalid Action {action} not in {self.action_space}")
@@ -277,10 +448,6 @@ class PoLEnv(gym.Env):
 
         old_dist = self._manhattan_distance(self.pos, self.goal)
         self.walls[self.pos[1], self.pos[0]] = 1  # Mark current position as wall
-        # try:
-        #     self.walls[self.pos[1], self.pos[0]] = 1  # Mark current position as wall
-        # except IndexError:
-        #     raise IndexError(f"Jason! IndexError at position {self.pos} with action {action}")
 
         self.pos += self.dirs[action]
         self.pos = np.clip(self.pos, 0, self.size-1)
@@ -346,16 +513,17 @@ class PoLEnv(gym.Env):
         return self.walls.copy(), self.pos.copy()
 
 if __name__ == "__main__":
-    env = PoLEnv(7, True)
+    env = TronEnv(7)
+    from .wrappers import TronView
+    env = TronView(env, fps=40)
+
     obs, info = env.reset()
     np.random.seed(21)
-    history = np.array([2, 2, 1, 1, 1, 1, 1, 2, 1, 1])
     steps = 0
     while True:
         steps += 1
-        action = np.random.randint(1, 3)
-        actions = history[steps-1]
+        # action = env.unwrapped.sample_action()
+        action = 1
         obs, reward, done, _, info = env.step(action)
-        env.view()
         if done:
-            break
+            obs, info = env.reset()

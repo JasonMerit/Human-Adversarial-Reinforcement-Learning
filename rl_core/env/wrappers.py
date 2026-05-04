@@ -1,5 +1,3 @@
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="pygame.pkgdata")
 import gymnasium as gym
 import numpy as np
 import torch
@@ -14,6 +12,15 @@ class TronView(gym.Wrapper):
     green_alt = (20, 220, 20)
     red = (180, 20, 20)
     red_alt = (220, 20, 20)
+
+    @property
+    def state(self):
+        return self.env.unwrapped.state
+    
+    @property
+    def n_actions(self):
+        return self.env.unwrapped.n_actions
+
 
     def __init__(self, env, fps=10, scale=20):
         super().__init__(env)
@@ -57,22 +64,22 @@ class TronView(gym.Wrapper):
                 
         self._render()
     
-        self.prev1 = self.tron.bike1.pos.copy()
-        self.prev2 = self.tron.bike2.pos.copy()
+        self.prev1 = self.tron.pos1.copy()
+        self.prev2 = self.tron.pos2.copy()
         return state, info
     
     def step(self, action):
         state, reward, done, _, info = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
-        self.trails_screen.set_at((self.tron.bike1.pos[0], self.tron.bike1.pos[1]), self.green_alt)
-        self.trails_screen.set_at((self.tron.bike2.pos[0], self.tron.bike2.pos[1]), self.red_alt)
+        self.trails_screen.set_at((self.tron.pos1[0], self.tron.pos1[1]), self.green_alt)
+        self.trails_screen.set_at((self.tron.pos2[0], self.tron.pos2[1]), self.red_alt)
         self.trails_screen.set_at((self.prev1[0], self.prev1[1]), self.green)
         self.trails_screen.set_at((self.prev2[0], self.prev2[1]), self.red)
         self._render()
 
-        self.prev1 = self.tron.bike1.pos.copy()
-        self.prev2 = self.tron.bike2.pos.copy()
+        self.prev1 = self.tron.pos1.copy()
+        self.prev2 = self.tron.pos2.copy()
 
         # Input
         for event in self.pg.event.get():
@@ -159,65 +166,65 @@ class TronView(gym.Wrapper):
 
         return p1_dir, p2_dir
 
-def encode_observation(walls, bike1, bike2):
-    occ = (walls > 0).astype(np.float32)
+# def encode_observation(walls, bike1, bike2):
+#     occ = (walls > 0).astype(np.float32)
 
-    you = np.zeros_like(occ)
-    other = np.zeros_like(occ)
+#     you = np.zeros_like(occ)
+#     other = np.zeros_like(occ)
 
-    x, y = bike1
-    you[y, x] = 1.0
+#     x, y = bike1
+#     you[y, x] = 1.0
 
-    x, y = bike2
-    other[y, x] = 1.0
+#     x, y = bike2
+#     other[y, x] = 1.0
 
-    return np.stack([occ, you, other], axis=0)
+#     return np.stack([occ, you, other], axis=0)
 
-class TronImage(gym.ObservationWrapper):
-    """
-    Transforms the state representation to an image ready for a CNN.
-    Used by TronEgo by default.
-    """
+# class TronImage(gym.ObservationWrapper):
+#     """
+#     Transforms the state representation to an image ready for a CNN.
+#     Used by TronEgo by default.
+#     """
 
-    def __init__(self, env):
-        super().__init__(env)
-        tron = env.unwrapped.tron
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, tron.size, tron.size), dtype=np.float32)
+#     def __init__(self, env):
+#         super().__init__(env)
+#         tron = env.unwrapped.tron
+#         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(3, tron.size, tron.size), dtype=np.float32)
     
-    def observation(self, obs):
-        obs_img = encode_observation(*obs)
-        assert obs_img.shape == self.observation_space.shape, "Jason! Obs shape mismatch"
-        return obs_img
+#     def observation(self, obs):
+#         obs_img = encode_observation(*obs)
+#         assert obs_img.shape == self.observation_space.shape, "Jason! Obs shape mismatch"
+#         return obs_img
 
 
 
-class TronEgo(gym.Wrapper):
-    """
-    Assumes perspective of bike2 (agent)
-    Transforms observation space to rotate view such that agent always heads upwards.
-    Also reduces action space to [left, forward, right] relative to agent's perspective.
+# class TronEgo(gym.Wrapper):
+#     """
+#     Assumes perspective of bike2 (agent)
+#     Transforms observation space to rotate view such that agent always heads upwards.
+#     Also reduces action space to [left, forward, right] relative to agent's perspective.
 
-    orientation in [up, right, down, left]
-    """
+#     orientation in [up, right, down, left]
+#     """
 
-    def __init__(self, env):
-        super().__init__(env)
-        self.action_space = gym.spaces.Discrete(3)
+#     def __init__(self, env):
+#         super().__init__(env)
+#         self.action_space = gym.spaces.Discrete(3)
 
-    def reset(self, **kwargs):
-        state, info = self.env.reset(**kwargs)
-        self.orientation = 3  # First facing right and generally equal to absolute direction
-        return self.observation(state), info
+#     def reset(self, **kwargs):
+#         state, info = self.env.reset(**kwargs)
+#         self.orientation = 3  # First facing right and generally equal to absolute direction
+#         return self.observation(state), info
 
-    def step(self, action):
-        if not self.action_space.contains(action):
-            raise ValueError(utils.red(f"Invalid action: {action} ") + utils.yellow("Action should be 0 (left), 1 (forward), or 2 (right) relative to the agent's perspective."))
-        self.orientation = (self.orientation + (action - 1)) % 4  # Because (left, forward, right)
-        state, reward, done, _, info = self.env.step(self.orientation)
-        return self.observation(state), reward, done, _, info
+#     def step(self, action):
+#         if not self.action_space.contains(action):
+#             raise ValueError(utils.red(f"Invalid action: {action} ") + utils.yellow("Action should be 0 (left), 1 (forward), or 2 (right) relative to the agent's perspective."))
+#         self.orientation = (self.orientation + (action - 1)) % 4  # Because (left, forward, right)
+#         state, reward, done, _, info = self.env.step(self.orientation)
+#         return self.observation(state), reward, done, _, info
 
-    def observation(self, obs):
-        return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
+#     def observation(self, obs):
+#         return np.rot90(obs, k=self.orientation, axes=(1, 2)).copy()  # Copy to remove negative stride
 
 class TorchObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env, device):

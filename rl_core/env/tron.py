@@ -1,26 +1,10 @@
 import numpy as np
-from . import utils
 
 class Result:
     DRAW = 0
     BIKE2_CRASH = 1
     BIKE1_CRASH = 2
     PLAYING = -1
-
-class Bike:
-    
-    def __init__(self, pos):
-        self.pos = np.array(pos, dtype=np.int8)  # (x, y) !!!!
-
-    def move(self, vel, walls):
-        """Move bike if success and return True if crash"""
-        new_pos = self.pos + vel
-        if self.is_hit(walls, *new_pos):
-            return True
-        self.pos = new_pos
-
-    def is_hit(self, walls, x, y):
-        return not 0 <= y < len(walls) or not 0 <= x < len(walls[0]) or walls[y, x] != 0
 
 class Tron:
     
@@ -29,10 +13,10 @@ class Tron:
 
     def reset(self):
         self.walls = np.zeros((self.size, self.size), dtype=np.int8)
-        self.bike1 = Bike([self.size // 6, self.size // 2])
-        self.bike2 = Bike([5 * self.size // 6, self.size // 2])
-        self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
-        self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
+        self.pos1 = np.array([self.size // 6, self.size // 2], dtype=np.int8)
+        self.pos2 = np.array([5 * self.size // 6, self.size // 2], dtype=np.int8)
+        # self.walls[self.pos1[1], self.pos1[0]] = 1
+        # self.walls[self.pos2[1], self.pos2[0]] = 2
 
     def tick(self, dir1, dir2):
         """
@@ -46,21 +30,29 @@ class Tron:
                  1 - Bike2 collided
                  0 - Both bikes collided (draw)
         """
-        assert type(dir1) == np.ndarray and type(dir2) == np.ndarray, f"{utils.red('Invalid direction type :')} {type(dir1)}, {type(dir2)}"
-        assert dir1.shape == (2, ) and dir2.shape == (2, ), f"{utils.red('Invalid direction shape :')} {dir1.shape}, {dir2.shape}"
+        assert type(dir1) == np.ndarray and type(dir2) == np.ndarray, f"Invalid direction type : {type(dir1)}, {type(dir2)}"
+        assert dir1.shape == (2, ) and dir2.shape == (2, ), f"Invalid direction shape : {dir1.shape}, {dir2.shape}"
         
-        # Move bikes
-        bike1_hit = self.bike1.move(dir1, self.walls)
-        bike2_hit = self.bike2.move(dir2, self.walls)
+        # Mark previous cells
+        self.walls[self.pos1[1], self.pos1[0]] = 1
+        self.walls[self.pos2[1], self.pos2[0]] = 2
 
-        if (bike1_hit and bike2_hit) or all(self.bike1.pos == self.bike2.pos):
+        # Move bikes
+        self.pos1 = self.pos1 + dir1
+        self.pos2 = self.pos2 + dir2
+        self.pos1 = np.clip(self.pos1, 0, self.size - 1)
+        self.pos2 = np.clip(self.pos2, 0, self.size - 1)
+
+        # Detect crashes
+        crash1 = self.walls[self.pos1[1], self.pos1[0]] != 0
+        crash2 = self.walls[self.pos2[1], self.pos2[0]] != 0
+
+        if (crash1 and crash2) or all(self.pos1 == self.pos2):
             return Result.DRAW  
-        if bike1_hit:
+        if crash1:
             return Result.BIKE1_CRASH  
-        if bike2_hit:
+        if crash2:
             return Result.BIKE2_CRASH  
 
-        self.walls[self.bike1.pos[1], self.bike1.pos[0]] = 1
-        self.walls[self.bike2.pos[1], self.bike2.pos[0]] = 2
         return Result.PLAYING
         

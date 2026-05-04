@@ -38,7 +38,7 @@ class VecPoLEnv:
         self.pos[mask] = 0
         self.walls[mask] = 0
 
-        return self._obs(), {"result": 0, "state": (self.walls.copy(), self.pos.copy())} 
+        return VecPoLEnv.encode(self.state), {"state": self.state} 
 
     @TimerRegistry.wrap_fn("vec_pol.step")
     def step(self, actions: np.ndarray):
@@ -72,29 +72,13 @@ class VecPoLEnv:
 
         done = is_goal | crash
         
-        # obs = self._obs()
         self.reset(mask=done)  # Auto reset done envs
 
         if self.render:
             self.view()  # render
 
-        infos = {"state": (self.walls.copy(), self.pos.copy())}
-        return self._obs(), reward, done, None, infos
-
-    def _obs(self):
-        obs = np.zeros((self.num_envs, 3, self.size, self.size), dtype=np.float32)
-
-        # walls channel
-        obs[:, 0] = self.walls
-
-        # agent positions
-        env_ids = self.env_ids
-        obs[env_ids, 1, self.pos[:, 0], self.pos[:, 1]] = 1.0
-
-        # goal (same for all envs)
-        obs[:, 2, self.goal[0], self.goal[1]] = 1.0
-
-        return obs
+        infos = {"state": self.state}
+        return VecPoLEnv.encode(self.state), reward, done, None, infos
     
     def view(self):
         print("\033[H", end="")
@@ -150,8 +134,10 @@ class VecPoLEnv:
         obs[:, 2, goal[0], goal[1]] = 1.0
 
         return obs
-
-
+    
+    @property
+    def state(self):
+        return self.walls.copy(), self.pos.copy()
 
 if __name__ == "__main__":
     from tqdm import trange
@@ -173,10 +159,7 @@ if __name__ == "__main__":
             # print(obs)
             state = infos["state"]
             # print(state)
-            print(obs)
-            print()
             obs = VecPoLEnv.encode(state)
-            print(obs)
 
             break
             # copy_state = obs

@@ -12,13 +12,10 @@ public class TronBike
     // Returns true if crash
     public bool Move(Vector2Int vel, int[,] trails)
     {
-        Vector2Int newPos = pos + vel;
-
-        if (IsHit(trails, newPos.x, newPos.y))
-            return true;
-        
-        pos = newPos;
-        return false;
+        pos += vel;
+        pos.x = Mathf.Clamp(pos.x, 0, trails.GetLength(0) - 1);
+        pos.y = Mathf.Clamp(pos.y, 0, trails.GetLength(1) - 1);
+        return IsHit(trails, pos.x, pos.y);
     }
 
     public bool IsHitInDir(int[,] trails, Vector2Int dir)
@@ -29,14 +26,7 @@ public class TronBike
 
     public bool IsHit(int[,] trails, int x, int y)
     {
-        int height = trails.GetLength(0);
-        int width  = trails.GetLength(1);
-
-        if (y < 0 || y >= height) return true;
-        if (x < 0 || x >= width)  return true;
-        if (trails[x, y] != 0)     return true;
-
-        return false;
+        return trails[x, y] != 0;
     }
 }
 
@@ -60,11 +50,8 @@ public class Tron
     public void Reset()
     {
         trails = new int[width, height];
-
         bike1 = new TronBike(new Vector2Int(width / 6, height / 2));
         bike2 = new TronBike(new Vector2Int(5 * width / 6, height / 2));
-        trails[bike1.pos.x, bike1.pos.y] = 1;
-        trails[bike2.pos.x, bike2.pos.y] = 2;
     }
 
     // Returns:
@@ -75,6 +62,10 @@ public class Tron
     public GameState Step(Vector2Int dir1, Vector2Int dir2)
     {
         // Mark current positions as trails
+        trails[bike1.pos.x, bike1.pos.y] = 1;
+        trails[bike2.pos.x, bike2.pos.y] = 2;
+
+        // Move bikes
         bool bike1Hit = bike1.Move(dir1, trails);
         bool bike2Hit = bike2.Move(dir2, trails);
 
@@ -88,8 +79,6 @@ public class Tron
         if (bike2Hit)
             return GameState.Bike1Win;
 
-        trails[bike1.pos.x, bike1.pos.y] = 1;
-        trails[bike2.pos.x, bike2.pos.y] = 2;
 
         return GameState.Playing;
     }

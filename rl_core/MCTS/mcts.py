@@ -1,9 +1,10 @@
 import numpy as np
-from rich import print
+# from rich import print
 
 from rl_core.env import PoLEnv  
 from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.agents.utils import TimerRegistry
+from rl_core.env.heuristic import voronoi
 
 class Node:
     def __init__(self, state, n_actions, parent=None, action=None, terminal=False, reward=0):
@@ -18,19 +19,28 @@ class Node:
 
         self.N = 0
         self.W = 0.0
-        self.Q = 0.0
+    
+    @property
+    def Q(self):
+        return 0.0 if self.N == 0 else self.W / self.N
 
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backprop"""
 
-    def __init__(self, env: PoLEnv, envs: VecPoLEnv):
+    def __init__(self, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
         self.env = env  # For structured search
-        self.envs = envs  # For parallel rollouts
+        self.envs = envs  # For structured search
+        self.rollouts = rollouts
+        self.max_steps = max_steps
 
     @TimerRegistry.wrap_fn("MCTS.plan")
     def plan(self, root, sims=400):
+        # assert not root.terminal, "wtf m8"
+        assert not root.terminal, "Planning from a terminal state is not meaningful"
         for _ in range(sims):
+            # print("======", _, "=======")
             self.simulate(root)
+            # print(_, self.best_action(root), end="\r")
 
         return self.best_action(root)
 
@@ -46,8 +56,11 @@ class MCTS:
             node = self.expand(node)
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
-        # value = node.reward if node.terminal else self.rollout(node)
-        value = node.reward if node.terminal else self.rollout_vec(node)
+        # value = node.reward if node.terminal else self.rollout(node, self.max_steps)
+        # value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
+        value = node.reward if node.terminal else self.voronoi_value(node, self.max_steps)
+        # if node.terminal:
+            # print(f"Terminal ({value})")
 
         # backprop            
         self.backprop(node, value)
@@ -57,12 +70,17 @@ class MCTS:
         best = None
         best_score = -1e9
 
+
         for child in node.children:
-            uct = child.Q + c * np.sqrt(np.log(node.N + 1) / (child.N + 1))
+            if child.N == 0:
+                return child
+            uct = child.W/child.N + c*np.sqrt(np.log(node.N)/child.N)
+            # uct = child.Q + c * np.sqrt(np.log(node.N + 1) / (child.N + 1))
             if uct > best_score:
                 best_score = uct
                 best = child
 
+        # print(f"Selecting {best.action} ({best_score:.2f})")
         return best
 
     def expand(self, node: Node):
@@ -71,6 +89,7 @@ class MCTS:
 
         self.env.set_state(node.state)
         _, reward, done, _, _ = self.env.step(action)
+        # print(f"Expanding {action} ({reward}) {done=}")
 
         child = Node(
             self.env.state,
@@ -84,75 +103,98 @@ class MCTS:
         node.children[action] = child
         return child
 
-    @TimerRegistry.wrap_fn("MCTS.rollout")
-    def rollout(self, node, max_steps=200):
-        self.env.set_state(node.state)
+    # @TimerRegistry.wrap_fn("MCTS.rollout")
+    # def rollout(self, node, max_steps):
+    #     total = 0.0
+    #     for _ in range(self.rollouts):
+    #         self.env.set_state(node.state)
+    #         # for _ in range(max_steps):
+    #         while True:
+    #             _, r, done, _, _ = self.env.step(self.env.sample_action())
 
-        total = 0.0
-        for _ in range(max_steps):
-            a = np.random.randint(self.env.n_actions)
-            _, r, done, _, _ = self.env.step(a)
-
-            total += r
-            if done:
-                break
-
-        return total
+    #             total += r
+    #             if done:
+    #                 break
+        
+    #     return total / self.rollouts
     
     @TimerRegistry.wrap_fn("MCTS.rollout_vec")
-    def rollout_vec(self, node, max_steps=200):
+    def rollout_vec(self, node, max_steps):
         self.envs.set_state(node.state)
-        B = self.envs.num_envs
 
-        alive = np.ones(B, dtype=np.float32)
-        total = np.zeros(B, dtype=np.float32)
-        for _ in range(max_steps):
+        runs = 0
+        total = 0.0
+        # returns = np.zeros(self.envs.num_envs, dtype=np.float32)
+        # for _ in range(max_steps):
+        while True:
             actions = self.envs.sample_actions()
             _, r, done, _, _ = self.envs.step(actions)
 
-            total += r * alive
-            alive *= (1.0 - done)
-            if not alive.any():
-                break
-
-        return total.mean()
+            # returns += r
+            if done.any():
+                self.envs.set_state(node.state, mask=done)
+                # total += returns[done].sum()
+                # assert (returns[~done] == 0).all(), "Non-done envs should have zero returns"
+                # returns[done] = 0.0
+                total += r.sum()
+                runs += done.sum()
+                if runs >= self.rollouts:
+                    break
+        
+        return total / runs
+    
+    @TimerRegistry.wrap_fn("MCTS.voronoi_value")
+    def voronoi_value(self, node, max_steps):
+        state = node.state
+        val = voronoi(state[0], state[2], state[1])  # flip positions because agent is bike2
+        print(f"{val:.2f}")
+        return val
 
     def backprop(self, node, value):
         while node is not None:
             node.N += 1
-            node.W += value
-            node.Q = node.W / node.N
+            node.W += value            
             node = node.parent
 
     def best_action(self, root):
         """Return the action of the most visited child."""
-        return max(root.children, key=lambda x: x.N).action
+        assert any(c is not None for c in root.children), "No children expanded"
+        valid_children = [c for c in root.children if c is not None]
+        best = max(valid_children, key=lambda c: c.N).action
+        # for i, child in enumerate(root.children):
+            # print(i, child.N, child.Q / child.N)
+        # print(f"Best action from {[c.N for c in valid_children]} is {best}")
+        return best
 
 if __name__ == "__main__":
     from tqdm import trange
-    SIZE=6
+    SIZE=25
     NUM_ENVS = 64
     actual_env = PoLEnv(SIZE)
     sim_env = PoLEnv(SIZE)
     sim_envs = VecPoLEnv(NUM_ENVS, SIZE)
 
     wins = 0
-    runs = 100
+    runs = 1
     # for _ in range(runs):
     history = [[] for _ in range(runs)]
-    for i in trange(runs):
+    for i in range(runs):
         actual_env.reset()
         mcts = MCTS(sim_env, sim_envs)
         root = Node(actual_env.state, actual_env.n_actions)
 
         steps = 0
         while True:
-            action = mcts.plan(root, sims=503)
-
+            action = mcts.plan(root, sims=200)
             obs, reward, done, _, _ = actual_env.step(action)
 
-            root = root.children[action]  # Move down the tree
-            root.parent = None
+            child = root.children[action]  # Reuse the subtree if it exists
+            if child is None:
+                root = Node(actual_env.state, actual_env.n_actions)
+            else:
+                child.parent = None
+                root = child
+
             history[i].append(action)
 
             steps += 1
