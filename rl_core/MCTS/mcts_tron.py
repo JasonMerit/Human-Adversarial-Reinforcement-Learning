@@ -8,9 +8,6 @@ from rl_core.agents.utils import TimerRegistry
 from .mcts import MCTS, Node
 from .vec_env import VecTronEnv
 
-import gymnasium as gym
-from rl_core.env import Tron, Result
-
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -48,15 +45,9 @@ if __name__ == "__main__":
 
         steps = 0
         while True:
-            # with HiddenPrints():
             action = mcts.plan(root, sims=200)
-            # action = A[i][steps]
 
             obs, reward, done, _, _ = actual_env.step(action)
-
-            # if done:
-            #     print("[bold red] ENV IS DONE")
-
 
             child = root.children[action]  # Reuse the subtree if it exists
             if child is None:

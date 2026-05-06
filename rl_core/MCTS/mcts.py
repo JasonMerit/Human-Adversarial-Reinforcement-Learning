@@ -23,9 +23,14 @@ class Node:
     @property
     def Q(self):
         return 0.0 if self.N == 0 else self.W / self.N
+    
+    @property
+    def is_expanded(self):
+        return len(self.untried) == 0
+
 
 class MCTS:
-    """Returns only interested in terminal states, otherwise value must be cumulative discounted when backprop"""
+    """Returns only interested in terminal states, otherwise value must be cumulative discounted when backup"""
 
     def __init__(self, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
         self.env = env  # For structured search
@@ -44,15 +49,15 @@ class MCTS:
 
         return self.best_action(root)
 
-    def simulate(self, root):
+    def simulate(self, root: Node):
         node = root
 
         # selection
-        while not node.untried and not node.terminal:  # fully expanded and non-terminal
+        while node.is_expanded and not node.terminal:  # fully expanded and non-terminal
             node = self.select(node)
 
         # expansion
-        if node.untried and not node.terminal:  # non-terminal and not fully expanded
+        if not node.is_expanded and not node.terminal:  # non-terminal and not fully expanded
             node = self.expand(node)
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
@@ -62,8 +67,8 @@ class MCTS:
         # if node.terminal:
             # print(f"Terminal ({value})")
 
-        # backprop            
-        self.backprop(node, value)
+        # backup            
+        self.backup(node, value)
 
     def select(self, node, c=1.4) -> Node:
         """Select child with highest UCT value."""
@@ -150,7 +155,7 @@ class MCTS:
         print(f"{val:.2f}")
         return val
 
-    def backprop(self, node, value):
+    def backup(self, node, value):
         while node is not None:
             node.N += 1
             node.W += value            

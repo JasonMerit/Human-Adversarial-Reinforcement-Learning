@@ -159,17 +159,3 @@ if __name__ == "__main__":
         agent.learn(dataset)
 
         dataset = dataset[-10000:]  # replay buffer
-
-wood chopper 30 / min
-stone miner 20 / min
-
-    planks 2 : 1
-    stakes 45 = 3 : 2
-
-    bricks 30 = 3 : 2
-    slabs 40 = 2 : 1
-
-    Light 120/120 = 4/6 = 2/3
-
-
-WORLD 2 COIN 42  time 52 
