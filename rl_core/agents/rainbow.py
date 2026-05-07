@@ -54,19 +54,19 @@ class DuelingNetwork(nn.Module):
         channels, size, _ = obs_shape
         self.n_actions = n_actions
 
-        # self.cnn = nn.Sequential(
-        #     nn.Conv2d(channels, 16, 3, 1, 1),
-        #     nn.ReLU(),
-        #     nn.Conv2d(16, 32, 3, 1, 1),
-        #     nn.ReLU(),
-        #     nn.Flatten(),
-        # )
-
         self.cnn = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(channels * size * size, 64),
+            nn.Conv2d(channels, 16, 3, 1, 1),
             nn.ReLU(),
+            nn.Conv2d(16, 32, 3, 1, 1),
+            nn.ReLU(),
+            nn.Flatten(),
         )
+
+        # self.cnn = nn.Sequential(
+        #     nn.Flatten(),
+        #     nn.Linear(channels * size * size, 64),
+        #     nn.ReLU(),
+        # )
 
         with torch.no_grad():
             dummy = torch.zeros(1, channels, size, size)
@@ -238,6 +238,8 @@ class RainbowAgent:
         self.target_network.reset_noise()
 
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample(self.batch_size)
+        obs = obs[:, 0] if self.name == "A" else obs[:, 1]  # TODO Provide agent specific encoding in PER init after defining one for each agent in envs
+        next_obs = next_obs[:, 0] if self.name == "A" else next_obs[:, 1]
 
         if self.c51:
             loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones)

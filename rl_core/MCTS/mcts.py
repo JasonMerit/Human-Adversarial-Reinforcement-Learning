@@ -62,8 +62,8 @@ class MCTS:
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
         # value = node.reward if node.terminal else self.rollout(node, self.max_steps)
-        # value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
-        value = node.reward if node.terminal else self.voronoi_value(node, self.max_steps)
+        value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
+        # value = node.reward if node.terminal else self.voronoi_value(node, self.max_steps)
         # if node.terminal:
             # print(f"Terminal ({value})")
 
@@ -152,7 +152,7 @@ class MCTS:
     def voronoi_value(self, node, max_steps):
         state = node.state
         val = voronoi(state[0], state[2], state[1])  # flip positions because agent is bike2
-        print(f"{val:.2f}")
+        # print(f"{val:.2f}")
         return val
 
     def backup(self, node, value):
@@ -173,7 +173,7 @@ class MCTS:
 
 if __name__ == "__main__":
     from tqdm import trange
-    SIZE=25
+    SIZE=15
     NUM_ENVS = 64
     actual_env = PoLEnv(SIZE)
     sim_env = PoLEnv(SIZE)

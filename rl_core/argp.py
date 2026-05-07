@@ -33,7 +33,7 @@ class Args:
     """the ending epsilon for exploration"""
     exploration_fraction: float = 0.2#0.5
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
-    learning_starts: int = 100#1000
+    learning_starts: int = 1000
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
@@ -105,7 +105,7 @@ def read_args():
 
     if args.debug:
         args.save = args.track = False
-        # args.num_envs = 5
+        args.num_envs = 5
         # args.total_checkpoints = 1
         # args.total_timesteps = 400
         # args.render = True

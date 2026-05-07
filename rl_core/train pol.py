@@ -76,19 +76,36 @@ if __name__ == "__main__":
     log_every = max(1, total_loops // 100)
     save_every = max(1, total_loops // args.total_checkpoints)
     
-    # Env
-    envs = VecTronDuoEnv(args.num_envs, args.size, render=args.render)
-    obs_shape = envs.obs_shape
-    n_actions = envs.n_actions
+
+    # Envs and agents
+    if args.vec:
+        envs = VecPoLEnv(args.num_envs, args.size, args.render)
+        obs_shape = envs.obs_shape
+        n_actions = envs.n_actions
+    else:
+        envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
+        obs_shape = envs.single_observation_space.shape
+        n_actions = envs.single_action_space.n
 
     obs, infos = envs.reset()
     state = infos["state"]
 
+    # envs = gym.vector.SyncVectorEnv([make_env(i, args) for i in range(args.num_envs)])
+    # obs_shape = envs.single_observation_space.shape[-3:]  # Ignore the player channel
+    # n_actions = envs.single_action_space.nvec[0] if not args.pol else envs.single_action_space.n
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
+    # agent1 = RainbowAgent(obs_shape, n_actions, args, device, writer, "A")
     Agent = MCTSAgent if args.mcts else RainbowAgent
     agent1 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "A")
-    agent2 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "B")
+
+    # PoL Specific
+    # env_eval = PoLEnv(args.size, True) if args.pol else None
+    env_eval = PoLEnv(args.size) if args.pol else None
+    eval_every = 10  # Evaluate every 10 learning steps
+    shortest_path = float('inf')
+    win_combo = 0
+    from rl_core.eval.pol_eval import eval
 
     # Logging
     # TimerRegistry.disable()
@@ -101,43 +118,60 @@ if __name__ == "__main__":
     from collections import deque
     ep_lens = deque(maxlen=100)
 
+    
     for global_step in range(1, total_loops + 1):
-        TimerRegistry.start()
         # agent1.q_network.reset_noise()
         # agent2.q_network.reset_noise()
-        obs1, obs2 = obs[:, 0], obs[:, 1]
-        a1 = agent1.act(obs1)
-        a2 = agent2.act(obs2)
+        # obs1, obs2 = obs[:, 0], obs[:, 1]
+        a1 = agent1.select_action(obs)
+        # a1 = agent1.act(obs1)
+        # a2 = np.random.randint(0, n_actions, size=args.num_envs)  # Random actions for agent2
+        # a2 = agent2.act(obs2)
 
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-        explore_mask = np.random.rand(args.num_envs) < epsilon
-        a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
+        # explore_mask = np.random.rand(args.num_envs) < epsilon
+        # a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
 
-        actions = np.stack([a1, a2], axis=1) 
+        # actions = np.stack([a1, a2], axis=1) 
+        actions = a1
 
         next_obs, rewards, dones, _, infos = envs.step(actions)
         next_state = infos["state"]
         agent1.rb.add(state, a1, rewards, next_state, dones)
-        agent2.rb.add(state, a2, -rewards, next_state, dones)
+        # agent1.rb.add(obs, a1, rewards, next_obs, dones, infos)
+        # agent1.rb.add(obs1, a1, rewards, next_obs1, dones)
+        # agent2.rb.add(obs2, a2, -rewards, next_obs2, dones)
 
+        # obs = next_obs
         obs, state = next_obs, next_state
         episode_lengths += 1
-        TimerRegistry.stop("env_step")
 
         # Training
         if global_step > learn_start_loop:
-            for _ in range(train_count):
-                agent1.learn()
-                agent2.learn()
-            if agent1.learning_steps > 10:
-                break
+            # for _ in range(train_count):
+            agent1.learn()
+            # if agent1.learning_steps > 10:
+            #     break
+                # agent2.learn()
 
             # update target network
             if global_step % target_every == 0:
                 agent1.update_target()
-                agent2.update_target()
+                # agent2.update_target()
+            
+            if global_step % eval_every == 0:
+                eval_result = eval(agent1.q_network, env_eval, device)
+
+                shortest_path = min(shortest_path, eval_result)
+                if eval_result == env_eval.size * 2 - 2:  # Shortest path in an empty grid is size*2 - 2
+                    win_combo += 1
+                    if win_combo == 10:  # If the agent has solved the environment 10 times in a row
+                        print("[bold green]Agent has consistently solved the environment!")
+                        break
+                else:
+                    win_combo = 0
         
         
         # Logging
@@ -161,13 +195,15 @@ if __name__ == "__main__":
             # print(f"{progress*100:.1f}% - {epsilon=:.3f}")
             # epi_len = total_episode_lengths / total_episodes if total_episodes > 0 else 0
             avg = sum(ep_lens) / 100
-            print(f"{progress*100:.1f}% - SPS: {sps} - epi_len: {avg:.2f} - {eta/60:.1f} minutes left...")
+            print(f"{progress*100:.1f}% - SPS: {sps} - epi_len: {avg:.2f} - eval_len {shortest_path} (x{win_combo}) - {eta/60:.1f} minutes left...")
+            # print(f"{progress*100:.1f}% - SPS: {sps} - Results: {results} - epi_len: {epi_len:.2f} - {eta/60:.1f} minutes left...")
         
         # env_step = global_step * args.num_envs
         # if args.save and global_step % save_every == 0:
         #     agent1.save(save_folder + f"A_{env_step}.pth")
         #     agent2.save(save_folder + f"B_{env_step}.pth")
 
+    envs.close()
     TimerRegistry.report()
 
     if args.track:
@@ -188,3 +224,9 @@ if __name__ == "__main__":
         if args.hpc:  # Duplicate logs
             shutil.copy(f"rl_core/HPC/Out_{args.job_index}.out", save_folder + "Out.out")
             shutil.copy(f"rl_core/HPC/Err_{args.job_index}.err", save_folder + "Err.err")
+
+    # if isinstance(agent1, RainbowAgent):        
+    #     weights = agent1.q_network.adv_head[-1].weight.data.cpu().numpy().mean(axis=1)
+    #     expected = np.array( [ 0.00032227,  0.03281876,  0.03462983, -0.00111074])
+    #     # print("Agent1 last layer weights:", agent1.q_network.adv_head[-1].weight.data.cpu().numpy().mean(axis=1))
+    #     assert np.allclose(weights, expected, atol=1e-2), f"Unexpected weights {weights}, expected {expected}"

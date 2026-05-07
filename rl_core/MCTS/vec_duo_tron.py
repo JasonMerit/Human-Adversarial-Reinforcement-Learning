@@ -5,7 +5,7 @@ import time, os, sys
 from rl_core.env import Result
 from rich import print
 
-class VecDuoTronEnv:
+class VecTronDuoEnv:
     """
     Vectorized Duo Tron environment for parallel rollouts.
 
@@ -59,7 +59,7 @@ class VecDuoTronEnv:
         self.h1[mask] = 1
         self.h2[mask] = 3
 
-        return VecDuoTronEnv.encode(self.state), {"state": self.state}
+        return VecTronDuoEnv.encode(self.state), {"state": self.state}
     
     def step(self, joint_actions: np.ndarray):
         assert isinstance(joint_actions, np.ndarray), f"Expected joint_actions to be a numpy array, got {type(joint_actions)}"
@@ -118,7 +118,7 @@ class VecDuoTronEnv:
         if self.render:
             self.view()  # render
         
-        obs = VecDuoTronEnv.encode(self.state)
+        obs = VecTronDuoEnv.encode(self.state)
         self.reset(mask=done)  # Auto reset done envs
         
         infos = {"result": result, "state": self.state}
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     print("Testing basic functionality... ", end="")
     SIZE=6
     NUM_ENVS = 4
-    envs = VecDuoTronEnv(NUM_ENVS, SIZE, render=False)
+    envs = VecTronDuoEnv(NUM_ENVS, SIZE, render=False)
     envs.reset()
     for steps in range(100):
         actions = envs.sample_actions()
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     print("Testing set_states consistency... ", end="")
     SIZE=6
     NUM_ENVS = 64
-    envs = VecDuoTronEnv(NUM_ENVS, SIZE)
+    envs = VecTronDuoEnv(NUM_ENVS, SIZE)
     envs.reset()
     actions = np.random.randint(3, size=(6, NUM_ENVS, 2), dtype=np.int8)
     states = []
@@ -289,7 +289,7 @@ if __name__ == "__main__":
     np.random.seed(23)
 
     render=False
-    vec = VecDuoTronEnv(N, SIZE, render)
+    vec = VecTronDuoEnv(N, SIZE, render)
     vec.reset()
     single_envs = [TronDuoEnv(SIZE) for _ in range(N)]
 
@@ -317,7 +317,7 @@ if __name__ == "__main__":
     SIZE=7
     NUM_ENVS = 7
     render=False
-    envs = VecDuoTronEnv(NUM_ENVS, SIZE, render)
+    envs = VecTronDuoEnv(NUM_ENVS, SIZE, render)
     obs, _ = envs.reset()
 
     mask = np.array([True, False, True, False, True, False, False])

@@ -29,11 +29,13 @@ class TronEnv(gym.Env):
             os.system('cls')
         self.render = render
 
-
         self.obs_shape = (3, size, size)
         self.n_actions = 3  # up, right, down, left
         self.action_space = gym.spaces.Discrete(self.n_actions)
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=self.obs_shape, dtype=np.float32)
+    
+    def sample_action(self):
+        return np.random.randint(self.n_actions, dtype=np.int8)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -190,6 +192,7 @@ class TronDuoEnv(gym.Env):
         self.tron = Tron(size)
         self.size = size
         self.n_actions = 3
+        self.obs_shape = (3, size, size)
         self.action_space = gym.spaces.MultiDiscrete([self.n_actions, self.n_actions])  # (left, forward, right) for each bike relative to their current heading
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, size, size), dtype=np.float32)
 
