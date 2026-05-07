@@ -22,12 +22,6 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
+echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
 python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 25
-# for i in {1..5}
-# do
-#     echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
-#     # python -m rl_core.train_ppo --exp-name PPO
-#     python -m rl_core.rainbow.train --exp-name $LSB_JOBID --total_timesteps 10_000_000
-#     # python -m rl_core.self_train_pool --exp-name Pooling --no-save-model --total_timesteps 10 --num-envs 1
-#     echo ""
-# done
+echo "====== [$(date)] Finished $LSB_JOBID ($i) ======"

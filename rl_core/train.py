@@ -131,8 +131,6 @@ if __name__ == "__main__":
             for _ in range(train_count):
                 agent1.learn()
                 agent2.learn()
-            if agent1.learning_steps > 10:
-                break
 
             # update target network
             if global_step % target_every == 0:
