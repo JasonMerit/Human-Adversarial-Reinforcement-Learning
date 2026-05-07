@@ -171,7 +171,7 @@ if __name__ == "__main__":
     if args.track:
         if args.save:
             agent1.save(save_folder + f"A.pth")
-            # agent2.save(save_folder + f"B.pth")
+            agent2.save(save_folder + f"B.pth")
 
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({

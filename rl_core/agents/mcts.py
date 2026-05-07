@@ -17,4 +17,19 @@ if __name__ == "__main__":
     SIZE=5
     NUM_ENVS=5
     agent = MCTSAgent(TronDuoEnv(SIZE), VecTronDuoEnv(NUM_ENVS,SIZE), rollouts=100)
+    env = TronDuoEnv(SIZE)
+    env.reset()
+    state = infos["state"]
+
+    # Populate buffer with random samples just to have something to train on
+    for _ in range(200):
+        action = env.action_space.sample()
+        next_obs, reward, done, _, infos = env.step(action)
+        state = infos["state"]
+        agent.rb.add(state, action, reward, next_state, done)
+        next_state = state
+
+        if done:
+            env.reset()
+            print("kek")
 
