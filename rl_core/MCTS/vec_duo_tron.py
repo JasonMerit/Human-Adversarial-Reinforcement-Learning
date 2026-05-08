@@ -108,11 +108,13 @@ class VecTronDuoEnv:
         self.pos2 = new_pos2
 
         # ----- rewards -----
-        reward = np.zeros(B, dtype=np.float32)
+        # reward = np.zeros(B, dtype=np.float32)
+        reward = np.full(B, self.reward_dict[Result.PLAYING], dtype=np.float32)
 
-        reward[result == Result.BIKE1_CRASH] = 1
-        reward[result == Result.BIKE2_CRASH] = -1
-        reward[result == Result.DRAW] = 0
+        reward[result == Result.BIKE1_CRASH] = self.reward_dict[Result.BIKE1_CRASH]
+        reward[result == Result.BIKE2_CRASH] = self.reward_dict[Result.BIKE2_CRASH]
+        reward[result == Result.DRAW] = self.reward_dict[Result.DRAW]
+        
 
         done = result != Result.PLAYING
         if self.render:
