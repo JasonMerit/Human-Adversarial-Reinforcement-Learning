@@ -116,15 +116,15 @@ class VecTronDuoEnv:
         reward[result == Result.DRAW] = self.reward_dict[Result.DRAW]
         
 
-        done = result != Result.PLAYING
+        dones = result != Result.PLAYING
         if self.render:
             self.view()  # render
         
         obs = VecTronDuoEnv.encode(self.state)
-        self.reset(mask=done)  # Auto reset done envs
+        self.reset(mask=dones)  # Auto reset dones envs
         
         infos = {"result": result, "state": self.state}
-        return obs, reward, done, None, infos
+        return obs, reward, dones, None, infos
 
     def _is_hit(self, pos):
         x = pos[:, 0]
