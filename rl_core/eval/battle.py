@@ -19,14 +19,21 @@ def make_rainbow(path, obs_shape, n_actions):
     from rl_core.agents.rainbow import DuelingNetwork
     return DuelingNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
+# def get_agent_files(agent_folder, num_agents):
+#     # Select the appropriate agent class based on the file name
+#     # find all files ending in .pth in the given path
+#     agent_folder = Path("runs/") / agent_folder
+#     print(agent_folder)
+#     files = [f for f in os.listdir(agent_folder) if f.endswith(".pth")]
+#     print(files)
+#     # Sort agents based on indx, e.g. A_5000.pth should be after A_4000.pth
+#     files.sort(key=lambda x: int(x.split("_")[1].split(".")[0]), reverse=True)
+#     print(files)
+#     return [os.path.join(agent_folder, f) for f in files[:num_agents]]
+
 def get_agent_files(agent_folder, num_agents):
-    # Select the appropriate agent class based on the file name
-    # find all files ending in .pth in the given path
-    agent_folder = Path("runs/") / agent_folder
-    files = [f for f in os.listdir(agent_folder) if f.endswith(".pth")]
-    # Sort agents based on indx, e.g. A_5000.pth should be after A_4000.pth
-    files.sort(key=lambda x: int(x.split("_")[1].split(".")[0]), reverse=True)
-    return [os.path.join(agent_folder, f) for f in files[:num_agents]]
+    kek = Path("runs/") / agent_folder
+    return kek / "A.pth", kek / "B.pth"
     
 def rainbow_act(policy, obs):
     with torch.no_grad():
@@ -46,8 +53,9 @@ def play(agent1, agent2, env: TronDuoEnv):
     kek = 0
     while True:
         obs1, obs2 = obs[:, 0], obs[:, 1]
-        a1, a2 = cleanrain_act(agent1, obs1), cleanrain_act(agent2, obs2)
+        # a1, a2 = cleanrain_act(agent1, obs1), cleanrain_act(agent2, obs2)
         # a1, a2 = rainbow_act(agent1, obs1), rainbow_act(agent2, obs1)  # Use the loaded model to select an action
+        a1, a2 = agent1.act(obs1), agent2.act(obs2)
         # obs, _, done, _, info = env.step(a1)
         obs, _, done, _, info = env.step([a1, a2])
         kek += 1
@@ -63,17 +71,16 @@ def battle(folder1, folder2):
     size = 25
     env = TronView(TronDuoEnv(size))
     env = TorchObservationWrapper(env, device="cpu")
-
-    n_actions = env.action_space.nvec[0]           # should be 3
-    obs_shape = env.observation_space.shape[-3:]  # Ignore the stacked observations
+    n_actions = env.unwrapped.n_actions
+    obs_shape = env.unwrapped.obs_shape
 
     if folder2 == "":
         folder = Path("runs") / folder1
         path1, path2 = folder / "A.pth", folder / "B.pth"
         path1, path2 = get_agent_files(folder1, num_agents=2)
         # agent1, agent2 = make_clean_rainbow(path1, obs_shape), make_clean_rainbow(path2, obs_shape)
-        # agent1, agent2 = make_rainbow(path1), make_rainbow(path2)
-        agent1, agent2 = make_dqn(path1, obs_shape), make_dqn(path2, obs_shape)
+        agent1, agent2 = make_rainbow(path1, obs_shape, n_actions), make_rainbow(path2, obs_shape, n_actions)
+        # agent1, agent2 = make_dqn(path1, obs_shape), make_dqn(path2, obs_shape)
 
     else:
         raise Exception("Currently only supports self-play. Please provide a single folder with two checkpoints for the agents.")

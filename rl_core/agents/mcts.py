@@ -6,20 +6,23 @@ from rl_core.MCTS.mcts import MCTS, Node
 
 
 class MCTSAgent(RainbowAgent):
-    def __init__(self, env, envs, rollouts=100):
-        super().__init__(env.obs_shape, env.n_actions)
+    def __init__(self, rain_args, env, envs, rollouts=100):
+        super().__init__(rain_args)
         self.mcts = MCTS(env, envs, rollouts)
 
 
 if __name__ == "__main__":
     from ..env import TronDuoEnv
     from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
+    # from rl_core..argp import read_args
     SIZE=5
     NUM_ENVS=5
-    agent = MCTSAgent(TronDuoEnv(SIZE), VecTronDuoEnv(NUM_ENVS,SIZE), rollouts=100)
     env = TronDuoEnv(SIZE)
     obs, info = env.reset()
     state = info["state"]
+    rain_args = (env.obs_shape, env.n_actions, state, env.encode, args, device, None, "A")
+    agent = MCTSAgent(TronDuoEnv(SIZE), VecTronDuoEnv(NUM_ENVS,SIZE), rollouts=100)
+
 
     # Populate buffer with random samples just to have something to train on
     for _ in range(200):
