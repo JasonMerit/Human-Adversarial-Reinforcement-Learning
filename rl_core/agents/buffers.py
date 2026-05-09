@@ -10,18 +10,24 @@ class ReplayBuffer:
         self.num_envs = args.num_envs
         self.encode = state_encode_fn
         
-        size = args.buffer_size
+        # replay storage
         self.state_storage = []
         self.next_state_storage = []
         for array in state_example:  # Dynamic tuple length
-            assert isinstance(array, np.ndarray), f"Expected state example to be a tuple of numpy arrays, got {type(array)}"
-            shape, dtype = array.shape[1:], array.dtype
-            self.state_storage.append(np.empty((size, *shape), dtype=dtype))
-            self.next_state_storage.append(np.empty((size, *shape), dtype=dtype))
+            if isinstance(array, np.ndarray):
+                shape, dtype = array.shape[1:], array.dtype
+                self.state_storage.append(np.empty((self.size, *shape), dtype=dtype))
+                self.next_state_storage.append(np.empty((self.size, *shape), dtype=dtype))
 
-        self.action = np.empty((args.buffer_size,), dtype=np.int8)
-        self.reward = np.empty((args.buffer_size,), dtype=np.float32)
-        self.done = np.empty((args.buffer_size,), dtype=np.bool_)
+            elif isinstance(array, (int, float)):
+                self.state_storage.append(np.empty((self.size,), dtype=type(array)))
+                self.next_state_storage.append(np.empty((self.size,), dtype=type(array)))
+            else:
+                raise TypeError(f"Expected state example to be a tuple of numpy arrays, got {type(array)}")
+
+        self.action = np.empty((self.size,), dtype=np.int8)
+        self.reward = np.empty((self.size,), dtype=np.float32)
+        self.done = np.empty((self.size,), dtype=np.bool_)
 
         self.count = 0
         self.real_size = 0
@@ -64,12 +70,13 @@ class ReplayBuffer:
     def update(self, data_idxs, priorities):
         pass  # No priorities to update in a standard replay buffer
 
-class PrioritizedReplayBuffer:
+class PrioritizedReplayBuffer(ReplayBuffer):
     def __init__(self, state_example: tuple, state_encode_fn: callable, args, device):
+        super().__init__(state_example, state_encode_fn, args, device)
         self.tree = SumTree(size=args.buffer_size)
-        self.device = device
-        self.encode = state_encode_fn
-        self.size = args.buffer_size
+        # self.device = device
+        # self.encode = state_encode_fn
+        # self.size = args.buffer_size
 
         # PER params
         self.eps = args.per_eps
@@ -78,20 +85,27 @@ class PrioritizedReplayBuffer:
         self.max_priority = 1.0
 
         # replay storage
-        self.state_storage = []
-        self.next_state_storage = []
-        for array in state_example:  # Dynamic tuple length
-            assert isinstance(array, np.ndarray), f"Expected state example to be a tuple of numpy arrays, got {type(array)}"
-            shape, dtype = array.shape[1:], array.dtype
-            self.state_storage.append(np.empty((self.size, *shape), dtype=dtype))
-            self.next_state_storage.append(np.empty((self.size, *shape), dtype=dtype))
+        # self.state_storage = []
+        # self.next_state_storage = []
+        # for array in state_example:  # Dynamic tuple length
+        #     if isinstance(array, np.ndarray):
+        #         shape, dtype = array.shape[1:], array.dtype
+        #         self.state_storage.append(np.empty((self.size, *shape), dtype=dtype))
+        #         self.next_state_storage.append(np.empty((self.size, *shape), dtype=dtype))
 
-        self.action = np.empty((self.size,), dtype=np.int8)
-        self.reward = np.empty((self.size,), dtype=np.float32)
-        self.done = np.empty((self.size,), dtype=np.bool_)
+        #     elif isinstance(array, (int, float)):
+        #         self.state_storage.append(np.empty((self.size,), dtype=type(array)))
+        #         self.next_state_storage.append(np.empty((self.size,), dtype=type(array)))
 
-        self.count = 0
-        self.real_size = 0
+        #     else:
+        #         raise TypeError(f"Expected state example to be a tuple of numpy arrays, got {type(array)}")
+
+        # self.action = np.empty((self.size,), dtype=np.int8)
+        # self.reward = np.empty((self.size,), dtype=np.float32)
+        # self.done = np.empty((self.size,), dtype=np.bool_)
+
+        # self.count = 0
+        # self.real_size = 0
 
     def add(self, state, action, reward, next_state, done):
         batch_size = action.shape[0]  # should equal num_envs
