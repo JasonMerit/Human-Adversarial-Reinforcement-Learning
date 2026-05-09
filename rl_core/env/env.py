@@ -209,13 +209,13 @@ class TronDuoEnv(gym.Env):
         self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
         return TronDuoEnv.encode(self.state), {'result': 0}
     
-    def step(self, action : np.ndarray):
-        assert self.action_space.contains(action), f"[bold red]Jason! Invalid Action {action}"
+    def step(self, joint_action : np.ndarray):
+        assert self.action_space.contains(joint_action), f"[bold red]Jason! Invalid Action {joint_action}"
 
-        # a0, a1 = int(action[0]), int(action[1])
+        # a0, a1 = int(joint_action[0]), int(joint_action[1])
 
-        self.heading1 = (self.heading1 + (action[0] - 1)) % 4  # Because (left, forward, right)
-        self.heading2 = (self.heading2 + (action[1] - 1)) % 4  # Because (left, forward, right)
+        self.heading1 = (self.heading1 + (joint_action[0] - 1)) % 4  # Because (left, forward, right)
+        self.heading2 = (self.heading2 + (joint_action[1] - 1)) % 4  # Because (left, forward, right)
         
         dir1 = TronEnvBase.action_mapping[self.heading1]
         dir2 = TronEnvBase.action_mapping[self.heading2]

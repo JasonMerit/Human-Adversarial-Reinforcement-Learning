@@ -2,7 +2,8 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from . import utils
+from . import utils, TronDuoEnv, TronEnvBase
+from .tron import Tron, Result
 
 class TronView(gym.Wrapper):
 
@@ -69,7 +70,7 @@ class TronView(gym.Wrapper):
         return state, info
     
     def step(self, action):
-        state, reward, done, _, info = self.env.step(action)
+        result = self.env.step(action)
         
         self.screen.blit(self.background, (0, 0))
         self.trails_screen.set_at((self.tron.pos1[0], self.tron.pos1[1]), self.green_alt)
@@ -91,13 +92,9 @@ class TronView(gym.Wrapper):
                     self.pg.quit()
                     exit()
                 
-                # if event.key == self.pg.K_s:
-                #     # Save state as state.npy
-                #     np.save("state.npy", state)
-
         self.clock.tick(self.fps)
         
-        return state, reward, done, _, info
+        return result
 
     def _render(self):
         self.screen.blit(self.pg.transform.scale(self.trails_screen, self.window_size), (0, 0))
@@ -167,10 +164,83 @@ class TronView(gym.Wrapper):
         return p1_dir, p2_dir
 
 
-class TronPlay(gym.Wrapper):
+class TronPlay(TronDuoEnv):
+    """Take control of the first agent and play against the provided opponent policy"""
 
-    def __init__(self, env):
-        super().__init__(env)
+    def __init__(self,  policy: callable, size=25, render=False):
+        super().__init__(size, render)
+        self.policy = policy
+        import pygame
+        self.pg = pygame
+    
+    def _process_input(self):
+        for event in self.pg.event.get():
+            if event.type == self.pg.KEYDOWN:
+                if event.key in [self.pg.K_q, self.pg.K_ESCAPE]:
+                    self.pg.quit()
+                    exit()
+                if event.key in [self.pg.K_UP, self.pg.K_w]:
+                    self.heading1 = 0
+                elif event.key in [self.pg.K_LEFT, self.pg.K_a]:
+                    self.heading1 = 3
+                elif event.key in [self.pg.K_RIGHT, self.pg.K_d]:
+                    self.heading1 = 1
+                elif event.key in [self.pg.K_DOWN, self.pg.K_s]:
+                    self.heading1 = 2
+
+    def step(self, kek=0):
+        self._process_input()
+
+        obs = TronDuoEnv.encode(self.state)[1]  # Get opponent's observation (the second one)
+        obs = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+        opp_action = self.policy.act(obs)  # Get opponent action based on their observation
+        self.heading2 = (self.heading2 + (opp_action - 1)) % 4  # Because (left, forward, right)
+        
+        dir1 = TronEnvBase.action_mapping[self.heading1]
+        dir2 = TronEnvBase.action_mapping[self.heading2]
+    
+        result = self.tron.tick(dir1, dir2)
+        done = result != Result.PLAYING
+        obs = TronDuoEnv.encode(self.state)
+        reward = self.reward_dict[result]
+
+        if self.render:
+            self.view()
+
+        return done
+
+# class TronPlay(gym.Wrapper):
+#     """Take control of the first agent and play against the provided opponent policy"""
+
+#     def __init__(self, env, policy: callable):
+#         assert isinstance(env.unwrapped, TronDuoEnv), "TronPlay wrapper requires a TronDuoEnv environment"
+#         super().__init__(env)
+#         self.policy = policy
+#         self.env = env.unwrapped
+
+#     def step(self, action : int):
+#         assert action in [0, 1, 2, 3], f"Invalid action {action}."
+
+#         self.heading1 = action
+
+#         obs = TronDuoEnv.encode(self.env.state)[1]  # Get opponent's observation (the second one)
+#         obs = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+#         opp_action = self.policy.act(obs)  # Get opponent action based on their observation
+#         self.heading2 = (self.heading2 + (opp_action - 1)) % 4  # Because (left, forward, right)
+        
+#         dir1 = TronEnvBase.action_mapping[self.heading1]
+#         dir2 = TronEnvBase.action_mapping[self.heading2]
+    
+#         result = self.tron.tick(dir1, dir2)
+#         done = result != Result.PLAYING
+#         obs = TronDuoEnv.encode(self.env.state)
+#         reward = self.reward_dict[result]
+
+#         if self.render:
+#             self.view()
+
+#         info = {"result": result} if done else {}
+#         return obs, reward, done, False, info
 
 
 class TorchObservationWrapper(gym.ObservationWrapper):
