@@ -332,3 +332,4 @@ class RainbowAgent:
                 grad += p.grad.data.norm(2).item() ** 2
             weight += p.data.norm(2).item() ** 2
         return grad ** 0.5, weight ** 0.5
+    

@@ -10,22 +10,11 @@ from rich import print
 import yaml
 
 from .argp import read_args
-from .agents import RainbowAgent, MCTSAgent
+from .agents import RainbowAgent
 from .agents.utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
 from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
-
-
-def make_env(idx, args):
-    def thunk():
-        Env = TronDuoEnv if not args.pol else PoLEnv
-        env = Env(args.size)
-        if args.render and idx == 0:
-            env = TronView(env, fps=100000)
-        env.action_space.seed(args.seed + idx)
-        return env
-    return thunk
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
@@ -45,14 +34,19 @@ if __name__ == "__main__":
         if args.hpc:
             if "[" in args.exp_name:  # If using job arrays, remove brackets for folder name
                 args.exp_name = args.exp_name.split("[")[0]
-            save_folder = f"rl_core/HPC/runs/{args.exp_name}"  # Move to HPC folder
+            base_folder = f"rl_core/HPC/runs/{args.exp_name}"  # Move to HPC folder
         else:
-            save_folder = f"runs/{args.exp_name}"
+            base_folder = f"runs/{args.exp_name}"
 
-        while os.path.exists(save_folder + f"_{i}"):
-            i += 1
-        save_folder += f"_{i}/"
-        os.makedirs(save_folder)
+        while True:
+            save_folder = f"{base_folder}_{i}"
+
+            try:
+                os.makedirs(save_folder)
+                break
+            except FileExistsError:
+                i += 1
+            
         with open(save_folder + "args.yml", "w") as f:
             yaml.dump(vars(args), f)
         

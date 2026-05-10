@@ -207,7 +207,7 @@ class TronDuoEnv(gym.Env):
         super().reset(seed=seed)
         self.tron.reset()
         self.heading1, self.heading2 = 1, 3  # First facing eachother, bike1 goes right, bike2 goes left
-        return TronDuoEnv.encode(self.state), {'result': 0}
+        return TronDuoEnv.encode(self.state), {'result': 0, 'state': self.state}
     
     def step(self, joint_action : np.ndarray):
         assert self.action_space.contains(joint_action), f"[bold red]Jason! Invalid Action {joint_action}"
@@ -222,13 +222,14 @@ class TronDuoEnv(gym.Env):
     
         result = self.tron.tick(dir1, dir2)
         done = result != Result.PLAYING
-        obs = TronDuoEnv.encode(self.state)
+        state = self.state
+        obs = TronDuoEnv.encode(state)
         reward = self.reward_dict[result]
 
         if self.render:
             self.view()
 
-        info = {"result": result} if done else {}
+        info = {"result": result, "state": state}
         return obs, reward, done, False, info
     
     @staticmethod
