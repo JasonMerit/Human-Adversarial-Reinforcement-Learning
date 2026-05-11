@@ -1,7 +1,7 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J Mirroring[1-5]%5  
+#BSUB -J BenchMirror[1-5]%5
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
@@ -21,5 +21,5 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
-python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 15 --mirror-prob 0.1
+python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 15
 echo "====== [$(date)] Finished $LSB_JOBID ($i) ======"

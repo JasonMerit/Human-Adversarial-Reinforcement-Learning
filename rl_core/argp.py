@@ -37,7 +37,7 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
-    mirror_prob: float = 0.1
+    mirror_prob: float = 0#0.1
     """the probability of mirroring the state in the replay buffer for data augmentation (specific to Tron)"""
 
     # Prioritized replay buffer
