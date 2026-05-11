@@ -181,7 +181,7 @@ class RainbowAgent:
 
     def __init__(self, 
         obs_shape, n_actions, state_example: tuple, 
-        state_encode_fn, args, device, writer, name
+        state_encode_fn, args, device, writer, player
         ):
 
         self.device = device
@@ -201,9 +201,10 @@ class RainbowAgent:
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(state_example, state_encode_fn, args, device) if args.per else ReplayBuffer(state_example, state_encode_fn, args, device)
+        self.rb = PrioritizedReplayBuffer(state_example, state_encode_fn, player, args, device) if args.per else ReplayBuffer(state_example, state_encode_fn, player, args, device)
         
-        self.name = name
+        self.player = player  # Keep track of which agent 
+        self.name = "A" if player == 0 else "B"
         self.writer = writer
         self.learning_steps = 0
 
@@ -238,8 +239,8 @@ class RainbowAgent:
         self.target_network.reset_noise()
 
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample(self.batch_size)
-        obs = obs[:, 0] if self.name == "A" else obs[:, 1]  # TODO Provide agent specific encoding in PER init after defining one for each agent in envs
-        next_obs = next_obs[:, 0] if self.name == "A" else next_obs[:, 1]
+        # obs = obs[:, self.player]
+        # next_obs = next_obs[:, self.player]
 
         if self.c51:
             loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones)

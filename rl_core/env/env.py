@@ -22,7 +22,7 @@ class TronEnv(gym.Env):
     reward_dict = { Result.DRAW: 0, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: 0 }
     # reward_dict = { Result.DRAW: -1, Result.BIKE2_CRASH: -1, Result.BIKE1_CRASH: 1, Result.PLAYING: .01 }
 
-    def __init__(self, size=25, adv_policy: callable =None, render=False):
+    def __init__(self, size=25, render=False):
         self.tron = Tron(size)
         self.size = size
         if render:

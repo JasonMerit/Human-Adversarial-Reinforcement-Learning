@@ -37,7 +37,7 @@ class VecTronDuoEnv:
         self.obs_shape = (3, size, size)
 
         self.walls = np.zeros((num_envs, size, size), dtype=np.int8)
-        self.pos1 = np.zeros((num_envs, 2), dtype=np.int8)
+        self.pos1 = np.zeros((num_envs, 2), dtype=np.int8)  # (x, y) positions
         self.pos2 = np.zeros((num_envs, 2), dtype=np.int8)
 
         self.h1 = np.zeros(num_envs, dtype=np.int8)
@@ -120,10 +120,11 @@ class VecTronDuoEnv:
         if self.render:
             self.view()  # render
         
-        obs = VecTronDuoEnv.encode(self.state)
+        state = self.state
+        obs = VecTronDuoEnv.encode(state)
         self.reset(mask=dones)  # Auto reset dones envs
         
-        infos = {"result": result, "state": self.state}
+        infos = {"result": result, "state": state}
         return obs, reward, dones, None, infos
 
     def _is_hit(self, pos):
@@ -202,7 +203,7 @@ class VecTronDuoEnv:
             self.h2.copy(),
         )
     
-    def view(self):
+    def view(self, flush=True):
         # os.system('cls')
         # print("\033[H", end="")  # move cursor to top (terminal animation)
         # print("\033[H\033[J", end="")
@@ -232,12 +233,15 @@ class VecTronDuoEnv:
             # print("=" * (self.size * 2))
         frame = "\n".join(lines)
 
-        sys.stdout.write("\033[H")
-        sys.stdout.write(frame)
-        sys.stdout.flush()
+        if flush:
+            sys.stdout.write("\033[H")
+            sys.stdout.write(frame)
+            sys.stdout.flush()
+            time.sleep(0.4)
+        else:
+            print(frame)
 
 
-        time.sleep(0.4)
 
 if __name__ == "__main__":
     from rl_core.env.env import TronDuoEnv

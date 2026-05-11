@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
-    Agent = MCTSAgent if args.mcts else RainbowAgent
+    Agent = RainbowAgent
     agent1 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "A")
     agent2 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "B")
 
