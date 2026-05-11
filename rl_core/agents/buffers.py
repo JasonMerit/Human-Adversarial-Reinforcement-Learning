@@ -3,52 +3,57 @@ import numpy as np
 import torch
 import random
 
-def mirror_actions(joint_actions):
-    # {0, 1, 2} -> {2, 1, 0} - left <-> right, up stays the same
-    return 2 - joint_actions
+def mirror(obs, actions, next_obs):
+    assert obs.ndim == 4, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
+    assert next_obs.ndim == 4, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
+    return np.flip(obs.copy(), axis=3).copy(), 2-actions, np.flip(next_obs.copy(), axis=3).copy()  # copy to remove negative stride
 
-MAPS = np.array([[0, 3, 2, 1], [2, 1, 0, 3]])  # Left <-> Right, Up <-> Down
-def mirror_headings(h1, h2, player):
-    H = np.stack([h1, h2], axis=0)
-    other = 1 - player
+# def mirror_actions(joint_actions):
+#     # {0, 1, 2} -> {2, 1, 0} - left <-> right, up stays the same
+#     return 2 - joint_actions
 
-    perp = ((H[0] - H[1]) % 2).astype(bool)
+# MAPS = np.array([[0, 3, 2, 1], [2, 1, 0, 3]])  # Left <-> Right, Up <-> Down
+# def mirror_headings(h1, h2, player):
+#     H = np.stack([h1, h2], axis=0)
+#     other = 1 - player
 
-    # choose map per batch element
-    map_idx = H[player] % 2                  # (B,)
-    M = MAPS[map_idx]                        # (B,4)
+#     perp = ((H[0] - H[1]) % 2).astype(bool)
 
-    H_other = H[other]
-    H[other] = np.where(perp, M[np.arange(len(H_other)), H_other], H_other)
+#     # choose map per batch element
+#     map_idx = H[player] % 2                  # (B,)
+#     M = MAPS[map_idx]                        # (B,4)
 
-    return H[0], H[1]
+#     H_other = H[other]
+#     H[other] = np.where(perp, M[np.arange(len(H_other)), H_other], H_other)
 
-def mirror_states(states, player):
-    # next states heading is given by h1, h2
-    walls, p1, p2, h1, h2 = states
-    walls, p1, p2 = walls.copy(), p1.copy(), p2.copy()
+#     return H[0], H[1]
 
-    size = walls.shape[1]
-    headings = [h1, h2][player]
+# def mirror_states(states, player):
+#     # next states heading is given by h1, h2
+#     walls, p1, p2, h1, h2 = states
+#     walls, p1, p2 = walls.copy(), p1.copy(), p2.copy()
 
-    for i, heading in enumerate(headings):
-        axis = heading % 2
+#     size = walls.shape[1]
+#     headings = [h1, h2][player]
 
-        walls[i] = np.flip(walls[i], axis=axis)
+#     for i, heading in enumerate(headings):
+#         axis = heading % 2
 
-        coord = axis - 1
-        p1[i, coord] = size - 1 - p1[i, coord]
-        p2[i, coord] = size - 1 - p2[i, coord]
+#         walls[i] = np.flip(walls[i], axis=axis)
 
-    h1, h2 = mirror_headings(h1, h2, player)
+#         coord = axis - 1
+#         p1[i, coord] = size - 1 - p1[i, coord]
+#         p2[i, coord] = size - 1 - p2[i, coord]
 
-    return walls, p1, p2, h1, h2
+#     h1, h2 = mirror_headings(h1, h2, player)
+
+#     return walls, p1, p2, h1, h2
     
-def mirror_transition(states, joint_actions, next_states, player):
-    joint_actions_m = mirror_actions(joint_actions)
-    states_m = mirror_states(states, player)
-    next_states_m = mirror_states(next_states, player)
-    return states_m, joint_actions_m, next_states_m
+# def mirror_transition(states, joint_actions, next_states, player):
+#     joint_actions_m = mirror_actions(joint_actions)
+#     states_m = mirror_states(states, player)
+#     next_states_m = mirror_states(next_states, player)
+#     return states_m, joint_actions_m, next_states_m
 
 class ReplayBuffer:
     def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
@@ -56,6 +61,7 @@ class ReplayBuffer:
         self.device = device
         self.size = args.buffer_size
         self.num_envs = args.num_envs
+        self.mirror_prob = args.mirror_prob
         self.encode = state_encode_fn
         self.player = player
         
@@ -81,44 +87,48 @@ class ReplayBuffer:
         self.count = 0
         self.real_size = 0
 
-    def _store(self, state, action, reward, next_state, done):
-        batch_size = action.shape[0]
+    def add(self, state, actions, reward, next_state, done):
+        batch_size = actions.shape[0]
         idxs = (np.arange(batch_size) + self.count) % self.size
 
         for i, (array, array_) in enumerate(zip(state, next_state)):
             self.state_storage[i][idxs] = array
             self.next_state_storage[i][idxs] = array_
 
-        self.action[idxs] = action
+        self.action[idxs] = actions
         self.reward[idxs] = reward
         self.done[idxs] = done
 
         self.count = (self.count + batch_size) % self.size
         self.real_size = min(self.size, self.real_size + batch_size)
-    
-    def add(self, state, joint_actions, reward, next_state, done):
-        self._store(state, joint_actions[:, self.player], reward, next_state, done)
 
-        # state_m, joint_actions_m, next_state_m = mirror_transition(state, joint_actions, next_state, self.player)
-        # self._store(state_m, joint_actions_m[:, self.player], reward, next_state_m, done)
 
     def sample(self, batch_size):
         assert self.real_size >= batch_size
-
         idxs = np.random.randint(0, self.real_size, size=batch_size)
 
         # Extract state
         state = [storage[idxs] for storage in self.state_storage]
         next_state = [storage[idxs] for storage in self.next_state_storage]
 
-        obs = torch.from_numpy(self.encode(state)).to(self.device).float()
-        actions = torch.from_numpy(self.action[idxs]).to(self.device).long().unsqueeze(1)
+        # Extract obs, next_obs and actions for potential mirroring
+        obs = self.encode(state)[self.player]
+        next_obs = self.encode(next_state)[self.player]
+        actions = self.action[idxs]
+
+        # Mirror the obs, next_obs and actions
+        if np.random.rand() < self.mirror_prob:  # Randomly decide to mirror or not
+            obs, actions, next_obs = mirror(obs, actions, next_obs)
+
+        obs = torch.from_numpy(obs).to(self.device).float()
+        actions = torch.from_numpy(actions).to(self.device).long().unsqueeze(1)
         rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
         dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
-        next_obs = torch.from_numpy(self.encode(next_state)).to(self.device).float()
+        next_obs = torch.from_numpy(next_obs).to(self.device).float()
         weights = torch.ones((batch_size, 1), device=self.device)
         indices = None
 
+            
         return obs, actions, rewards, next_obs, dones, weights, indices
 
     def _sample_all(self):
@@ -180,7 +190,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     def add(self, state, action, reward, next_state, done):
         super().add(state, action, reward, next_state, done)
-        batch_size = action.shape[0] 
+        batch_size = action.shape[0]
         idxs = (np.arange(batch_size) + self.count) % self.size
 
         # add priorities
@@ -295,43 +305,44 @@ if __name__ == "__main__":
     args = type('args', (), {'buffer_size': 100, 'num_envs': 1})
     RENDER=False
     envs = VecTronDuoEnv(args.num_envs, 5, render=RENDER)
-    envs.reset()
+    (obs1, obs2), infos = envs.reset()
 
-    np.random.seed(13)
+    # np.random.seed(13)
 
-    # Don't start from beginning
-    envs.step(envs.sample_actions())
-    obs, _, _, _, infos = envs.step(envs.sample_actions())
-    state = infos["state"]
+    # # Don't start from beginning
+    # envs.step(envs.sample_actions())
+    # obs, _, _, _, infos = envs.step(envs.sample_actions())
+    # state = infos["state"]
 
-    # Test replay buffer
-    buffer = ReplayBuffer(state, VecTronDuoEnv.encode, 0, args, 'cpu')
+    # # Test replay buffer
+    # buffer = ReplayBuffer(state, VecTronDuoEnv.encode, 0, args, 'cpu')
 
-    for _ in range(1):
+    for _ in range(2):
         joint_actions = envs.sample_actions()
-        next_obs, rewards, dones, _, infos = envs.step(joint_actions)
+        (obs1, obs2), rewards, dones, _, infos = envs.step(joint_actions)
+        # next_obs, rewards, dones, _, infos = envs.step(joint_actions)
         next_state = infos["state"]
-        buffer.add(state, joint_actions, rewards, next_state, dones)
+        # buffer.add(state, joint_actions[:, 0], rewards, next_state, dones)
     
-    # Original
-    envs.set_states(state)
-    envs.view(flush=False)
-    print("PERFORMING", joint_actions, state[3], next_state[3])
-    envs.set_states(next_state)
-    envs.view(flush=False)
+    # obs, actions, rewards, next_obs, dones, weights, indices = buffer._sample_all()
+    # print(obs[:, 0] + 2*obs[:, 1] + 3*obs[:, 2])  # Should be the same for both agents since they are mirrors of each other
+    # print(next_obs[:, 0] + 2*next_obs[:, 1] + 3*next_obs[:, 2])
+    # print(actions)
+    
+    joint_actions = envs.sample_actions()
+    (next_obs1, next_obs2), rewards, dones, _, infos = envs.step(joint_actions)
+    _obs, _actions, _next_obs = mirror(obs1, joint_actions[:, 0], next_obs1)
+
+    print(obs1.shape, next_obs1.shape, joint_actions[:, 0].shape)
+    print(_obs.shape, _next_obs.shape, _actions.shape)
     print()
-    # Mirrored
-    state_m, joint_actions_m, next_state_m = mirror_transition(state, joint_actions, next_state, player=0)
-    envs.set_states(state_m)
-    envs.view(flush=False)
-    print("PERFORMING", joint_actions_m, state_m[3], next_state_m[3])
-    envs.set_states(next_state_m)
-    envs.view(flush=False)
+    print(obs1[:, 0] + 2*obs1[:, 1] + 3*obs1[:, 2])
+    print(_obs[:, 0] + 2*_obs[:, 1] + 3*_obs[:, 2])
     print()
+    print(next_obs1[:, 0] + 2*next_obs1[:, 1] + 3*next_obs1[:, 2])
+    print(_next_obs[:, 0] + 2*_next_obs[:, 1] + 3*_next_obs[:, 2])
     print()
-    # Sample all
-    obs, actions, rewards, next_obs, dones, weights, indices = buffer._sample_all()
-    print(obs[:, 0] + 2*obs[:, 1] + 3*obs[:, 2])  # Should be the same for both agents since they are mirrors of each other
-    print(next_obs[:, 0] + 2*next_obs[:, 1] + 3*next_obs[:, 2])
+    print(joint_actions[:, 0])
+    print(_actions)
     
     

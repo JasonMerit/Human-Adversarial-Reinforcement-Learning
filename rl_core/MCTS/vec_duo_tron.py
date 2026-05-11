@@ -191,7 +191,8 @@ class VecTronDuoEnv:
             obs1[i] = np.rot90(obs1[i], k=h1[i], axes=(1, 2))
             obs2[i] = np.rot90(obs2[i], k=h2[i], axes=(1, 2))
 
-        return np.stack([obs1, obs2], axis=1)  # shape (B, 2, 3, size, size)
+        # return np.stack([obs1, obs2], axis=1)  # shape (B, 2, 3, size, size)
+        return obs1, obs2  # shape (B, 2, 3, size, size)
 
     @property
     def state(self):

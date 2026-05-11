@@ -75,14 +75,14 @@ if __name__ == "__main__":
     obs_shape = envs.obs_shape
     n_actions = envs.n_actions
 
-    obs, infos = envs.reset()
+    (obs1, obs2), infos = envs.reset()
     state = infos["state"]
 
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
-    Agent = RainbowAgent
-    agent1 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "A")
-    agent2 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, "B")
+    # Agent = RainbowAgent
+    agent1 = RainbowAgent(obs_shape, n_actions, state, envs.encode, args, device, writer, 0)
+    agent2 = RainbowAgent(obs_shape, n_actions, state, envs.encode, args, device, writer, 1)
 
     # Logging
     # TimerRegistry.disable()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         TimerRegistry.start()
         # agent1.q_network.reset_noise()
         # agent2.q_network.reset_noise()
-        obs1, obs2 = obs[:, 0], obs[:, 1]
+        # obs1, obs2 = obs[:, 0], obs[:, 1]
         a1 = agent1.act(obs1)
         a2 = agent2.act(obs2)
 
@@ -111,12 +111,12 @@ if __name__ == "__main__":
 
         actions = np.stack([a1, a2], axis=1) 
 
-        next_obs, rewards, dones, _, infos = envs.step(actions)
+        (next_obs1, next_obs2), rewards, dones, _, infos = envs.step(actions)
         next_state = infos["state"]
         agent1.rb.add(state, a1, rewards, next_state, dones)
         agent2.rb.add(state, a2, -rewards, next_state, dones)
 
-        obs, state = next_obs, next_state
+        obs1, obs2, state = next_obs1, next_obs2, next_state
         episode_lengths += 1
         TimerRegistry.stop("env_step")
 
@@ -134,11 +134,11 @@ if __name__ == "__main__":
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
-            # results[infos["result"][i]] += 1
+            results[infos["result"][i]] += 1
             # total_episode_lengths += episode_lengths[i]
             ep_lens.append(episode_lengths[i])
             total_episodes += 1
-            episode_lengths[i] = 0
+            # episode_lengths[i] = 0
         #     if writer:
         #         writer.add_scalar("charts/draw_percentage", results[0] / total_episodes, total_episodes)
         #         writer.add_scalar("charts/agent1_win_percentage", results[1] / total_episodes, total_episodes)
