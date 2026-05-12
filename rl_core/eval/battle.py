@@ -7,6 +7,7 @@ from rich import print
 
 from rl_core.env import TronDuoEnv, TronView, TronEnv
 from rl_core.env.wrappers import TorchObservationWrapper
+from rl_core.agents.rainbow import DuelingNetwork
 
 # from rl_core.rainbow.common.networks import get_model
 
@@ -16,7 +17,6 @@ def make_dqn(path, obs_shape, n_actions):
     return QNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
 def make_rainbow(path, obs_shape, n_actions):
-    from rl_core.agents.rainbow import DuelingNetwork
     return DuelingNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
 # def get_agent_files(agent_folder, num_agents):
@@ -31,9 +31,6 @@ def make_rainbow(path, obs_shape, n_actions):
 #     print(files)
 #     return [os.path.join(agent_folder, f) for f in files[:num_agents]]
 
-def get_agent_files(agent_folder, num_agents):
-    kek = Path("runs/") / agent_folder
-    return kek / "A.pth", kek / "B.pth"
     
 def rainbow_act(policy, obs):
     with torch.no_grad():
@@ -66,27 +63,16 @@ def play(agent1, agent2, env: TronDuoEnv):
             kek = 0
     
 def battle(folder1, folder2):
-    # env = TronDuoEnv()
-    # env = TronView(TronEnv())
-    size = 25
+    folder = Path("runs") / folder1
+    path1, path2 = folder / "A.pth", folder / "B.pth"
+    size = DuelingNetwork.size_from_checkpoint(path1)
+    
     env = TronView(TronDuoEnv(size))
     env = TorchObservationWrapper(env, device="cpu")
     n_actions = env.unwrapped.n_actions
     obs_shape = env.unwrapped.obs_shape
 
-    if folder2 == "":
-        folder = Path("runs") / folder1
-        path1, path2 = folder / "A.pth", folder / "B.pth"
-        path1, path2 = get_agent_files(folder1, num_agents=2)
-        # agent1, agent2 = make_clean_rainbow(path1, obs_shape), make_clean_rainbow(path2, obs_shape)
-        agent1, agent2 = make_rainbow(path1, obs_shape, n_actions), make_rainbow(path2, obs_shape, n_actions)
-        # agent1, agent2 = make_dqn(path1, obs_shape), make_dqn(path2, obs_shape)
-
-    else:
-        raise Exception("Currently only supports self-play. Please provide a single folder with two checkpoints for the agents.")
-        path1 = get_agent_files(folder1, num_agents=1)[0]
-        path2 = get_agent_files(folder2, num_agents=1)[0]
-        agent1, agent2 = load_agent(path1, path2, env)
+    agent1, agent2 = make_rainbow(path1, obs_shape, n_actions), make_rainbow(path2, obs_shape, n_actions)
 
     agent1.eval()
     agent2.eval()

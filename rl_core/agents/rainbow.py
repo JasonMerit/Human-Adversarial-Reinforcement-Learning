@@ -106,8 +106,16 @@ class DuelingNetwork(nn.Module):
     @classmethod
     def from_checkpoint(cls, path, obs_shape, n_actions, linear=nn.Linear, device="cpu"):
         net = cls(obs_shape=obs_shape, n_actions=n_actions, linear=linear).to(device)
-        net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
+        net_dict = torch.load(path, weights_only=True, map_location=device)
+        net.load_state_dict(net_dict)
         return net
+
+    @classmethod
+    def size_from_checkpoint(cls, path):
+        net_dict = torch.load(path, weights_only=True, map_location="cpu")
+        n_flatten = net_dict['value_head.0.weight'].shape[1]
+        size = int(math.sqrt(n_flatten // 32))
+        return size
 
 class DuelingDistributionalNetwork(nn.Module):
     def __init__(self, obs_shape, n_actions, args, linear=nn.Linear):
