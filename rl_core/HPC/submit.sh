@@ -1,7 +1,7 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J KnegtReg[1-5]%5  
+#BSUB -J KnegtReg[0-4]%5  
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"

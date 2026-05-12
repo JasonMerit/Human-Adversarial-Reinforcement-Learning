@@ -1,0 +1,4 @@
+term,definition
+Player, The human or agent playing the game
+Agent, The RL agent learning to play the game
+Adversary, The opponent of the human or agent and is either a human or an agent
