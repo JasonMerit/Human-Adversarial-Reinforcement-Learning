@@ -1,12 +1,11 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J Mirroring[1-5]%5  
+#BSUB -J KnegtReg[1-5]%5  
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
-# BSUB -R "rusage[mem=10GB]"
-###BSUB -R "select[gpu32gb]"  # For max storage
+#BSUB -R "rusage[mem=10GB]"
 #BSUB -M 10GB
 #BSUB -W 10:00  # 10 hours wall time for 10_000_000
 #BSUB -u s216135@dtu.dk
