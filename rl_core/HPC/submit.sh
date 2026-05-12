@@ -21,5 +21,5 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
-python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 15 --mirror-prob 0.1
+python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 15 --knegt
 echo "====== [$(date)] Finished $LSB_JOBID ($i) ======"

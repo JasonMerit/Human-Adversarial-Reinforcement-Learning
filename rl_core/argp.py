@@ -37,7 +37,7 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
-    mirror_prob: float = 0#0.1
+    mirror_prob: float = 0# 0.1
     """the probability of mirroring the state in the replay buffer for data augmentation (specific to Tron)"""
 
     # Prioritized replay buffer
@@ -87,12 +87,14 @@ class Args:
     """if true, will use the Tron-specific network architecture"""
     render: bool = False
     """if true, will render the 1st environment"""
-    size: int = 25
+    size: int = 15#25
     """set square size of Tron"""
     pol: bool = False
     """Whether to use the proof of learning environment"""
     vec: bool = False
     """Whether to use vectorized environments (only applicable for PoL)"""
+    knegt: bool = False
+    """Whether to use the KnegtAgent, which adds opponent modeling to DQN"""
 
     # Set by HPC
     hpc: bool = False
@@ -113,6 +115,7 @@ def read_args():
         # args.render = True
         # args.buffer_size *= 1e89
         args.buffer_size = args.batch_size * 10
+        args.batch_size = 7
 
         args.exp_name = "debug_" + args.exp_name
         # args.pol = True  # Test PoL environment in debug mode

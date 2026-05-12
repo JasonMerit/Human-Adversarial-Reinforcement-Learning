@@ -2,58 +2,16 @@
 import numpy as np
 import torch
 import random
+from rich import print
 
 def mirror(obs, actions, next_obs):
-    assert obs.ndim == 4, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
-    assert next_obs.ndim == 4, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
-    return np.flip(obs.copy(), axis=3).copy(), 2-actions, np.flip(next_obs.copy(), axis=3).copy()  # copy to remove negative stride
-
-# def mirror_actions(joint_actions):
-#     # {0, 1, 2} -> {2, 1, 0} - left <-> right, up stays the same
-#     return 2 - joint_actions
-
-# MAPS = np.array([[0, 3, 2, 1], [2, 1, 0, 3]])  # Left <-> Right, Up <-> Down
-# def mirror_headings(h1, h2, player):
-#     H = np.stack([h1, h2], axis=0)
-#     other = 1 - player
-
-#     perp = ((H[0] - H[1]) % 2).astype(bool)
-
-#     # choose map per batch element
-#     map_idx = H[player] % 2                  # (B,)
-#     M = MAPS[map_idx]                        # (B,4)
-
-#     H_other = H[other]
-#     H[other] = np.where(perp, M[np.arange(len(H_other)), H_other], H_other)
-
-#     return H[0], H[1]
-
-# def mirror_states(states, player):
-#     # next states heading is given by h1, h2
-#     walls, p1, p2, h1, h2 = states
-#     walls, p1, p2 = walls.copy(), p1.copy(), p2.copy()
-
-#     size = walls.shape[1]
-#     headings = [h1, h2][player]
-
-#     for i, heading in enumerate(headings):
-#         axis = heading % 2
-
-#         walls[i] = np.flip(walls[i], axis=axis)
-
-#         coord = axis - 1
-#         p1[i, coord] = size - 1 - p1[i, coord]
-#         p2[i, coord] = size - 1 - p2[i, coord]
-
-#     h1, h2 = mirror_headings(h1, h2, player)
-
-#     return walls, p1, p2, h1, h2
-    
-# def mirror_transition(states, joint_actions, next_states, player):
-#     joint_actions_m = mirror_actions(joint_actions)
-#     states_m = mirror_states(states, player)
-#     next_states_m = mirror_states(next_states, player)
-#     return states_m, joint_actions_m, next_states_m
+    """Expects (B, P, C, H, W) for obs and next_obs, (B, 2) for actions. Player axis should be second and channel axis should be third."""
+    # assert obs.ndim == 5, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
+    # assert next_obs.ndim == 5, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
+    # assert obs.shape[1:3] == (2, 3), f"Expected player second axis and channel third axis, got shape {obs.shape}"
+    # assert next_obs.shape[1:3] == (2, 3), f"Expected player second axis and channel third axis, got shape {next_obs.shape}"
+    # assert actions.shape == (obs.shape[0], 2), f"Expected shape (B, 2) for actions, got {actions.shape}"
+    return np.flip(obs.copy(), axis=-1).copy(), 2-actions, np.flip(next_obs.copy(), axis=-1).copy()  # copy to remove negative stride
 
 class ReplayBuffer:
     def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
@@ -80,7 +38,7 @@ class ReplayBuffer:
             else:
                 raise TypeError(f"Expected state example to be a tuple of numpy array or scalar, got {type(element)}")
 
-        self.action = np.empty((self.size,), dtype=np.int8)
+        self.action = np.empty((self.size,2), dtype=np.int8)  # Also storing opponent's action
         self.reward = np.empty((self.size,), dtype=np.float32)
         self.done = np.empty((self.size,), dtype=np.bool_)
 
@@ -107,13 +65,13 @@ class ReplayBuffer:
         assert self.real_size >= batch_size
         idxs = np.random.randint(0, self.real_size, size=batch_size)
 
-        # Extract state
-        state = [storage[idxs] for storage in self.state_storage]
-        next_state = [storage[idxs] for storage in self.next_state_storage]
+        # Extract states
+        states = [storage[idxs] for storage in self.state_storage]
+        next_states = [storage[idxs] for storage in self.next_state_storage]
 
         # Extract obs, next_obs and actions for potential mirroring
-        obs = self.encode(state)[self.player]
-        next_obs = self.encode(next_state)[self.player]
+        obs = self.encode(states)
+        next_obs = self.encode(next_states)
         actions = self.action[idxs]
 
         # Mirror the obs, next_obs and actions
@@ -121,13 +79,12 @@ class ReplayBuffer:
             obs, actions, next_obs = mirror(obs, actions, next_obs)
 
         obs = torch.from_numpy(obs).to(self.device).float()
-        actions = torch.from_numpy(actions).to(self.device).long().unsqueeze(1)
+        actions = torch.from_numpy(actions).to(self.device).long()
         rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
         dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
         next_obs = torch.from_numpy(next_obs).to(self.device).float()
         weights = torch.ones((batch_size, 1), device=self.device)
         indices = None
-
             
         return obs, actions, rewards, next_obs, dones, weights, indices
 

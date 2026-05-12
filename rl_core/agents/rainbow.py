@@ -251,9 +251,9 @@ class RainbowAgent:
         # next_obs = next_obs[:, self.player]
 
         if self.c51:
-            loss_per_sample = self._c51_loss(obs, actions, rewards, next_obs, dones)
+            loss_per_sample = self._c51_loss(obs[:, self.player], actions[:, self.player], rewards, next_obs[:, self.player], dones)
         else:
-            loss_per_sample = self._dqn_loss(obs, actions, rewards, next_obs, dones)
+            loss_per_sample = self._dqn_loss(obs[:, self.player], actions[:, self.player], rewards, next_obs[:, self.player], dones)
         loss = (loss_per_sample * weights.squeeze()).mean()
             # loss_per_sample, loss = self._dqn_loss(obs, actions, rewards, next_obs, dones)
 
@@ -288,7 +288,7 @@ class RainbowAgent:
             target = rewards + self.gamma * next_q * (1 - dones.float())
 
         q = self.q_network(obs)
-        pred = q.gather(1, actions)
+        pred = q.gather(1, actions.unsqueeze(1))
 
         loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
         return loss_per_sample.squeeze(1)
@@ -324,7 +324,7 @@ class RainbowAgent:
                 target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
 
         dist = self.q_network(obs)  # [B, num_actions, n_atoms]
-        pred_dist = dist.gather(1, actions.unsqueeze(-1).expand(-1, -1, self.q_network.n_atoms)).squeeze(1)
+        pred_dist = dist.gather(1, actions.expand(-1, -1, self.q_network.n_atoms)).squeeze(1)
         log_pred = torch.log(pred_dist.clamp(min=1e-5, max=1 - 1e-5))
 
         loss_per_sample = -(target_pmfs * log_pred).sum(dim=1)

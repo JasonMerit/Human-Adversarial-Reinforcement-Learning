@@ -10,10 +10,9 @@ from rich import print
 import yaml
 
 from .argp import read_args
-from .agents import RainbowAgent
+from .agents import RainbowAgent, KnegtAgent
 from .agents.utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
-from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -39,7 +38,7 @@ if __name__ == "__main__":
             base_folder = f"runs/{args.exp_name}"
 
         while True:
-            save_folder = f"{base_folder}_{i}"
+            save_folder = f"{base_folder}_{i}/"
 
             try:
                 os.makedirs(save_folder)
@@ -75,14 +74,14 @@ if __name__ == "__main__":
     obs_shape = envs.obs_shape
     n_actions = envs.n_actions
 
-    (obs1, obs2), infos = envs.reset()
+    obs, infos = envs.reset()
     state = infos["state"]
 
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
-    # Agent = RainbowAgent
-    agent1 = RainbowAgent(obs_shape, n_actions, state, envs.encode, args, device, writer, 0)
-    agent2 = RainbowAgent(obs_shape, n_actions, state, envs.encode, args, device, writer, 1)
+    Agent = KnegtAgent if args.knegt else RainbowAgent
+    agent1 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, 0)
+    agent2 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, 1)
 
     # Logging
     # TimerRegistry.disable()
@@ -97,26 +96,23 @@ if __name__ == "__main__":
 
     for global_step in range(1, total_loops + 1):
         TimerRegistry.start()
-        # agent1.q_network.reset_noise()
-        # agent2.q_network.reset_noise()
-        # obs1, obs2 = obs[:, 0], obs[:, 1]
-        a1 = agent1.act(obs1)
-        a2 = agent2.act(obs2)
+        a1 = agent1.act(obs[:, 0])
+        a2 = agent2.act(obs[:, 1])
 
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * total_loops, global_step)
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a1[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
         explore_mask = np.random.rand(args.num_envs) < epsilon
         a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
-
         actions = np.stack([a1, a2], axis=1) 
 
-        (next_obs1, next_obs2), rewards, dones, _, infos = envs.step(actions)
+        next_obs, rewards, dones, _, infos = envs.step(actions)
         next_state = infos["state"]
-        agent1.rb.add(state, a1, rewards, next_state, dones)
-        agent2.rb.add(state, a2, -rewards, next_state, dones)
 
-        obs1, obs2, state = next_obs1, next_obs2, next_state
+        agent1.rb.add(state, actions, rewards, next_state, dones)
+        agent2.rb.add(state, actions, -rewards, next_state, dones)
+
+        obs, state = next_obs, next_state
         episode_lengths += 1
         TimerRegistry.stop("env_step")
 
@@ -138,7 +134,7 @@ if __name__ == "__main__":
             # total_episode_lengths += episode_lengths[i]
             ep_lens.append(episode_lengths[i])
             total_episodes += 1
-            # episode_lengths[i] = 0
+            episode_lengths[i] = 0
         #     if writer:
         #         writer.add_scalar("charts/draw_percentage", results[0] / total_episodes, total_episodes)
         #         writer.add_scalar("charts/agent1_win_percentage", results[1] / total_episodes, total_episodes)
@@ -164,8 +160,8 @@ if __name__ == "__main__":
 
     if args.track:
         if args.save:
-            agent1.save(save_folder + f"A.pth")
-            agent2.save(save_folder + f"B.pth")
+            agent1.save(save_folder + "A.pth")
+            agent2.save(save_folder + "B.pth")
 
         with open(save_folder + "results.yml", "w") as f:
             yaml.dump({
