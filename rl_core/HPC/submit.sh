@@ -1,7 +1,7 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J "Base25[0-4]"
+#BSUB -J "Benchmark25[0-4]"
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
