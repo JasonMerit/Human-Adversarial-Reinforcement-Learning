@@ -38,17 +38,19 @@ def cleanrain_act(policy, obs):
 
 def play(agent1, agent2, env: TronDuoEnv):
     obs, _ = env.reset()
-    kek = 0
+    history = []
     while True:
         obs1, obs2 = obs[:, 0], obs[:, 1]
         a1, a2 = agent1.act(obs1), agent2.act(obs2)
-        obs, _, done, _, info = env.step([a1, a2])
-        kek += 1
+        obs, _, done, _, info = env.step([a1.item(), a2.item()])
+        history.append(a1)
 
         if done:
             obs, _ = env.reset()
-            print(info.get("result"), f"Total steps: {kek}")
-            kek = 0
+            print(info.get("result"), f"Total steps: {len(history)}")
+            print(history[:len(history)//2])  # Print first half
+            print(history[len(history)//2:])  # Print second half
+            quit()
     
 def battle(folder):
     folder = Path("runs") / folder
@@ -56,7 +58,8 @@ def battle(folder):
         args = yaml.safe_load(f)
         size = args['size']
 
-    env = TronView(TronDuoEnv(size))
+    env = TronDuoEnv(size)
+    # env = TronView(TronDuoEnv(size))
     env = TorchObservationWrapper(env, device="cpu")
     n_actions = env.unwrapped.n_actions
     obs_shape = env.unwrapped.obs_shape

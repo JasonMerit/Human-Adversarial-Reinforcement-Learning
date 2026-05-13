@@ -92,11 +92,11 @@ class DuelingNetwork(nn.Module):
         q = v + a - a.mean(dim=1, keepdim=True)
         return q
 
-    def act(self, obs):  # Called in play for singular action selection (no distributional)
-        with torch.no_grad():
-            q = self.forward(obs)
-                
-        return torch.argmax(q, dim=1).cpu().numpy().item()
+    @torch.no_grad()
+    def act(self, obs):
+        h = self.cnn(obs)
+        a = self.adv_head(h)
+        return torch.argmax(a, dim=1).cpu().numpy()
 
     def reset_noise(self):
         for m in self.modules():
@@ -217,20 +217,14 @@ class RainbowAgent:
         if verbose:
             print(f"Model saved to {path}")
     
-    def act(self, obs: np.ndarray):  # Legacy use select_action instead
+    @torch.no_grad()
+    def act(self, obs: np.ndarray):  
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
-        with torch.no_grad():
-            q = self.q_network(torch.as_tensor(obs).to(self.device))
-            
-            if self.c51:
-                q = torch.sum(q * self.q_network.support, dim=2)
+        q = self.q_network(torch.as_tensor(obs).to(self.device))
+        
+        if self.c51:
+            q = torch.sum(q * self.q_network.support, dim=2)
                 
-            return torch.argmax(q, dim=1).cpu().numpy()
-    
-    def select_action(self, obs):  # From self_play.py
-        assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
-        with torch.no_grad():
-            q = self.q_network(torch.as_tensor(obs).to(self.device))
         return torch.argmax(q, dim=1).cpu().numpy()
 
     @TimerRegistry.wrap_fn("rainbow_learn")

@@ -26,7 +26,7 @@ def play(agent1, agent2, env):
     while True:
         obs1, obs2 = obs[:, 0], obs[:, 1]
         a1, a2 = agent1.act(obs1), agent2.act(obs2)
-        obs, _, done, _, info = env.step([a1, a2])
+        obs, _, done, _, info = env.step([a1.item(), a2.item()])
 
         if done:
             return info["result"]

@@ -58,11 +58,11 @@ class KnegtNetwork(nn.Module):
         logits = self.opp_head(h)
         return logits
 
-    @torch.no_grad()  # Called in play
+    @torch.no_grad()
     def act(self, obs):
-        assert obs.ndim == 4, f"Expected input shape (B, C, H, W), got {obs.shape}"
-        q = self.forward(obs)
-        return torch.argmax(q, dim=1).cpu().numpy().item()
+        h = self.cnn(obs)
+        a = self.adv_head(h)
+        return torch.argmax(a, dim=1).cpu().numpy()
     
     @classmethod
     def from_checkpoint(cls, path, obs_shape, n_actions, device="cpu"):
@@ -103,11 +103,9 @@ class KnegtAgent:
         if verbose:
             print(f"Model saved to {path}")
     
-    @torch.no_grad()
     def act(self, obs: np.ndarray):  # Legacy use select_action instead
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
-        q = self.q_network(torch.as_tensor(obs).to(self.device))
-        return torch.argmax(q, dim=1).cpu().numpy()
+        return self.q_network.act(torch.as_tensor(obs).to(self.device))
     
     @TimerRegistry.wrap_fn("rainbow_learn")
     def learn(self):
