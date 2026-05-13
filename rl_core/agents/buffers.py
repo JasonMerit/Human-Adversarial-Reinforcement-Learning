@@ -85,68 +85,226 @@ class ReplayBuffer:
     def update(self, data_idxs, priorities):
         pass  # No priorities to update in a standard replay buffer
 
-class PrioritizedReplayBuffer(ReplayBuffer):
+# class PrioritizedReplayBuffer(ReplayBuffer):
+#     def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
+#         super().__init__(state_example, state_encode_fn, player, args, device)
+#         self.tree = SumTree(size=args.buffer_size)
+
+#         # PER params
+#         self.eps = args.per_eps
+#         self.alpha = args.per_alpha
+#         self.beta = args.per_beta
+#         self.max_priority = 1.0
+
+#     def add(self, state, actions, reward, next_state, done):
+#         batch_size = actions.shape[0]
+#         idxs = (np.arange(batch_size) + self.count) % self.size
+
+#         for i, (array, array_) in enumerate(zip(state, next_state)):
+#             self.state_storage[i][idxs] = array
+#             self.next_state_storage[i][idxs] = array_
+
+#         # add priorities
+#         for idx in idxs:
+#             self.tree.add(self.max_priority, idx)
+
+#         self.action[idxs] = actions
+#         self.reward[idxs] = reward
+#         self.done[idxs] = done
+
+#         self.count = (self.count + batch_size) % self.size
+#         self.real_size = min(self.size, self.real_size + batch_size)
+
+
+#     def sample(self, batch_size):
+#         assert self.real_size >= batch_size
+
+#         idxs, tree_idxs = [], []
+#         priorities = np.empty(batch_size, dtype=np.float32)
+
+#         segment = self.tree.total / batch_size
+
+#         for i in range(batch_size):
+#             a, b = segment * i, segment * (i + 1)
+#             cumsum = random.uniform(a, b)
+
+#             tree_idx, priority, idx = self.tree.get(cumsum)
+
+#             priorities[i] = priority
+#             tree_idxs.append(tree_idx)
+#             idxs.append(idx)
+
+#         idxs = np.array(idxs)
+
+#         probs = priorities / self.tree.total
+
+#         weights = (self.real_size * probs) ** (-self.beta)
+#         weights /= weights.max()
+
+#         # Extract state
+#         states = [storage[idxs] for storage in self.state_storage]
+#         next_states = [storage[idxs] for storage in self.next_state_storage]
+
+#         # Extract obs, next_obs and actions for potential mirroring
+#         obs = self.encode(states)
+#         next_obs = self.encode(next_states)
+#         actions = self.action[idxs]
+
+#         # Mirror the obs, next_obs and actions
+#         if np.random.rand() < self.mirror_prob:  # Randomly decide to mirror or not
+#             obs, actions, next_obs = mirror(obs, actions, next_obs)
+
+#         obs = torch.from_numpy(obs).to(self.device).float()
+#         actions = torch.from_numpy(actions).to(self.device).long()
+#         rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
+#         next_obs = torch.from_numpy(next_obs).to(self.device).float()
+#         dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
+#         weights = torch.tensor(weights, dtype=torch.float32, device=self.device).unsqueeze(1)
+
+#         return obs, actions, rewards, next_obs, dones, weights, tree_idxs
+
+#     def update(self, data_idxs, priorities):
+#         if isinstance(priorities, torch.Tensor):
+#             priorities = priorities.detach().cpu().numpy()
+
+#         for data_idx, priority in zip(data_idxs, priorities):
+#             priority = (priority + self.eps) ** self.alpha
+
+#             self.tree.update(data_idx, priority)
+#             self.max_priority = max(self.max_priority, priority)
+
+
+# class SumTree:
+
+#     def __init__(self, size):
+#         self.nodes = [0] * (2 * size - 1)
+#         self.data = [None] * size
+
+#         self.size = size
+#         self.count = 0
+#         self.real_size = 0
+
+#     @property
+#     def total(self):
+#         return self.nodes[0]
+
+#     def update(self, data_idx, value):
+#         idx = data_idx + self.size - 1  # child index in tree array
+#         change = value - self.nodes[idx]
+
+#         self.nodes[idx] = value
+
+#         parent = (idx - 1) // 2
+#         while parent >= 0:
+#             self.nodes[parent] += change
+#             parent = (parent - 1) // 2
+
+#     def add(self, value, data):
+#         self.data[self.count] = data
+#         self.update(self.count, value)
+
+#         self.count = (self.count + 1) % self.size
+#         self.real_size = min(self.size, self.real_size + 1)
+
+#     def get(self, cumsum):
+#         assert cumsum <= self.total
+
+#         idx = 0
+#         while 2 * idx + 1 < len(self.nodes):
+#             left, right = 2*idx + 1, 2*idx + 2
+
+#             if cumsum <= self.nodes[left]:
+#                 idx = left
+#             else:
+#                 idx = right
+#                 cumsum = cumsum - self.nodes[left]
+
+#         data_idx = idx - self.size + 1
+
+#         return data_idx, self.nodes[idx], self.data[data_idx]
+
+#     def __repr__(self):
+#         return f"SumTree(nodes={self.nodes.__repr__()}, data={self.data.__repr__()})"
+
+
+class PrioritizedReplayBuffer:
     def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
-        super().__init__(state_example, state_encode_fn, player, args, device)
-        self.tree = SumTree(size=args.buffer_size)
+        assert player in [0, 1]
+
+        self.device = device
+        self.size = args.buffer_size
+        self.mirror_prob = args.mirror_prob
+
+        self.encode = state_encode_fn
 
         # PER params
         self.eps = args.per_eps
         self.alpha = args.per_alpha
         self.beta = args.per_beta
+
         self.max_priority = 1.0
+
+        # storage (match your existing architecture)
+        self.state_storage = []
+        self.next_state_storage = []
+
+        for element in state_example:
+            if isinstance(element, np.ndarray):
+                shape, dtype = element.shape[1:], element.dtype
+                self.state_storage.append(np.empty((self.size, *shape), dtype=dtype))
+                self.next_state_storage.append(np.empty((self.size, *shape), dtype=dtype))
+            else:
+                self.state_storage.append(np.empty((self.size,), dtype=type(element)))
+                self.next_state_storage.append(np.empty((self.size,), dtype=type(element)))
+
+        self.action = np.empty((self.size, 2), dtype=np.int64)
+        self.reward = np.empty((self.size,), dtype=np.float32)
+        self.done = np.empty((self.size,), dtype=np.bool_)
+
+        # PER priorities
+        self.priorities = np.zeros((self.size,), dtype=np.float32)
+
+        self.ptr = 0
+        self.real_size = 0
 
     def add(self, state, actions, reward, next_state, done):
         batch_size = actions.shape[0]
-        idxs = (np.arange(batch_size) + self.count) % self.size
+        idxs = (np.arange(batch_size) + self.ptr) % self.size
 
-        for i, (array, array_) in enumerate(zip(state, next_state)):
-            self.state_storage[i][idxs] = array
-            self.next_state_storage[i][idxs] = array_
-
-        # add priorities
-        for idx in idxs:
-            self.tree.add(self.max_priority, idx)
+        for i, (s, ns) in enumerate(zip(state, next_state)):
+            self.state_storage[i][idxs] = s
+            self.next_state_storage[i][idxs] = ns
 
         self.action[idxs] = actions
         self.reward[idxs] = reward
         self.done[idxs] = done
 
-        self.count = (self.count + batch_size) % self.size
-        self.real_size = min(self.size, self.real_size + batch_size)
+        # initialize priorities safely (never zero)
+        self.priorities[idxs] = self.max_priority
 
+        self.ptr = (self.ptr + batch_size) % self.size
+        self.real_size = min(self.size, self.real_size + batch_size)
 
     def sample(self, batch_size):
         assert self.real_size >= batch_size
 
-        idxs = []
-        tree_idxs = []
-        priorities = np.empty(batch_size, dtype=np.float32)
+        # --- stable probability distribution ---
+        priorities = self.priorities[:self.real_size]
 
-        segment = self.tree.total / batch_size
+        probs = priorities / np.maximum(priorities.sum(), 1e-8)
 
-        for i in range(batch_size):
-            a, b = segment * i, segment * (i + 1)
-            cumsum = random.uniform(a, b)
+        idxs = np.random.choice(self.real_size, batch_size, replace=True, p=probs)
 
-            tree_idx, priority, sample_idx = self.tree.get(cumsum)
+        # importance sampling weights
+        weights = (self.real_size * probs[idxs])
+        weights = np.maximum(weights, 1e-8)
+        weights = weights ** (-self.beta)
+        weights /= np.max(weights) + 1e-8
 
-            priorities[i] = priority
-            tree_idxs.append(tree_idx)
-            idxs.append(sample_idx)
+        # encode batch
+        states = [s[idxs] for s in self.state_storage]
+        next_states = [ns[idxs] for ns in self.next_state_storage]
 
-        idxs = np.array(idxs)
-
-        probs = priorities / self.tree.total
-
-        weights = (self.real_size * probs) ** (-self.beta)
-        weights /= weights.max()
-
-        # Extract state
-        states = [storage[idxs] for storage in self.state_storage]
-        next_states = [storage[idxs] for storage in self.next_state_storage]
-
-        # Extract obs, next_obs and actions for potential mirroring
         obs = self.encode(states)
         next_obs = self.encode(next_states)
         actions = self.action[idxs]
@@ -155,78 +313,29 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         if np.random.rand() < self.mirror_prob:  # Randomly decide to mirror or not
             obs, actions, next_obs = mirror(obs, actions, next_obs)
 
+        rewards = self.reward[idxs]
+        dones = self.done[idxs]
+
+        # tensors
         obs = torch.from_numpy(obs).to(self.device).float()
-        actions = torch.from_numpy(actions).to(self.device).long()
-        rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
         next_obs = torch.from_numpy(next_obs).to(self.device).float()
-        dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
-        weights = torch.tensor(weights, dtype=torch.float32, device=self.device).unsqueeze(1)
+        actions = torch.from_numpy(actions).to(self.device).long()
+        rewards = torch.from_numpy(rewards).to(self.device).unsqueeze(1)
+        dones = torch.from_numpy(dones).to(self.device).unsqueeze(1)
 
-        return obs, actions, rewards, next_obs, dones, weights, tree_idxs
+        weights = torch.from_numpy(weights).to(self.device).unsqueeze(1)
 
-    def update(self, data_idxs, priorities):
-        if isinstance(priorities, torch.Tensor):
-            priorities = priorities.detach().cpu().numpy()
+        return obs, actions, rewards, next_obs, dones, weights, idxs
 
-        for data_idx, priority in zip(data_idxs, priorities):
-            priority = (priority + self.eps) ** self.alpha
+    def update(self, idxs, td_errors):
+        if isinstance(td_errors, torch.Tensor):
+            td_errors = td_errors.detach().cpu().numpy()
 
-            self.tree.update(data_idx, priority)
-            self.max_priority = max(self.max_priority, priority)
+        td_errors = np.abs(td_errors) + self.eps
+        td_errors = td_errors ** self.alpha
 
-
-class SumTree:
-
-    def __init__(self, size):
-        self.nodes = [0] * (2 * size - 1)
-        self.data = [None] * size
-
-        self.size = size
-        self.count = 0
-        self.real_size = 0
-
-    @property
-    def total(self):
-        return self.nodes[0]
-
-    def update(self, data_idx, value):
-        idx = data_idx + self.size - 1  # child index in tree array
-        change = value - self.nodes[idx]
-
-        self.nodes[idx] = value
-
-        parent = (idx - 1) // 2
-        while parent >= 0:
-            self.nodes[parent] += change
-            parent = (parent - 1) // 2
-
-    def add(self, value, data):
-        self.data[self.count] = data
-        self.update(self.count, value)
-
-        self.count = (self.count + 1) % self.size
-        self.real_size = min(self.size, self.real_size + 1)
-
-    def get(self, cumsum):
-        assert cumsum <= self.total
-
-        idx = 0
-        while 2 * idx + 1 < len(self.nodes):
-            left, right = 2*idx + 1, 2*idx + 2
-
-            if cumsum <= self.nodes[left]:
-                idx = left
-            else:
-                idx = right
-                cumsum = cumsum - self.nodes[left]
-
-        data_idx = idx - self.size + 1
-
-        return data_idx, self.nodes[idx], self.data[data_idx]
-
-    def __repr__(self):
-        return f"SumTree(nodes={self.nodes.__repr__()}, data={self.data.__repr__()})"
-
+        self.priorities[idxs] = td_errors
+        self.max_priority = max(self.max_priority, td_errors.max())
 
 if __name__ == "__main__":
     from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
