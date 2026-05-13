@@ -202,7 +202,8 @@ class RainbowAgent:
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(state_example, state_encode_fn, player, args, device) if args.per else ReplayBuffer(state_example, state_encode_fn, player, args, device)
+        Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
+        self.rb = Buffer(state_example, state_encode_fn, player, args, device)
         
         self.player = player  # Keep track of which agent 
         self.name = "A" if player == 0 else "B"

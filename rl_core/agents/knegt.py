@@ -12,18 +12,18 @@ from rich import print
 class KnegtNetwork(nn.Module):
     def __init__(self, obs_shape, n_actions):
         super().__init__()
-        channels, size, _ = obs_shape
+        self.channels, self.size, _ = obs_shape
         self.n_actions = n_actions
 
         self.cnn = nn.Sequential(
-            nn.Conv2d(channels, 16, 3, 1, 1),
+            nn.Conv2d(self.channels, 16, 3, 1, 1),
             nn.ReLU(),
             nn.Conv2d(16, 32, 3, 1, 1),
             nn.ReLU(),
             nn.Flatten(),
         )
         with torch.no_grad():
-            dummy = torch.zeros(1, channels, size, size)
+            dummy = torch.zeros(1, self.channels, self.size, self.size)
             n_flatten = self.cnn(dummy).shape[1]
 
         hidden = 32
@@ -46,7 +46,8 @@ class KnegtNetwork(nn.Module):
         )
 
     def forward(self, x) -> torch.Tensor:
-        # assert x.shape == (5, 3, 15, 15) or x.shape == (7, 3, 15, 15), f"Expected input shape (5, 3, 15, 15) or (1, 3, 15, 15), got {x.shape}"
+        # assert x.ndim == 4, f"Expected input shape (B, C, H, W), got {x.shape}"
+        # assert x.shape[1:] == (self.channels, self.size, self.size), f"Expected input shape (B, {self.channels}, {self.size}, {self.size}), got {x.shape}"
         h = self.cnn(x)
         v = self.value_head(h)
         a = self.adv_head(h)
@@ -112,11 +113,10 @@ class KnegtAgent:
         self.learning_steps += 1
 
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample(self.batch_size)
-        # print(obs[:, self.player].shape)  # [7, 3, 15, 15]
-        # print(actions.shape)  # (7, 2)
+
         dqn_loss_per_sample = self._dqn_loss(obs[:, self.player], actions[:, self.player], rewards, next_obs[:, self.player], dones)
-        # print(dqn_loss_per_sample.shape)  # [B]
         cross_entropy_loss_per_sample = self._cross_loss(obs[:, 1 - self.player], actions[:, 1 - self.player], dones)
+        
         loss_per_sample = dqn_loss_per_sample + self.opp_weight * cross_entropy_loss_per_sample
         loss = (loss_per_sample * weights.squeeze()).mean()
 

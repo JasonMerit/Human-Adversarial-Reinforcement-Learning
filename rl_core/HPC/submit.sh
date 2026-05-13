@@ -1,7 +1,7 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J KnegtReg[0-4]%5  
+#BSUB -J Base25[0-4]
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
@@ -20,5 +20,5 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
-python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 25 --knegt
+python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 25
 echo "====== [$(date)] Finished $LSB_JOBID ($i) ======"

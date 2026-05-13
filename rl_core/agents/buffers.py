@@ -6,11 +6,6 @@ from rich import print
 
 def mirror(obs, actions, next_obs):
     """Expects (B, P, C, H, W) for obs and next_obs, (B, 2) for actions. Player axis should be second and channel axis should be third."""
-    # assert obs.ndim == 5, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
-    # assert next_obs.ndim == 5, "Forgot the batch or included obs for both agents? Expected shape (B, 3, size, size)"
-    # assert obs.shape[1:3] == (2, 3), f"Expected player second axis and channel third axis, got shape {obs.shape}"
-    # assert next_obs.shape[1:3] == (2, 3), f"Expected player second axis and channel third axis, got shape {next_obs.shape}"
-    # assert actions.shape == (obs.shape[0], 2), f"Expected shape (B, 2) for actions, got {actions.shape}"
     return np.flip(obs.copy(), axis=-1).copy(), 2-actions, np.flip(next_obs.copy(), axis=-1).copy()  # copy to remove negative stride
 
 class ReplayBuffer:
@@ -60,7 +55,6 @@ class ReplayBuffer:
         self.count = (self.count + batch_size) % self.size
         self.real_size = min(self.size, self.real_size + batch_size)
 
-
     def sample(self, batch_size):
         assert self.real_size >= batch_size
         idxs = np.random.randint(0, self.real_size, size=batch_size)
@@ -87,34 +81,14 @@ class ReplayBuffer:
         indices = None
             
         return obs, actions, rewards, next_obs, dones, weights, indices
-
-    def _sample_all(self):
-        idxs = np.arange(0, self.real_size)
-
-        # Extract state
-        state = [storage[idxs] for storage in self.state_storage]
-        next_state = [storage[idxs] for storage in self.next_state_storage]
-
-        obs = torch.from_numpy(self.encode(state)).to(self.device).float()
-        actions = torch.from_numpy(self.action[idxs]).to(self.device).long().unsqueeze(1)
-        rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
-        dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
-        next_obs = torch.from_numpy(self.encode(next_state)).to(self.device).float()
-        weights = torch.ones((self.real_size, 1), device=self.device)
-        indices = None
-
-        return obs[:, self.player], actions, rewards, next_obs[:, self.player], dones, weights, indices
     
     def update(self, data_idxs, priorities):
         pass  # No priorities to update in a standard replay buffer
 
 class PrioritizedReplayBuffer(ReplayBuffer):
-    def __init__(self, state_example: tuple, state_encode_fn: callable, args, device):
-        super().__init__(state_example, state_encode_fn, args, device)
+    def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
+        super().__init__(state_example, state_encode_fn, player, args, device)
         self.tree = SumTree(size=args.buffer_size)
-        # self.device = device
-        # self.encode = state_encode_fn
-        # self.size = args.buffer_size
 
         # PER params
         self.eps = args.per_eps
@@ -122,42 +96,30 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.beta = args.per_beta
         self.max_priority = 1.0
 
-        # replay storage
-        # self.state_storage = []
-        # self.next_state_storage = []
-        # for array in state_example:  # Dynamic tuple length
-        #     if isinstance(array, np.ndarray):
-        #         shape, dtype = array.shape[1:], array.dtype
-        #         self.state_storage.append(np.empty((self.size, *shape), dtype=dtype))
-        #         self.next_state_storage.append(np.empty((self.size, *shape), dtype=dtype))
-
-        #     elif isinstance(array, (int, float)):
-        #         self.state_storage.append(np.empty((self.size,), dtype=type(array)))
-        #         self.next_state_storage.append(np.empty((self.size,), dtype=type(array)))
-
-        #     else:
-        #         raise TypeError(f"Expected state example to be a tuple of numpy arrays, got {type(array)}")
-
-        # self.action = np.empty((self.size,), dtype=np.int8)
-        # self.reward = np.empty((self.size,), dtype=np.float32)
-        # self.done = np.empty((self.size,), dtype=np.bool_)
-
-        # self.count = 0
-        # self.real_size = 0
-
-    def add(self, state, action, reward, next_state, done):
-        super().add(state, action, reward, next_state, done)
-        batch_size = action.shape[0]
+    def add(self, state, actions, reward, next_state, done):
+        batch_size = actions.shape[0]
         idxs = (np.arange(batch_size) + self.count) % self.size
+
+        for i, (array, array_) in enumerate(zip(state, next_state)):
+            self.state_storage[i][idxs] = array
+            self.next_state_storage[i][idxs] = array_
 
         # add priorities
         for idx in idxs:
             self.tree.add(self.max_priority, idx)
 
+        self.action[idxs] = actions
+        self.reward[idxs] = reward
+        self.done[idxs] = done
+
+        self.count = (self.count + batch_size) % self.size
+        self.real_size = min(self.size, self.real_size + batch_size)
+
+
     def sample(self, batch_size):
         assert self.real_size >= batch_size
 
-        sample_idxs = []
+        idxs = []
         tree_idxs = []
         priorities = np.empty(batch_size, dtype=np.float32)
 
@@ -171,9 +133,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
             priorities[i] = priority
             tree_idxs.append(tree_idx)
-            sample_idxs.append(sample_idx)
+            idxs.append(sample_idx)
 
-        sample_idxs = np.array(sample_idxs)
+        idxs = np.array(idxs)
 
         probs = priorities / self.tree.total
 
@@ -181,17 +143,26 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         weights /= weights.max()
 
         # Extract state
-        state = [storage[sample_idxs] for storage in self.state_storage]
-        next_state = [storage[sample_idxs] for storage in self.next_state_storage]
+        states = [storage[idxs] for storage in self.state_storage]
+        next_states = [storage[idxs] for storage in self.next_state_storage]
 
-        obs = torch.from_numpy(self.encode(state)).to(self.device).float()
-        actions = torch.from_numpy(self.action[sample_idxs]).to(self.device).long().unsqueeze(1)
-        rewards = torch.from_numpy(self.reward[sample_idxs]).to(self.device).unsqueeze(1)
-        next_obs = torch.from_numpy(self.encode(next_state)).to(self.device).float()
-        dones = torch.from_numpy(self.done[sample_idxs]).to(self.device).unsqueeze(1)
+        # Extract obs, next_obs and actions for potential mirroring
+        obs = self.encode(states)
+        next_obs = self.encode(next_states)
+        actions = self.action[idxs]
+
+        # Mirror the obs, next_obs and actions
+        if np.random.rand() < self.mirror_prob:  # Randomly decide to mirror or not
+            obs, actions, next_obs = mirror(obs, actions, next_obs)
+
+        obs = torch.from_numpy(obs).to(self.device).float()
+        actions = torch.from_numpy(actions).to(self.device).long()
+        rewards = torch.from_numpy(self.reward[idxs]).to(self.device).unsqueeze(1)
+        next_obs = torch.from_numpy(next_obs).to(self.device).float()
+        dones = torch.from_numpy(self.done[idxs]).to(self.device).unsqueeze(1)
         weights = torch.tensor(weights, dtype=torch.float32, device=self.device).unsqueeze(1)
 
-        return obs[:, self.player], actions, rewards, next_obs[:, self.player], dones, weights, tree_idxs
+        return obs, actions, rewards, next_obs, dones, weights, tree_idxs
 
     def update(self, data_idxs, priorities):
         if isinstance(priorities, torch.Tensor):
