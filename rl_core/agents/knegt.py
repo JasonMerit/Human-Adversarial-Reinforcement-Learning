@@ -6,11 +6,10 @@ import torch.optim as optim
 import numpy as np
 
 from .buffers import PrioritizedReplayBuffer, ReplayBuffer
-# from rl_core.rainbow.buffer import PrioritizedReplayBuffer, ReplayBuffer
 from .utils import TimerRegistry
 from rich import print
 
-class DuelingNetwork(nn.Module):
+class KnegtNetwork(nn.Module):
     def __init__(self, obs_shape, n_actions):
         super().__init__()
         channels, size, _ = obs_shape
@@ -61,7 +60,7 @@ class DuelingNetwork(nn.Module):
 
     @torch.no_grad()  # Called in play
     def act(self, obs):
-        assert obs.ndim == 3, f"Expected input shape (C, H, W), got {obs.shape}"
+        assert obs.ndim == 4, f"Expected input shape (B, C, H, W), got {obs.shape}"
         q = self.forward(obs)
         return torch.argmax(q, dim=1).cpu().numpy().item()
     
@@ -82,8 +81,8 @@ class KnegtAgent:
         self.batch_size = args.batch_size
         self.gamma = args.gamma
 
-        self.q_network = DuelingNetwork(obs_shape, n_actions).to(device)
-        self.target_network = DuelingNetwork(obs_shape, n_actions).to(device)
+        self.q_network = KnegtNetwork(obs_shape, n_actions).to(device)
+        self.target_network = KnegtNetwork(obs_shape, n_actions).to(device)
         
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)

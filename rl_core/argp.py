@@ -87,7 +87,7 @@ class Args:
     """if true, will use the Tron-specific network architecture"""
     render: bool = False
     """if true, will render the 1st environment"""
-    size: int = 15#25
+    size: int = 25
     """set square size of Tron"""
     pol: bool = False
     """Whether to use the proof of learning environment"""

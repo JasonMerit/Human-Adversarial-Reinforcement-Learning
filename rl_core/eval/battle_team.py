@@ -1,147 +1,65 @@
 import os
-import numpy as np
-import torch
-import gymnasium as gym
-from tqdm import tqdm
 from tqdm.contrib import itertools
+from pathlib import Path
+import yaml
 
 from rl_core.env import TronDuoEnv, TronView
-from rl_core.env.env import TronCoreEnv, encode_observation, encode_observation_2channel
 from rl_core.env.wrappers import TorchObservationWrapper
-from rl_core.agents.dqn import QNetwork
-from rl_core.agents.ppo import ActorCriticNetwork
+from .battle import make_agent
 
-def load_experiment_intra_team(path, env):
-    # Select the appropriate agent class based on the file name
-    obs_shape = env.observation_space.shape[-3:]  # (3, H, W)
-    n_actions = env.action_space.nvec[0]           # should be 3
-    folder = "runs/"
-
+def make_team(path, env):
     # Find all folders in runs that start with the given path
-    runs = [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f)) and f.startswith(os.path.basename(path))]
+    runs = [f for f in os.listdir('runs/') if os.path.isdir(Path('runs/') / f) and f.startswith(os.path.basename(path))]
 
-    team_1 = []
-    team_2 = []
-    for run in runs:
-        files = [f for f in os.listdir(os.path.join(folder, run)) if f.endswith(".pth")]
-        # Find top two latest files (one for each agent) based on modified time
-        files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
-
-        # file = max(files, key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
-        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-1]), obs_shape, n_actions)
-        network.eval()
-        team_1.append(network)
-
-        network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-2]), obs_shape, n_actions)
-        network.eval()
-        # network = QNetwork.from_checkpoint(os.path.join(folder, run, file), obs_shape, n_actions)
-        team_2.append(network)
-    
-    return team_1, team_2
-
-def load_experiment(path, env):
-    # Select the appropriate agent class based on the file name
-    obs_shape = env.observation_space.shape[-3:]  # (3, H, W)
-    n_actions = env.action_space.nvec[0]           # should be 3
-    folder = "runs/"
-
-    # Find all folders in runs that start with the given path
-    runs = [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f)) and f.startswith(os.path.basename(path))]
+    obs_shape = env.unwrapped.obs_shape
+    n_actions = env.unwrapped.n_actions
 
     team = []
     for run in runs:
-        files = [f for f in os.listdir(os.path.join(folder, run)) if f.endswith(".pth")]
-        # Find top two latest files (one for each agent) based on modified time
-        files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
-
-        # file = max(files, key=lambda f: os.path.getmtime(os.path.join(folder, run, f)))
-        # network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-1]), obs_shape, n_actions)
-        network = QNetwork.from_checkpoint(os.path.join(folder, run, files[-1]), obs_shape, n_actions)
-        network.eval()
-        team.append(network)
-
-        # network = ActorCriticNetwork.from_checkpoint(os.path.join(folder, run, files[-2]), obs_shape, n_actions)
-        network = QNetwork.from_checkpoint(os.path.join(folder, run, files[-2]), obs_shape, n_actions)
-        network.eval()
-        team.append(network)
+        team.append(make_agent(Path('runs') / run / "A.pth", obs_shape, n_actions))
+        team.append(make_agent(Path('runs') / run / "B.pth", obs_shape, n_actions))
 
     return team
 
-def load_benchmark(path, env):
-    # Find all folders in runs that start with the given path
-    folder = "runs/"
-    obs_shape = env.observation_space.shape[-3:]  # (3, H, W)
-    n_actions = env.action_space.nvec[0]  
-
-    runs = [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f)) and f.startswith(os.path.basename(path))]
-
-    team = []
-    for run in runs:
-        human_file = os.path.join(folder, run, "human.pth")
-        adv_file = os.path.join(folder, run, "adversary.pth")
-
-        network = QNetwork.from_checkpoint(human_file, obs_shape, n_actions)
-        network.eval()
-        team.append(network)
-
-        network = QNetwork.from_checkpoint(adv_file, obs_shape, n_actions)
-        network.eval()
-        team.append(network)
-
-    return team
-
-def play_manual_encode(agent_0, agent_1, env, encode_0=encode_observation, encode_1=encode_observation):
-    (heading0, heading1, walls, bike1_pos, bike2_pos), _ = env.reset()
-    while True:
-        obs0, obs1 = encode_0(walls, bike1_pos, bike2_pos), encode_1(walls, bike2_pos, bike1_pos)
-        obs0, obs1 = np.rot90(obs0, k=heading0, axes=(1, 2)).copy(), np.rot90(obs1, k=heading1, axes=(1, 2)).copy()
-        obs0, obs1 = torch.as_tensor(obs0, dtype=torch.float32).unsqueeze(0), torch.as_tensor(obs1, dtype=torch.float32).unsqueeze(0)
-        
-        a0, a1 = agent_0.act(obs0), agent_1.act(obs1)
-        # a1 = np.random.randint(0, 3)  # Random action for adversary
-
-        (heading0, heading1, walls, bike1_pos, bike2_pos), _, done, _, info = env.step([a0, a1])
-        if done:
-            return info.get("result")
-
-def play(agent_0, agent_1, env):
+def play(agent1, agent2, env):
     obs, _ = env.reset()
     while True:
-        obs0, obs1 = obs[:, 0], obs[:, 1]
-        a0, a1 = agent_0.act(obs0), agent_1.act(obs1)  # Use the loaded model to select an action
-        # a0 = np.random.randint(0, 3)  # Random action for adversary
-        obs, _, done, _, info = env.step([a0, a1])
+        obs1, obs2 = obs[:, 0], obs[:, 1]
+        a1, a2 = agent1.act(obs1), agent2.act(obs2)
+        obs, _, done, _, info = env.step([a1, a2])
 
         if done:
-            return info.get("result")
-    
-def battle_team(path0, path1):
-    if "TwoChannel" in path0:
-        env = TronCoreEnv()
-        env.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 2, 25, 25), dtype=np.float32)
-    else:
-        env = TronDuoEnv()
-        env = TorchObservationWrapper(env, device="cpu")
-    # env = TronView(env, fps=50)
-    
-    team_1 = load_experiment(path0, env)
+            return info["result"]
 
-    env.observation_space = gym.spaces.Box(low=0, high=1, shape=(2, 3, 25, 25), dtype=np.float32)
-    team_2 = load_benchmark(path1, env)
-    # team_1, team_2 = load_experiment_intra_team(path0, env)
-    print(f"Team sizes: {len(team_1)}, {len(team_2)}")
 
-    # Have each team_1 member play against each team_2 member and print results
+def battle_team(folder1, folder2):
+    with open(Path("runs") / (folder1 + "_0") / "args.yml", "r") as f:
+        args = yaml.safe_load(f)
+        size = args['size']
+    with open(Path("runs") / (folder2 + "_0") / "args.yml", "r") as f:
+        args = yaml.safe_load(f)
+        assert size == args['size'], f"Both teams must have the same environment size. Got {size} and {args['size']}."
+
+    env = TronDuoEnv(size)
+    # env = TronView(TronDuoEnv(size))
+    env = TorchObservationWrapper(env, device="cpu")
+
+    team1, team2 = make_team(folder1, env), make_team(folder2, env)
+    print(f"Team {folder1} (x{len(team1)}) VS. Team {folder2} (x{len(team2)}) in Tron {size}x{size}")
+
     results = [0, 0, 0]
-    for agent_0, agent_1 in itertools.product(team_1, team_2, desc="Battling Teams", leave=False):
-        result = play_manual_encode(agent_0, agent_1, env, encode_0=encode_observation_2channel)
-        # result = play(agent_0, agent_1, env)
+    for agent1, agent2 in itertools.product(team1, team2, desc="Battling Teams", leave=False):
+        result = play(agent1, agent2, env)
         results[result] += 1
     
     print(f"Results: {results}")
     print(f"Team 1 win rate: {results[1] / (sum(results)) * 100:.1f}% with {results[0]} draws")
 
 if __name__ == "__main__":
-    # battle_team("PPO", "BenchMark")
-    battle_team("TwoChannel", "BenchMark")
+    import argparse
+    parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
+    parser.add_argument("folder1", type=str, default="", help="Path folder of trained model checkpoints.")
+    parser.add_argument("folder2", type=str, default="", help="Path folder of trained model checkpoints.")
+    args = parser.parse_args()
+    battle_team(args.folder1, args.folder2)
     

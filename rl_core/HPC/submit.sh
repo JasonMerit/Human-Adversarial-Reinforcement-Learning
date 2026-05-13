@@ -7,7 +7,7 @@
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=10GB]"
 #BSUB -M 10GB
-#BSUB -W 10:00  # 10 hours wall time for 10_000_000
+#BSUB -W 6:00  # 6 hours wall time for 4_000_000 steps and size=25
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
@@ -20,5 +20,5 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
 echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
-python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 15 --knegt
+python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --size 25 --knegt
 echo "====== [$(date)] Finished $LSB_JOBID ($i) ======"
