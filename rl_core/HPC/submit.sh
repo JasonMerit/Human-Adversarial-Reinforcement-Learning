@@ -7,7 +7,7 @@
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=10GB]"
 #BSUB -M 10GB
-#BSUB -W 6:00  # 6 hours wall time for 4_000_000 steps and size=25
+#BSUB -W 8:00  # 8 hours wall time for 4_000_000 steps and size=25
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
