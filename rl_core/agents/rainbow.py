@@ -7,7 +7,7 @@ import numpy as np
 
 from .buffers import PrioritizedReplayBuffer, ReplayBuffer
 # from rl_core.rainbow.buffer import PrioritizedReplayBuffer, ReplayBuffer
-from .utils import TimerRegistry
+from ..utils import TimerRegistry
 from rich import print
 
 class NoisyLinear(nn.Module):
@@ -92,7 +92,7 @@ class DuelingNetwork(nn.Module):
         q = v + a - a.mean(dim=1, keepdim=True)
         return q
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def act(self, obs):
         h = self.cnn(obs)
         a = self.adv_head(h)
@@ -193,14 +193,14 @@ class RainbowAgent:
 
         self.c51 = args.c51
         if self.c51:
-            self.q_network = DuelingDistributionalNetwork(obs_shape, n_actions, linear, args).to(device)
+            self.network = DuelingDistributionalNetwork(obs_shape, n_actions, linear, args).to(device)
             self.target_network = DuelingDistributionalNetwork(obs_shape, n_actions, linear, args).to(device)
         else:
-            self.q_network = DuelingNetwork(obs_shape, n_actions, linear).to(device)
+            self.network = DuelingNetwork(obs_shape, n_actions, linear).to(device)
             self.target_network = DuelingNetwork(obs_shape, n_actions, linear).to(device)
         
-        self.target_network.load_state_dict(self.q_network.state_dict())
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=args.learning_rate, eps=1.5e-4)
+        self.target_network.load_state_dict(self.network.state_dict())
+        self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
         Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
         self.rb = Buffer(state_example, state_encode_fn, player, args, device)
@@ -211,27 +211,27 @@ class RainbowAgent:
         self.learning_steps = 0
 
     def get_num_params(self):
-        return sum(p.numel() for p in self.q_network.parameters())
+        return sum(p.numel() for p in self.network.parameters())
     
     def save(self, path, verbose=True):
-        torch.save(self.q_network.state_dict(), path)
+        torch.save(self.network.state_dict(), path)
         if verbose:
             print(f"Model saved to {path}")
     
-    @torch.no_grad()
+    @torch.inference_mode()
     def act(self, obs: np.ndarray):  
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
-        q = self.q_network(torch.as_tensor(obs).to(self.device))
+        q = self.network(torch.as_tensor(obs).to(self.device))
         
         if self.c51:
-            q = torch.sum(q * self.q_network.support, dim=2)
+            q = torch.sum(q * self.network.support, dim=2)
                 
         return torch.argmax(q, dim=1).cpu().numpy()
 
     @TimerRegistry.wrap_fn("rainbow_learn")
     def learn(self):
         self.learning_steps += 1
-        self.q_network.reset_noise()
+        self.network.reset_noise()
         self.target_network.reset_noise()
 
         obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample(self.batch_size)
@@ -259,7 +259,7 @@ class RainbowAgent:
             self.writer.add_scalar(f"gradients/{self.name}_weight_norm", weight, self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_td_loss_mean", loss_per_sample.mean().item(), self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_td_loss_std", loss_per_sample.std().item(), self.learning_steps)
-            # q_values = (pred_dist * self.q_network.support).sum(dim=1)  # [B]
+            # q_values = (pred_dist * self.network.support).sum(dim=1)  # [B]
             # self.writer.add_scalar(f"losses/{self.name}_q_values_mean", q_values.mean().item(), self.learning_steps)
             # self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
 
@@ -268,14 +268,14 @@ class RainbowAgent:
     def _dqn_loss(self, obs, actions, rewards, next_obs, dones):
         with torch.no_grad():
             next_q_target = self.target_network(next_obs)
-            next_q_online = self.q_network(next_obs)
+            next_q_online = self.network(next_obs)
 
             best_actions = next_q_online.argmax(dim=1, keepdim=True)
             next_q = next_q_target.gather(1, best_actions)
 
             target = rewards + self.gamma * next_q * (1 - dones.float())
 
-        q = self.q_network(obs)
+        q = self.network(obs)
         pred = q.gather(1, actions.unsqueeze(1))
 
         loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
@@ -287,19 +287,19 @@ class RainbowAgent:
             support = self.target_network.support  # [n_atoms]
 
             # double q-learning
-            next_dist_online = self.q_network(next_obs)  # [B, num_actions, n_atoms]
+            next_dist_online = self.network(next_obs)  # [B, num_actions, n_atoms]
             next_q_online = torch.sum(next_dist_online * support, dim=2)  # [B, num_actions]
             best_actions = torch.argmax(next_q_online, dim=1)  # [B]
             next_pmfs = next_dist[torch.arange(self.batch_size), best_actions]  # [B, n_atoms]
 
             # compute the n-step Bellman update.
             next_atoms = rewards + self.gamma * support * (1 - dones.float())
-            tz = next_atoms.clamp(self.q_network.v_min, self.q_network.v_max)
+            tz = next_atoms.clamp(self.network.v_min, self.network.v_max)
 
             # projection
-            b = (tz - self.q_network.v_min) / self.q_network.delta_z  # shape: [B, n_atoms]
-            l = b.floor().clamp(0, self.q_network.n_atoms - 1)
-            u = b.ceil().clamp(0, self.q_network.n_atoms - 1)
+            b = (tz - self.network.v_min) / self.network.delta_z  # shape: [B, n_atoms]
+            l = b.floor().clamp(0, self.network.n_atoms - 1)
+            u = b.ceil().clamp(0, self.network.n_atoms - 1)
 
             # (l == u).float() handles the case where bj is exactly an integer
             # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
@@ -311,8 +311,8 @@ class RainbowAgent:
                 target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
                 target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
 
-        dist = self.q_network(obs)  # [B, num_actions, n_atoms]
-        pred_dist = dist.gather(1, actions.expand(-1, -1, self.q_network.n_atoms)).squeeze(1)
+        dist = self.network(obs)  # [B, num_actions, n_atoms]
+        pred_dist = dist.gather(1, actions.expand(-1, -1, self.network.n_atoms)).squeeze(1)
         log_pred = torch.log(pred_dist.clamp(min=1e-5, max=1 - 1e-5))
 
         loss_per_sample = -(target_pmfs * log_pred).sum(dim=1)
@@ -320,11 +320,11 @@ class RainbowAgent:
 
 
     def update_target(self):
-        self.target_network.load_state_dict(self.q_network.state_dict())
+        self.target_network.load_state_dict(self.network.state_dict())
     
     def grad_weight_norm(self):
         weight, grad = 0.0, 0.0
-        for p in self.q_network.parameters():
+        for p in self.network.parameters():
             if p.grad is not None:
                 grad += p.grad.data.norm(2).item() ** 2
             weight += p.data.norm(2).item() ** 2

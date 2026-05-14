@@ -32,22 +32,20 @@ class Node:
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backup"""
 
-    def __init__(self, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
+    def __init__(self, policy: callable, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
+        self.policy = policy
         self.env = env  # For structured search
         self.envs = envs  # For structured search
         self.rollouts = rollouts
         self.max_steps = max_steps
 
-    @TimerRegistry.wrap_fn("MCTS.plan")
-    def plan(self, root, sims=400):
-        # assert not root.terminal, "wtf m8"
+    @TimerRegistry.wrap_fn("MCTS.simulate_q_values")
+    def simulate_q_values(self, root, sims=400):
         assert not root.terminal, "Planning from a terminal state is not meaningful"
         for _ in range(sims):
-            # print("======", _, "=======")
             self.simulate(root)
-            # print(_, self.best_action(root), end="\r")
 
-        return self.best_action(root)
+        return self.root_q_values(root)
 
     def simulate(self, root: Node):
         node = root
@@ -108,39 +106,25 @@ class MCTS:
         node.children[action] = child
         return child
 
-    # @TimerRegistry.wrap_fn("MCTS.rollout")
-    # def rollout(self, node, max_steps):
-    #     total = 0.0
-    #     for _ in range(self.rollouts):
-    #         self.env.set_state(node.state)
-    #         # for _ in range(max_steps):
-    #         while True:
-    #             _, r, done, _, _ = self.env.step(self.env.sample_action())
-
-    #             total += r
-    #             if done:
-    #                 break
-        
-    #     return total / self.rollouts
     
     @TimerRegistry.wrap_fn("MCTS.rollout_vec")
     def rollout_vec(self, node, max_steps):
         self.envs.set_state(node.state)
+        obs = self.envs.encode(node.state)
 
         runs = 0
         total = 0.0
         # returns = np.zeros(self.envs.num_envs, dtype=np.float32)
         # for _ in range(max_steps):
         while True:
-            actions = self.envs.sample_actions()
-            _, r, done, _, _ = self.envs.step(actions)
+            a1 = self.policy(obs[:, 0])
+            a2 = np.random.randint(0, self.envs.n_actions, self.envs.num_envs)  # Random opponent
+            actions = np.stack([a1, a2], axis=1)
+            obs, r, done, _, _ = self.envs.step(actions)
 
             # returns += r
             if done.any():
                 self.envs.set_state(node.state, mask=done)
-                # total += returns[done].sum()
-                # assert (returns[~done] == 0).all(), "Non-done envs should have zero returns"
-                # returns[done] = 0.0
                 total += r.sum()
                 runs += done.sum()
                 if runs >= self.rollouts:
@@ -161,12 +145,15 @@ class MCTS:
             node.W += value            
             node = node.parent
 
-    def best_action(self, root):
-        """Return the action of the most visited child."""
-        assert any(c is not None for c in root.children), "No children expanded"
-        valid_children = [c for c in root.children if c is not None]
-        best = max(valid_children, key=lambda c: c.N).action
-        return best
+    # def best_action(self, root):
+    #     """Return the action of the most visited child."""
+    #     assert any(c is not None for c in root.children), "No children expanded"
+    #     valid_children = [c for c in root.children if c is not None]
+    #     best = max(valid_children, key=lambda c: c.N).action
+    #     return best
+    
+    def root_q_values(self, root):
+        return np.array([0.0 if child is None or child.N == 0 else child.Q for child in root.children], dtype=np.float32)
 
 if __name__ == "__main__":
     from tqdm import trange
@@ -187,7 +174,7 @@ if __name__ == "__main__":
 
         steps = 0
         while True:
-            action = mcts.plan(root, sims=200)
+            action = mcts.simulate_q_values(root, sims=200)
             obs, reward, done, _, _ = actual_env.step(action)
 
             child = root.children[action]  # Reuse the subtree if it exists

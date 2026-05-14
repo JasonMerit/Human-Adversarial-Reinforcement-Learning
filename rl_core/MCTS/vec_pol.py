@@ -1,6 +1,6 @@
 import os, time
 import numpy as np
-from rl_core.agents.utils import TimerRegistry
+from rl_core.utils import TimerRegistry
 
 class VecPoLEnv:
     """

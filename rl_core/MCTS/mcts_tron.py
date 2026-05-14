@@ -3,7 +3,7 @@ import numpy as np
 from rich import print
 
 from rl_core.env import TronView, TronEnv
-from rl_core.agents.utils import TimerRegistry
+from rl_core.utils import TimerRegistry
 
 from .mcts import MCTS, Node
 from .vec_env import VecTronEnv

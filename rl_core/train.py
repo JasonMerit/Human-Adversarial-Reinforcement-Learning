@@ -10,8 +10,9 @@ from rich import print
 import yaml
 
 from .argp import read_args
-from .agents import RainbowAgent, KnegtAgent
-from .agents.utils import TimerRegistry
+from .agents import RainbowAgent
+from .MCTS.knegt import KnegtAgent
+from .utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
 from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
 

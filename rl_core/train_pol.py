@@ -11,7 +11,7 @@ import yaml
 
 from .argp import read_args
 from .agents import RainbowAgent, MCTSAgent
-from .agents.utils import TimerRegistry
+from .utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
 from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv

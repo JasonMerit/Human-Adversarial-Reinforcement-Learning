@@ -2,7 +2,7 @@
 import cpprb
 import torch
 import numpy as np
-from ..agents.utils import TimerRegistry
+from ..utils import TimerRegistry
 
 class ReplayBuffer:
 
