@@ -67,11 +67,11 @@ class Args:
     # MCTS
     mcts: bool = False
     """whether to use MCTS agent"""
-    mcts_rollouts: int = 1
+    rollouts: int = 1
     """the number of rollouts to perform in MCTS"""
     mcts_c: float = 1.0
     """the exploration constant for MCTS"""
-    mcts_depth: int = 1
+    horizon: int = 10
     """the maximum depth for MCTS"""
 
     # Jason's additions

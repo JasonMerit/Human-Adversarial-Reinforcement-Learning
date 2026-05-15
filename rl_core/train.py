@@ -80,9 +80,14 @@ if __name__ == "__main__":
 
     print(f"Observation shape: {obs_shape}, Action space: {n_actions}")
 
-    Agent = KnegtAgent if args.knegt else RainbowAgent
-    agent1 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, 0)
-    agent2 = Agent(obs_shape, n_actions, state, envs.encode, args, device, writer, 1)
+     
+    if args.knegt:
+        agent1 = KnegtAgent(0, obs_shape, n_actions, state, args, device, writer)
+        agent2 = KnegtAgent(1, obs_shape, n_actions, state, args, device, writer)
+    else:
+        agent1 = RainbowAgent(0, obs_shape, n_actions, state, envs.encode, args, device, writer)
+        agent2 = RainbowAgent(1, obs_shape, n_actions, state, envs.encode, args, device, writer)
+    
 
     # Logging
     # TimerRegistry.disable()
@@ -127,6 +132,8 @@ if __name__ == "__main__":
             if global_step % target_every == 0:
                 agent1.update_target()
                 agent2.update_target()
+            print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
+            quit()
         
         
         # Logging

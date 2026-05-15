@@ -1,13 +1,13 @@
 import numpy as np
 # from rich import print
 
-from rl_core.env import PoLEnv  
+from rl_core.env import PoLEnv, GameState
 from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.utils import TimerRegistry
 from rl_core.env.heuristic import voronoi
 
 class Node:
-    def __init__(self, state, n_actions, parent=None, action=None, terminal=False, reward=0):
+    def __init__(self, state: GameState, parent=None, action=None, terminal=False, reward=0, n_actions=3):
         self.state = state
         self.parent = parent
         self.action = action # Debugging
@@ -32,16 +32,18 @@ class Node:
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backup"""
 
-    def __init__(self, policy: callable, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
+    def __init__(self, policy: callable, env: PoLEnv, envs: VecPoLEnv, rollouts: int, horizon=200):
         self.policy = policy
+        self.adv_policy = None
         self.env = env  # For structured search
         self.envs = envs  # For structured search
         self.rollouts = rollouts
-        self.max_steps = max_steps
+        self.horizon = horizon
 
     @TimerRegistry.wrap_fn("MCTS.simulate_q_values")
-    def simulate_q_values(self, root, sims=400):
-        assert not root.terminal, "Planning from a terminal state is not meaningful"
+    def __call__(self, state, sims=400):
+        assert isinstance(state, GameState), f"Expected state to be a GameState, got {type(state)}"
+        root = Node(state)
         for _ in range(sims):
             self.simulate(root)
 
@@ -59,9 +61,9 @@ class MCTS:
             node = self.expand(node)
 
         # evalution # TODO TOGGLE HERE FOR PROOF OF BETTER ACTION HISTORY
-        # value = node.reward if node.terminal else self.rollout(node, self.max_steps)
-        value = node.reward if node.terminal else self.rollout_vec(node, self.max_steps)
-        # value = node.reward if node.terminal else self.voronoi_value(node, self.max_steps)
+        # value = node.reward if node.terminal else self.rollout(node, self.horizon)
+        value = node.reward if node.terminal else self.rollout_vec(node)
+        # value = node.reward if node.terminal else self.voronoi_value(node, self.horizon)
         # if node.terminal:
             # print(f"Terminal ({value})")
 
@@ -96,7 +98,6 @@ class MCTS:
 
         child = Node(
             self.env.state,
-            n_actions=self.env.n_actions,
             parent=node,
             action=action,
             terminal=done,
@@ -108,14 +109,14 @@ class MCTS:
 
     
     @TimerRegistry.wrap_fn("MCTS.rollout_vec")
-    def rollout_vec(self, node, max_steps):
+    def rollout_vec(self, node):
         self.envs.set_state(node.state)
         obs = self.envs.encode(node.state)
 
         runs = 0
         total = 0.0
         # returns = np.zeros(self.envs.num_envs, dtype=np.float32)
-        # for _ in range(max_steps):
+        # for _ in range(self.horizon):
         while True:
             a1 = self.policy(obs[:, 0])
             a2 = np.random.randint(0, self.envs.n_actions, self.envs.num_envs)  # Random opponent
@@ -170,7 +171,7 @@ if __name__ == "__main__":
     for i in range(runs):
         actual_env.reset()
         mcts = MCTS(sim_env, sim_envs)
-        root = Node(actual_env.state, actual_env.n_actions)
+        root = Node(actual_env.state)
 
         steps = 0
         while True:
@@ -179,7 +180,7 @@ if __name__ == "__main__":
 
             child = root.children[action]  # Reuse the subtree if it exists
             if child is None:
-                root = Node(actual_env.state, actual_env.n_actions)
+                root = Node(actual_env.state)
             else:
                 child.parent = None
                 root = child

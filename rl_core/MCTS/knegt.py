@@ -47,6 +47,9 @@ class KnegtNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden, n_actions)
         )
+        # make initial poponent policy uniform
+        nn.init.constant_(self.opp_head[-1].weight, 0)
+        nn.init.constant_(self.opp_head[-1].bias, 0)
 
     def forward(self, x) -> torch.Tensor:
         # assert x.ndim == 4, f"Expected input shape (B, C, H, W), got {x.shape}"
@@ -73,10 +76,12 @@ class KnegtNetwork(nn.Module):
         net = cls(obs_shape=obs_shape, n_actions=n_actions).to(device)
         net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
         return net
+    
 
 class KnegtAgent:
+    """Assumes VecTronDuoEnv"""
 
-    def __init__(self, obs_shape, n_actions, state_example: tuple, state_encode_fn, args, device, writer, player):
+    def __init__(self, player, obs_shape, n_actions, state_example: tuple, args, device, writer=None):
         self.device = device
         self.batch_size = args.batch_size
         self.gamma = args.gamma
@@ -87,12 +92,14 @@ class KnegtAgent:
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
-        self.rb = PrioritizedReplayBuffer(state_example, state_encode_fn, player, args, device) if args.per else ReplayBuffer(state_example, state_encode_fn, player, args, device)
-
         # MCTS
         env = TronDuoEnv(args.size)  # Dummy env for MCTS simulations
         envs = VecTronDuoEnv(args.rollouts, args.size)  # For encoding states in MCTS
-        self.mcts = MCTS(self.act, env, envs, rollouts=args.rollouts, max_steps=args.max_steps)
+        self.mcts = MCTS(self.act, env, envs, rollouts=args.rollouts, horizon=args.horizon)
+
+        Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
+        self.rb = Buffer(state_example, envs.encode, player, args, device)
+
         
         self.player = player  # Keep track of which agent 
         self.opp_weight = 0.1  # Weight for opponent prediction loss
@@ -113,20 +120,28 @@ class KnegtAgent:
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         return self.network.act(torch.as_tensor(obs).to(self.device))
     
+    @torch.inference_mode()
+    def predict(self, obs: np.ndarray):
+        assert obs.ndim == 4, f"Expected input shape (B, C, H, W), got {obs.shape}"
+        assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
+        logits = self.network.predict(torch.as_tensor(obs).to(self.device))
+        probs = F.softmax(logits, dim=1)
+        return probs.cpu().numpy()
+    
     @TimerRegistry.wrap_fn("rainbow_learn")
     def learn(self):
         self.learning_steps += 1
 
-        obs, actions, rewards, next_obs, dones, weights, indices = self.rb.sample(self.batch_size)
+        states, weights, indices = self.rb.sample(self.batch_size)
 
-        dqn_loss_per_sample = self._dqn_loss(obs[:, self.player], actions[:, self.player], rewards, next_obs[:, self.player], dones)
+        # dqn_loss_per_sample = self._dqn_loss(obs[:, self.player], actions[:, self.player], rewards, next_obs[:, self.player], dones)
         # cross_entropy_loss_per_sample = self._cross_loss(obs[:, 1 - self.player], actions[:, 1 - self.player])
+        mcts_loss_per_sample = self._mcts_loss(states)
         
-        loss_per_sample = dqn_loss_per_sample
-        loss = (dqn_loss_per_sample * weights.squeeze()).mean()
+        loss = (mcts_loss_per_sample * weights.squeeze()).mean()
 
         # update priorities
-        new_priorities = dqn_loss_per_sample.detach().cpu().numpy()  # Prioritize based on TD error only, not opponent prediction loss
+        new_priorities = mcts_loss_per_sample.detach().cpu().numpy()  # Prioritize based on TD error only, not opponent prediction loss
         self.rb.update(indices, new_priorities)
 
         self.optimizer.zero_grad()
@@ -137,8 +152,8 @@ class KnegtAgent:
             grad, weight = self.grad_weight_norm()
             self.writer.add_scalar(f"gradients/{self.name}_grad_norm", grad, self.learning_steps)
             self.writer.add_scalar(f"gradients/{self.name}_weight_norm", weight, self.learning_steps)
-            self.writer.add_scalar(f"losses/{self.name}_td_mean", loss_per_sample.mean().item(), self.learning_steps)
-            self.writer.add_scalar(f"losses/{self.name}_td_std", loss_per_sample.std().item(), self.learning_steps)
+            self.writer.add_scalar(f"losses/{self.name}_mcts_mean", mcts_loss_per_sample.mean().item(), self.learning_steps)
+            self.writer.add_scalar(f"losses/{self.name}_mcts_std", mcts_loss_per_sample.std().item(), self.learning_steps)
             # self.writer.add_scalar(f"losses/{self.name}_cross_mean", cross_entropy_loss_per_sample.mean().item(), self.learning_steps)
             # self.writer.add_scalar(f"losses/{self.name}_cross_std", cross_entropy_loss_per_sample.std().item(), self.learning_steps)
             # q_values = (pred_dist * self.network.support).sum(dim=1)  # [B]
@@ -169,7 +184,16 @@ class KnegtAgent:
 
         loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
         return loss_per_sample.squeeze(1)
-    
+
+    def _mcts_loss(self, states):
+        q_mcts = torch.tensor(np.stack([self.mcts(s) for s in states]), device=states.device, dtype=torch.float32)  # [B, A]
+        print(q_mcts.shape)
+
+        q_pred = self.network(states)  # [B, A]
+        print(q_pred.shape)
+
+        return ((q_pred - q_mcts) ** 2).mean(dim=1)  # per-sample loss
+
     def _cross_loss(self, obs, opp_actions):
         logits = self.network.predict(obs)
         loss_per_sample = F.cross_entropy(logits, opp_actions.squeeze(), reduction="none")
@@ -185,4 +209,33 @@ class KnegtAgent:
                 grad += p.grad.data.norm(2).item() ** 2
             weight += p.data.norm(2).item() ** 2
         return grad ** 0.5, weight ** 0.5
+    
+    @classmethod
+    def from_checkpoint(cls, path, player, obs_shape, n_actions, state_example, args):
+        agent = cls(player, obs_shape, n_actions, state_example, args, "cpu")
+        agent.network.load_state_dict(torch.load(path, weights_only=True, map_location="cpu"))
+        agent.update_target()
+        return agent
+
+
+if __name__ == "__main__":
+    from ..argp import read_args
+    from rl_core.env import TronDuoEnv
+    from .vec_duo_tron import VecTronDuoEnv
+    args = read_args()
+    args.size = 15
+
+    # env = TronDuoEnv(args.size)
+    # envs = VecTronDuoEnv(64, args.size)
+
+    env = TronDuoEnv(args.size)
+    obs, info = env.reset()
+    state = info['state']
+
+    agent = KnegtAgent(0, env.obs_shape, env.n_actions, state, args, device="cpu")
+    # agent = KnegtAgent.from_checkpoint("runs\KnegtReg_0\A.pth", 0, env.obs_shape, env.n_actions, state, args)
+    obs = np.expand_dims(obs[1], axis=0)  # Add batch dimension and select opponent's perspective
+    logits = agent.predict(obs)
+    print(logits)
+    
     

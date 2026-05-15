@@ -2,6 +2,7 @@
 # import random
 import torch, random
 import numpy as np
+from rl_core.env import GameState
 
 
 def mirror(obs, actions, next_obs):
@@ -107,21 +108,21 @@ class PrioritizedReplayBuffer:
         self.tree = SumTree(self.capacity)
         self.max_priority = 1.0
 
-        self.state_storage = []
-        self.next_state_storage = []
+        self.state_storage = np.empty(self.capacity, dtype=object)  # Store entire GameState tuples
+        # self.next_state_storage = np.empty(self.capacity, dtype=object)
 
-        for element in state_example:
-            if isinstance(element, np.ndarray):
-                shape, dtype = element.shape[1:], element.dtype
-                self.state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
-                self.next_state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
+        # for element in state_example:
+        #     if isinstance(element, np.ndarray):
+        #         shape, dtype = element.shape[1:], element.dtype
+        #         self.state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
+        #         self.next_state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
 
-            elif isinstance(element, (int, float)):
-                self.state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-                self.next_state_storage.append(np.empty((self.capacity,), dtype=type(element)))
+        #     elif isinstance(element, (int, float)):
+        #         self.state_storage.append(np.empty((self.capacity,), dtype=type(element)))
+        #         self.next_state_storage.append(np.empty((self.capacity,), dtype=type(element)))
 
-            else:
-                raise TypeError
+        #     else:
+        #         raise TypeError
 
         self.action = np.empty((self.capacity, 2), dtype=np.int8)
         self.reward = np.empty((self.capacity,), dtype=np.float32)
@@ -133,14 +134,11 @@ class PrioritizedReplayBuffer:
     def _get_priority(self, error):
         return (np.abs(error) + self.eps) ** self.alpha
 
-    def add(self, state, actions, reward, next_state, done):
+    def add(self, states, actions, reward, next_state, done):
         batch_size = actions.shape[0]
         idxs = (np.arange(batch_size) + self.count) % self.capacity
 
-        for i, (array, array_) in enumerate(zip(state, next_state)):
-            self.state_storage[i][idxs] = array
-            self.next_state_storage[i][idxs] = array_
-
+        self.state_storage[idxs] = [GameState(*elements) for elements in zip(*states)]  # Reconstruct GameState tuples
         self.action[idxs] = actions
         self.reward[idxs] = reward
         self.done[idxs] = done
@@ -176,32 +174,15 @@ class PrioritizedReplayBuffer:
         tree_idxs = np.array(tree_idxs)
         priorities = np.array(priorities)
 
-        states = [storage[idxs] for storage in self.state_storage]
-        next_states = [storage[idxs] for storage in self.next_state_storage]
-
-        obs = self.encode(states)
-        next_obs = self.encode(next_states)
-
-        actions = self.action[idxs]
-        rewards = self.reward[idxs]
-        dones = self.done[idxs]
-
-        if np.random.rand() < self.mirror_prob:
-            obs, actions, next_obs = mirror(obs, actions, next_obs)
-
-        obs = torch.from_numpy(obs).to(self.device).float()
-        actions = torch.from_numpy(actions).to(self.device).long()
-        rewards = torch.from_numpy(rewards).to(self.device).unsqueeze(1)
-        dones = torch.from_numpy(dones).to(self.device).unsqueeze(1)
-        next_obs = torch.from_numpy(next_obs).to(self.device).float()
+        states = self.state_storage[idxs]  # Extract GameState tuples based on sampled indices
+        assert np.all([isinstance(s, GameState) for s in states]), "Expected all sampled states to be GameState instances"
 
         sampling_probabilities = priorities / self.tree.total()
-
         weights = np.power(self.tree.n_entries * sampling_probabilities, -self.beta)
         weights /= weights.max()
         weights = torch.from_numpy(weights).to(self.device).unsqueeze(1).float()
 
-        return obs, actions, rewards, next_obs, dones, weights, tree_idxs
+        return states, tree_idxs, weights
 
     def update(self, tree_idxs, errors):
         priorities = self._get_priority(errors)

@@ -180,10 +180,7 @@ class DuelingDistributionalNetwork(nn.Module):
 
 class RainbowAgent:
 
-    def __init__(self, 
-        obs_shape, n_actions, state_example: tuple, 
-        state_encode_fn, args, device, writer, player
-        ):
+    def __init__(self, player, obs_shape, n_actions, state_example: tuple, state_encode_fn, args, device, writer=None):
 
         self.device = device
         self.batch_size = args.batch_size
