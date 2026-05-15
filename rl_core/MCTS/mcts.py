@@ -1,13 +1,13 @@
 import numpy as np
 # from rich import print
 
-from rl_core.env import PoLEnv  
+from rl_core.env import PoLEnv, GameState
 from rl_core.MCTS.vec_pol import VecPoLEnv
 from rl_core.utils import TimerRegistry
 from rl_core.env.heuristic import voronoi
 
 class Node:
-    def __init__(self, state, n_actions, parent=None, action=None, terminal=False, reward=0):
+    def __init__(self, state: GameState, n_actions, parent=None, action=None, terminal=False, reward=0):
         self.state = state
         self.parent = parent
         self.action = action # Debugging
@@ -32,10 +32,10 @@ class Node:
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backup"""
 
-    def __init__(self, env: PoLEnv, envs: VecPoLEnv, rollouts: int, max_steps=200):
+    def __init__(self, env: PoLEnv, envs: VecPoLEnv, max_steps=200):
         self.env = env  # For structured search
         self.envs = envs  # For structured search
-        self.rollouts = rollouts
+        self.rollouts = envs.num_envs
         self.max_steps = max_steps
 
     @TimerRegistry.wrap_fn("MCTS.plan")

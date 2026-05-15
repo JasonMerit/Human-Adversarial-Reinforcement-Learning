@@ -3,6 +3,7 @@ import os, time, sys
 from rich import print
 import numpy as np
 import gymnasium as gym
+from dataclasses import dataclass
 
 from .tron import Tron, Result
 from rich import print
@@ -13,6 +14,16 @@ from .heuristic import get_best_action
 
 clear = lambda: os.system('cls')
 
+@dataclass(frozen=True)
+class GameState:
+    walls: np.ndarray          # (S, S)
+    pos1: np.ndarray           # (2,)
+    pos2: np.ndarray           # (2,)
+    heading1: int
+    heading2: int
+
+    def __iter__(self):
+        return iter((self.walls, self.pos1, self.pos2, self.heading1, self.heading2))
 
 class TronEnv(gym.Env):
     """Wraps TronEnvBase with all the wrappers"""
@@ -60,7 +71,7 @@ class TronEnv(gym.Env):
             self.view()
         return TronEnv.encode(self.state), reward, done, False, info
     
-    def set_state(self, state):
+    def set_state(self, state: GameState):
         tron = self.tron
         # tron.walls, tron.bike1.pos, tron.bike2.pos, self.heading2 = state
         walls, pos1, pos2, h1, h2 = state
@@ -68,9 +79,8 @@ class TronEnv(gym.Env):
         self.heading1, self.heading2 = h1, h2
 
     @staticmethod
-    def encode(state):
-        assert type(state) == tuple
-        assert len(state) == 5
+    def encode(state: GameState):
+        assert type(state) == GameState, f"Expected GameState, got {type(state)}"
 
         walls, bike1, bike2, _, heading2 = state
         occ = (walls > 0).astype(np.float32)
@@ -89,8 +99,14 @@ class TronEnv(gym.Env):
         return np.rot90(obs, k=heading2, axes=(1, 2)).copy()
 
     @property
-    def state(self):
-        return self.tron.walls.copy(), self.tron.pos1.copy(), self.tron.pos2.copy(), self.heading1, self.heading2
+    def state(self) -> GameState:
+        return GameState(
+            walls=self.tron.walls.copy(),
+            pos1=self.tron.pos1.copy(),
+            pos2=self.tron.pos2.copy(),
+            heading1=self.heading1,
+            heading2=self.heading2
+        )
     
     def sample_action(self):
         return np.random.randint(self.n_actions)

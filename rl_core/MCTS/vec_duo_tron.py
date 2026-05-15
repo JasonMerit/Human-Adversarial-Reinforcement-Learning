@@ -2,8 +2,20 @@
 # colorama.just_fix_windows_console()
 import numpy as np
 import time, os, sys
-from rl_core.env import Result
+from rl_core.env import Result, GameState
 from rich import print
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class VecGameState:
+    walls: np.ndarray          # (num_envs, size, size)
+    pos1: np.ndarray           # (num_envs, 2)
+    pos2: np.ndarray           # (num_envs, 2)
+    heading1: np.ndarray  # (num_envs,)
+    heading2: np.ndarray  # (num_envs,)
+
+    def __iter__(self):
+        return iter((self.walls, self.pos1, self.pos2, self.heading1, self.heading2))
 
 class VecTronDuoEnv:
     """
@@ -134,7 +146,7 @@ class VecTronDuoEnv:
         hit_wall = self.walls[self.env_ids, y, x] == 1
         return hit_wall
 
-    def set_state(self, state, mask=None):
+    def set_state(self, state: GameState, mask=None):
         walls, p1, p2, h1, h2 = state
         assert walls.shape == (self.size, self.size), f"Expected shape {(self.size, self.size)}, got {walls.shape}"
         assert p1.shape == (2,), f"Expected shape {(2,)}, got {p1.shape}"
@@ -154,7 +166,7 @@ class VecTronDuoEnv:
         self.h1[mask] = h1
         self.h2[mask] = h2
 
-    def set_states(self, states):
+    def set_states(self, states: VecGameState):
         walls, p1, p2, h1, h2 = states
         assert walls.shape == (self.num_envs, self.size, self.size), f"Expected shape {(self.num_envs, self.size, self.size)}, got {walls.shape}"
         assert p1.shape == (self.num_envs, 2), f"Expected shape {(self.num_envs, 2)}, got {p1.shape}"
@@ -169,7 +181,8 @@ class VecTronDuoEnv:
         self.h2 = h2
 
     @staticmethod
-    def encode(state):
+    def encode(state: VecGameState):
+        assert isinstance(state, VecGameState), f"Expected VecGameState, got {type(state)}"
         walls, p1, p2, h1, h2 = state
         B, size, _ = walls.shape
 
@@ -194,8 +207,8 @@ class VecTronDuoEnv:
         return obs
 
     @property
-    def state(self):
-        return (
+    def state(self) -> VecGameState:
+        return VecGameState(
             self.walls.copy(),
             self.pos1.copy(),
             self.pos2.copy(),
