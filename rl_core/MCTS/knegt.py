@@ -176,7 +176,7 @@ class KnegtAgent:
     #     self.optimizer.step()
 
     def _mc_loss(self, states):
-        q_mc = torch.stack([torch.tensor(self._rollout(s), device=states.device) for s in states])
+        q_mc = torch.stack([torch.tensor(self._rollout(s), device=self.device) for s in states])
 
         obs = np.stack([TronDuoEnv.encode(s) for s in states], axis=0)[:, self.player]
         q_pred = self.network(torch.as_tensor(obs).to(self.device))

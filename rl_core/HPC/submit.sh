@@ -19,6 +19,6 @@ module purge
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate harl_hpc
 
-echo "====== [$(date)] Starting $LSB_JOBID ($i) ======"
+echo "====== [$(date)] Starting $LSB_JOBID ($LSB_JOBINDEX) ======"
 python -m rl_core.train --exp-name $LSB_JOBNAME --job-index $LSB_JOBINDEX --hpc --knegt 
-echo "====== [$(date)] Finished $LSB_JOBID ($i) ======"
+echo "====== [$(date)] Finished $LSB_JOBID ($LSB_JOBINDEX) ======"
