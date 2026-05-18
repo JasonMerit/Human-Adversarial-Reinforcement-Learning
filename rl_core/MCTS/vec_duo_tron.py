@@ -1,5 +1,3 @@
-# import colorama
-# colorama.just_fix_windows_console()
 import numpy as np
 import time, os, sys
 from rl_core.env import Result, GameState

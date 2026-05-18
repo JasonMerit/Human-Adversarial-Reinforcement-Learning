@@ -2,6 +2,8 @@
 # import random
 import torch, random
 import numpy as np
+from rl_core.env import GameState
+from rl_core.MCTS.vec_duo_tron import VecGameState
 
 
 def mirror(obs, actions, next_obs):
@@ -9,6 +11,17 @@ def mirror(obs, actions, next_obs):
         np.flip(obs.copy(), axis=-1).copy(),
         2 - actions,
         np.flip(next_obs.copy(), axis=-1).copy(),
+    )
+
+def to_vec_state(states):
+    walls, pos1, pos2, h1, h2 = zip(*states)
+
+    return VecGameState(
+        walls=np.stack(walls),
+        pos1=np.stack(pos1),
+        pos2=np.stack(pos2),
+        heading1=np.array(h1, dtype=np.int8),
+        heading2=np.array(h2, dtype=np.int8),
     )
 
 
@@ -91,7 +104,7 @@ class ReplayBuffer:
 
 class PrioritizedReplayBuffer:
 
-    def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
+    def __init__(self, state_encode_fn: callable, player: int, args, device):
         assert player in [0, 1]
 
         self.device = device
@@ -107,21 +120,20 @@ class PrioritizedReplayBuffer:
         self.tree = SumTree(self.capacity)
         self.max_priority = 1.0
 
-        self.state_storage = []
-        self.next_state_storage = []
+        # for element in state_example:
+        #     if isinstance(element, np.ndarray):
+        #         shape, dtype = element.shape[1:], element.dtype
+        #         self.state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
+        #         self.next_state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
 
-        for element in state_example:
-            if isinstance(element, np.ndarray):
-                shape, dtype = element.shape[1:], element.dtype
-                self.state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
-                self.next_state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
+        #     elif isinstance(element, (int, float)):
+        #         self.state_storage.append(np.empty((self.capacity,), dtype=type(element)))
+        #         self.next_state_storage.append(np.empty((self.capacity,), dtype=type(element)))
 
-            elif isinstance(element, (int, float)):
-                self.state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-                self.next_state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-
-            else:
-                raise TypeError
+        #     else:
+        #         raise TypeError
+        self.state_storage = np.empty(self.capacity, dtype=object)  # Store entire GameState tuples
+        self.next_state_storage = np.empty(self.capacity, dtype=object)  # Store entire GameState tuples
 
         self.action = np.empty((self.capacity, 2), dtype=np.int8)
         self.reward = np.empty((self.capacity,), dtype=np.float32)
@@ -133,13 +145,16 @@ class PrioritizedReplayBuffer:
     def _get_priority(self, error):
         return (np.abs(error) + self.eps) ** self.alpha
 
-    def add(self, state, actions, reward, next_state, done):
+    def add(self, states, actions, reward, next_state, done):
         batch_size = actions.shape[0]
         idxs = (np.arange(batch_size) + self.count) % self.capacity
 
-        for i, (array, array_) in enumerate(zip(state, next_state)):
-            self.state_storage[i][idxs] = array
-            self.next_state_storage[i][idxs] = array_
+        # for i, (array, array_) in enumerate(zip(states, next_state)):
+        #     self.state_storage[i][idxs] = array
+        #     self.next_state_storage[i][idxs] = array_
+        
+        self.state_storage[idxs] = [GameState(*elements) for elements in zip(*states)]  
+        self.next_state_storage[idxs] = [GameState(*elements) for elements in zip(*next_state)]
 
         self.action[idxs] = actions
         self.reward[idxs] = reward
@@ -150,7 +165,8 @@ class PrioritizedReplayBuffer:
 
         self.count = (self.count + batch_size) % self.capacity
         self.real_size = min(self.capacity, self.real_size + batch_size)
-
+    
+    
     def sample(self, batch_size):
         assert self.real_size >= batch_size
         assert self.tree.total() > 0
@@ -176,8 +192,8 @@ class PrioritizedReplayBuffer:
         tree_idxs = np.array(tree_idxs)
         priorities = np.array(priorities)
 
-        states = [storage[idxs] for storage in self.state_storage]
-        next_states = [storage[idxs] for storage in self.next_state_storage]
+        states = to_vec_state(self.state_storage[idxs])
+        next_states = to_vec_state(self.next_state_storage[idxs])
 
         obs = self.encode(states)
         next_obs = self.encode(next_states)

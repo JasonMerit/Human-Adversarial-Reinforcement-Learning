@@ -180,7 +180,7 @@ class DuelingDistributionalNetwork(nn.Module):
 
 class RainbowAgent:
 
-    def __init__(self, player, obs_shape, n_actions, state_example: tuple, state_encode_fn, args, device, writer=None):
+    def __init__(self, player, obs_shape, n_actions, state_encode_fn, args, device, writer=None):
 
         self.device = device
         self.batch_size = args.batch_size
@@ -200,7 +200,7 @@ class RainbowAgent:
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
         Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
-        self.rb = Buffer(state_example, state_encode_fn, player, args, device)
+        self.rb = Buffer(state_encode_fn, player, args, device)
         
         self.player = player  # Keep track of which agent 
         self.name = "A" if player == 0 else "B"

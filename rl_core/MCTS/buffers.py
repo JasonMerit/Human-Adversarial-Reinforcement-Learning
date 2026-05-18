@@ -92,7 +92,7 @@ class ReplayBuffer:
 
 class PrioritizedReplayBuffer:
 
-    def __init__(self, state_example, state_encode_fn: callable, player: int, args, device):
+    def __init__(self, state_encode_fn: callable, player: int, args, device):
         assert player in [0, 1]
 
         self.device = device
@@ -109,21 +109,6 @@ class PrioritizedReplayBuffer:
         self.max_priority = 1.0
 
         self.state_storage = np.empty(self.capacity, dtype=object)  # Store entire GameState tuples
-        # self.next_state_storage = np.empty(self.capacity, dtype=object)
-
-        # for element in state_example:
-        #     if isinstance(element, np.ndarray):
-        #         shape, dtype = element.shape[1:], element.dtype
-        #         self.state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
-        #         self.next_state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
-
-        #     elif isinstance(element, (int, float)):
-        #         self.state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-        #         self.next_state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-
-        #     else:
-        #         raise TypeError
-
         self.action = np.empty((self.capacity, 2), dtype=np.int8)
         self.reward = np.empty((self.capacity,), dtype=np.float32)
         self.done = np.empty((self.capacity,), dtype=np.bool_)

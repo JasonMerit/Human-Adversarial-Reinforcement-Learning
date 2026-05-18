@@ -82,11 +82,11 @@ if __name__ == "__main__":
 
      
     if args.knegt:
-        agent1 = KnegtAgent(0, obs_shape, n_actions, state, args, device, writer)
-        agent2 = KnegtAgent(1, obs_shape, n_actions, state, args, device, writer)
+        agent1 = KnegtAgent(0, obs_shape, n_actions, args, device, writer)
+        agent2 = KnegtAgent(1, obs_shape, n_actions, args, device, writer)
     else:
-        agent1 = RainbowAgent(0, obs_shape, n_actions, state, envs.encode, args, device, writer)
-        agent2 = RainbowAgent(1, obs_shape, n_actions, state, envs.encode, args, device, writer)
+        agent1 = RainbowAgent(0, obs_shape, n_actions, envs.encode, args, device, writer)
+        agent2 = RainbowAgent(1, obs_shape, n_actions, envs.encode, args, device, writer)
     
 
     # Logging
@@ -132,8 +132,10 @@ if __name__ == "__main__":
             if global_step % target_every == 0:
                 agent1.update_target()
                 agent2.update_target()
-            print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
-            quit()
+            
+            if args.debug:
+                print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
+                quit()
         
         
         # Logging

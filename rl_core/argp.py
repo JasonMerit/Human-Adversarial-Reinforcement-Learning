@@ -13,7 +13,8 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 4_000_000# 1_0000_000  # 1_000_000 ~ 1 hour on HPC
+    total_timesteps: int = 1_000_000  # Less time steps for Knegt due to long time in MC_ROLLOUTS
+    # total_timesteps: int = 4_000_000# 1_0000_000  # 1_000_000 ~ 1 hour on HPC
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4#0.0000625
     """the learning rate of the optimizer"""
@@ -67,7 +68,7 @@ class Args:
     # MCTS
     mcts: bool = False
     """whether to use MCTS agent"""
-    rollouts: int = 4
+    rollouts: int = 64
     """the number of rollouts to perform in MCTS"""
     mcts_c: float = 1.0
     """the exploration constant for MCTS"""
