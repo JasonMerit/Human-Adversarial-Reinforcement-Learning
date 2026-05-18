@@ -67,7 +67,7 @@ class Args:
     # MCTS
     mcts: bool = False
     """whether to use MCTS agent"""
-    rollouts: int = 1
+    rollouts: int = 4
     """the number of rollouts to perform in MCTS"""
     mcts_c: float = 1.0
     """the exploration constant for MCTS"""
@@ -115,7 +115,7 @@ def read_args():
         # args.render = True
         # args.buffer_size *= 1e89
         args.buffer_size = args.batch_size * 10
-        args.batch_size = 7
+        args.batch_size = 2
 
         args.exp_name = "debug_" + args.exp_name
         # args.pol = True  # Test PoL environment in debug mode

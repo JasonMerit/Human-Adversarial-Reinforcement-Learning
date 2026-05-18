@@ -19,8 +19,16 @@ class GameState:
     walls: np.ndarray          # (S, S)
     pos1: np.ndarray           # (2,)
     pos2: np.ndarray           # (2,)
-    heading1: int
-    heading2: int
+    heading1: np.int8
+    heading2: np.int8
+
+    def __init__(self, walls, pos1, pos2, heading1, heading2):
+        # cast heading to correct type for consistency
+        object.__setattr__(self, 'walls', walls)
+        object.__setattr__(self, 'pos1', pos1)
+        object.__setattr__(self, 'pos2', pos2)
+        object.__setattr__(self, 'heading1', np.int8(heading1))
+        object.__setattr__(self, 'heading2', np.int8(heading2))
 
     def __iter__(self):
         return iter((self.walls, self.pos1, self.pos2, self.heading1, self.heading2))
@@ -274,8 +282,14 @@ class TronDuoEnv(gym.Env):
         return obs
 
     @property
-    def state(self):        
-        return self.tron.walls.copy(), self.tron.pos1.copy(), self.tron.pos2.copy(), self.heading1, self.heading2
+    def state(self):       
+        return GameState(
+            self.tron.walls.copy(),
+            self.tron.pos1.copy(),
+            self.tron.pos2.copy(),
+            self.heading1,
+            self.heading2
+        )
 
     def set_state(self, state):
         tron = self.tron

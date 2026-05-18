@@ -147,11 +147,8 @@ class VecTronDuoEnv:
         return hit_wall
 
     def set_state(self, state: GameState, mask=None):
+        assert isinstance(state, GameState), f"Expected input to be a GameState, got {type(state)}"
         walls, p1, p2, h1, h2 = state
-        assert walls.shape == (self.size, self.size), f"Expected shape {(self.size, self.size)}, got {walls.shape}"
-        assert p1.shape == (2,), f"Expected shape {(2,)}, got {p1.shape}"
-        assert p2.shape == (2,), f"Expected shape {(2,)}, got {p2.shape}"
-        assert isinstance(h1, int) and isinstance(h2, int), f"Expected integer headings, got {type(h1)} and {type(h2)}" 
 
         if mask is None:
             mask = np.ones(self.num_envs, dtype=bool)
@@ -182,7 +179,7 @@ class VecTronDuoEnv:
 
     @staticmethod
     def encode(state: VecGameState):
-        assert isinstance(state, VecGameState), f"Expected VecGameState, got {type(state)}"
+        assert isinstance(state, VecGameState), f"Expected VecGameState, got {type(state)} === {type(state[0])}"
         walls, p1, p2, h1, h2 = state
         B, size, _ = walls.shape
 
@@ -205,6 +202,9 @@ class VecTronDuoEnv:
 
         obs = np.stack([obs1, obs2], axis=1)  # shape (B, 2, 3, size, size)
         return obs
+
+    def get_obs(self):
+        return self.encode(self.state)
 
     @property
     def state(self) -> VecGameState:

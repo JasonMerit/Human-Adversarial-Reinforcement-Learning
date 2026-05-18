@@ -8,7 +8,8 @@ from rich import print
 
 from .buffers import PrioritizedReplayBuffer, ReplayBuffer
 from ..utils import TimerRegistry
-from .agent_mcts import MCTS, Node
+# from .agent_mcts import MCTS
+from .expectimax1 import MCTS
 from rl_core.env import TronDuoEnv
 from .vec_duo_tron import VecTronDuoEnv
 
@@ -84,7 +85,6 @@ class KnegtAgent:
     def __init__(self, player, obs_shape, n_actions, state_example: tuple, args, device, writer=None):
         self.device = device
         self.batch_size = args.batch_size
-        self.gamma = args.gamma
 
         self.network = KnegtNetwork(obs_shape, n_actions).to(device)
         self.target_network = KnegtNetwork(obs_shape, n_actions).to(device)
@@ -94,11 +94,11 @@ class KnegtAgent:
 
         # MCTS
         env = TronDuoEnv(args.size)  # Dummy env for MCTS simulations
-        envs = VecTronDuoEnv(args.rollouts, args.size)  # For encoding states in MCTS
-        self.mcts = MCTS(self.act, env, envs, rollouts=args.rollouts, horizon=args.horizon)
+        self.envs = VecTronDuoEnv(args.rollouts, args.size)  # For encoding states in MCTS
+        self.mcts = MCTS(player, self.act, self.adv_act, env, self.envs)
 
         Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
-        self.rb = Buffer(state_example, envs.encode, player, args, device)
+        self.rb = Buffer(state_example, VecTronDuoEnv.encode, player, args, device)
 
         
         self.player = player  # Keep track of which agent 
@@ -119,6 +119,20 @@ class KnegtAgent:
         assert obs.ndim == 4, f"Expected input shape (B, C, H, W), got {obs.shape}"
         assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
         return self.network.act(torch.as_tensor(obs).to(self.device))
+
+    def adv_act(self, obs: np.ndarray):
+        assert obs.ndim == 4, f"Expected input shape (B, C, H, W), got {obs.shape}"
+        assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
+        return np.random.choice(3, size=obs.shape[0])
+
+    # def get_adv_probs(self, obs: np.ndarray):
+    #     assert obs.ndim == 4, f"Expected input shape (B, C, H, W), got {obs.shape}"
+    #     assert isinstance(obs, np.ndarray), f"Expected input to be a np.ndarray, got {type(obs)}"
+    #     # return uniform distributed for now
+    #     return np.ones((obs.shape[0], 3)) / 3
+        # logits = self.network.predict(torch.as_tensor(obs).to(self.device))
+        # probs = F.softmax(logits, dim=1)
+        # return probs.cpu().numpy()
     
     @torch.inference_mode()
     def predict(self, obs: np.ndarray):
@@ -128,21 +142,18 @@ class KnegtAgent:
         probs = F.softmax(logits, dim=1)
         return probs.cpu().numpy()
     
-    @TimerRegistry.wrap_fn("rainbow_learn")
+    @TimerRegistry.wrap_fn("knegt_learn")
     def learn(self):
         self.learning_steps += 1
 
-        states, weights, indices = self.rb.sample(self.batch_size)
+        states, weights, tree_idxs = self.rb.sample(self.batch_size)
 
-        # dqn_loss_per_sample = self._dqn_loss(obs[:, self.player], actions[:, self.player], rewards, next_obs[:, self.player], dones)
-        # cross_entropy_loss_per_sample = self._cross_loss(obs[:, 1 - self.player], actions[:, 1 - self.player])
         mcts_loss_per_sample = self._mcts_loss(states)
-        
         loss = (mcts_loss_per_sample * weights.squeeze()).mean()
 
         # update priorities
         new_priorities = mcts_loss_per_sample.detach().cpu().numpy()  # Prioritize based on TD error only, not opponent prediction loss
-        self.rb.update(indices, new_priorities)
+        self.rb.update(tree_idxs, new_priorities)
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -154,9 +165,6 @@ class KnegtAgent:
             self.writer.add_scalar(f"gradients/{self.name}_weight_norm", weight, self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_mcts_mean", mcts_loss_per_sample.mean().item(), self.learning_steps)
             self.writer.add_scalar(f"losses/{self.name}_mcts_std", mcts_loss_per_sample.std().item(), self.learning_steps)
-            # self.writer.add_scalar(f"losses/{self.name}_cross_mean", cross_entropy_loss_per_sample.mean().item(), self.learning_steps)
-            # self.writer.add_scalar(f"losses/{self.name}_cross_std", cross_entropy_loss_per_sample.std().item(), self.learning_steps)
-            # q_values = (pred_dist * self.network.support).sum(dim=1)  # [B]
             # self.writer.add_scalar(f"losses/{self.name}_q_values_mean", q_values.mean().item(), self.learning_steps)
             # self.writer.add_scalar(f"losses/{self.name}_q_values_std", q_values.std().item(), self.learning_steps)
 
@@ -169,30 +177,14 @@ class KnegtAgent:
     #     loss.backward()
     #     self.optimizer.step()
 
-    def _dqn_loss(self, obs, actions, rewards, next_obs, dones):
-        with torch.no_grad():
-            next_q_target = self.target_network(next_obs)
-            next_q_online = self.network(next_obs)
-
-            best_actions = next_q_online.argmax(dim=1, keepdim=True)
-            next_q = next_q_target.gather(1, best_actions)
-
-            target = rewards + self.gamma * next_q * (1 - dones.float())
-
-        q = self.network(obs)
-        pred = q.gather(1, actions.unsqueeze(1))
-
-        loss_per_sample = F.smooth_l1_loss(pred, target, reduction="none")
-        return loss_per_sample.squeeze(1)
-
     def _mcts_loss(self, states):
-        q_mcts = torch.tensor(np.stack([self.mcts(s) for s in states]), device=states.device, dtype=torch.float32)  # [B, A]
-        print(q_mcts.shape)
+        q_mcts = torch.stack([torch.tensor(self.mcts(s), device=states.device) for s in states])
 
-        q_pred = self.network(states)  # [B, A]
-        print(q_pred.shape)
+        obs = np.stack([TronDuoEnv.encode(s) for s in states], axis=0)[:, self.player]
+        q_pred = self.network(torch.as_tensor(obs).to(self.device))
 
-        return ((q_pred - q_mcts) ** 2).mean(dim=1)  # per-sample loss
+        loss_per_action = F.smooth_l1_loss(q_pred, q_mcts, reduction="none")  # [B, 3]
+        return loss_per_action.mean(dim=1)
 
     def _cross_loss(self, obs, opp_actions):
         logits = self.network.predict(obs)

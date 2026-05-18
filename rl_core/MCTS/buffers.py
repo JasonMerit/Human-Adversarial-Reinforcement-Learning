@@ -139,6 +139,8 @@ class PrioritizedReplayBuffer:
         idxs = (np.arange(batch_size) + self.count) % self.capacity
 
         self.state_storage[idxs] = [GameState(*elements) for elements in zip(*states)]  # Reconstruct GameState tuples
+        # print(f"Stored state types: {[type(element) for element in self.state_storage[0]]}")
+        # quit()
         self.action[idxs] = actions
         self.reward[idxs] = reward
         self.done[idxs] = done
@@ -182,7 +184,7 @@ class PrioritizedReplayBuffer:
         weights /= weights.max()
         weights = torch.from_numpy(weights).to(self.device).unsqueeze(1).float()
 
-        return states, tree_idxs, weights
+        return states, weights, tree_idxs
 
     def update(self, tree_idxs, errors):
         priorities = self._get_priority(errors)
