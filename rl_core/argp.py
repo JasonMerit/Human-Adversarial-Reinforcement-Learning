@@ -13,7 +13,7 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 5_000_0  # Less time steps for Knegt due to long time in MC_ROLLOUTS
+    total_timesteps: int = 400_000  # Less time steps for Knegt due to long time in MC_ROLLOUTS
     # total_timesteps: int = 4_000_000# 1_0000_000  # 1_000_000 ~ 1 hour on HPC
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4#0.0000625
