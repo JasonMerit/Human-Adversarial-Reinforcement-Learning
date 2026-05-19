@@ -17,21 +17,21 @@ clear = lambda: os.system('cls')
 @dataclass(frozen=True)
 class GameState:
     walls: np.ndarray          # (S, S)
-    pos1: np.ndarray           # (2,)
-    pos2: np.ndarray           # (2,)
-    heading1: np.int8
-    heading2: np.int8
+    p1: np.ndarray           # (2,)
+    p2: np.ndarray           # (2,)
+    h1: np.int8
+    h2: np.int8
 
-    def __init__(self, walls, pos1, pos2, heading1, heading2):
+    def __init__(self, walls, p1, p2, h1, h2):
         # cast heading to correct type for consistency
         object.__setattr__(self, 'walls', walls)
-        object.__setattr__(self, 'pos1', pos1)
-        object.__setattr__(self, 'pos2', pos2)
-        object.__setattr__(self, 'heading1', np.int8(heading1))
-        object.__setattr__(self, 'heading2', np.int8(heading2))
+        object.__setattr__(self, 'p1', p1)
+        object.__setattr__(self, 'p2', p2)
+        object.__setattr__(self, 'h1', np.int8(h1))
+        object.__setattr__(self, 'h2', np.int8(h2))
 
     def __iter__(self):
-        return iter((self.walls, self.pos1, self.pos2, self.heading1, self.heading2))
+        return iter((self.walls, self.p1, self.p2, self.h1, self.h2))
 
 class TronEnv(gym.Env):
     """Wraps TronEnvBase with all the wrappers"""

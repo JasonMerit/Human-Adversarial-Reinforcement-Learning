@@ -7,13 +7,32 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class VecGameState:
     walls: np.ndarray          # (num_envs, size, size)
-    pos1: np.ndarray           # (num_envs, 2)
-    pos2: np.ndarray           # (num_envs, 2)
-    heading1: np.ndarray  # (num_envs,)
-    heading2: np.ndarray  # (num_envs,)
+    p1: np.ndarray           # (num_envs, 2)
+    p2: np.ndarray           # (num_envs, 2)
+    h1: np.ndarray  # (num_envs,)
+    h2: np.ndarray  # (num_envs,)
 
     def __iter__(self):
-        return iter((self.walls, self.pos1, self.pos2, self.heading1, self.heading2))
+        return iter((self.walls, self.p1, self.p2, self.h1, self.h2))
+
+def rotate_batch(board, headings):
+    """
+    board: (B,C,S,S)
+    headings: (B,)
+    """
+    out = np.empty_like(board)
+
+    m0 = headings == 0
+    m1 = headings == 1
+    m2 = headings == 2
+    m3 = headings == 3
+
+    out[m0] = board[m0]
+    out[m1] = np.flip(np.transpose(board[m1], (0,1,3,2)), axis=2)
+    out[m2] = np.flip(np.flip(board[m2], axis=2), axis=3)
+    out[m3] = np.flip(np.transpose(board[m3], (0,1,3,2)), axis=3)
+
+    return out
 
 class VecTronDuoEnv:
     """
@@ -144,22 +163,16 @@ class VecTronDuoEnv:
         hit_wall = self.walls[self.env_ids, y, x] == 1
         return hit_wall
 
-    def set_state(self, state: GameState, mask=None):
+    def set_state(self, state: GameState):
         assert isinstance(state, GameState), f"Expected input to be a GameState, got {type(state)}"
         walls, p1, p2, h1, h2 = state
 
-        if mask is None:
-            mask = np.ones(self.num_envs, dtype=bool)
-        count = mask.sum()
-        if count == 0:
-            return  # No envs to set
+        self.walls[:] = walls.copy()
+        self.pos1[:] = p1.copy()
+        self.pos2[:] = p2.copy()
 
-        self.walls[mask] = np.repeat(walls[None], count, axis=0).copy()
-        self.pos1[mask] = np.repeat(p1[None], count, axis=0).copy()
-        self.pos2[mask] = np.repeat(p2[None], count, axis=0).copy()
-
-        self.h1[mask] = h1
-        self.h2[mask] = h2
+        self.h1[:] = h1
+        self.h2[:] = h2
 
     def set_states(self, states: VecGameState):
         walls, p1, p2, h1, h2 = states
@@ -194,9 +207,12 @@ class VecTronDuoEnv:
         obs2[env_ids, 1, p2[:, 1], p2[:, 0]] = 1
         obs2[env_ids, 2, p1[:, 1], p1[:, 0]] = 1
 
-        for i in range(B):
-            obs1[i] = np.rot90(obs1[i], k=h1[i], axes=(1, 2))
-            obs2[i] = np.rot90(obs2[i], k=h2[i], axes=(1, 2))
+        # for i in range(B):
+        #     obs1[i] = np.rot90(obs1[i], k=h1[i], axes=(1, 2))
+        #     obs2[i] = np.rot90(obs2[i], k=h2[i], axes=(1, 2))
+
+        obs1 = rotate_batch(obs1, h1)
+        obs2 = rotate_batch(obs2, h2)
 
         obs = np.stack([obs1, obs2], axis=1)  # shape (B, 2, 3, size, size)
         return obs
@@ -207,11 +223,11 @@ class VecTronDuoEnv:
     @property
     def state(self) -> VecGameState:
         return VecGameState(
-            self.walls.copy(),
-            self.pos1.copy(),
-            self.pos2.copy(),
-            self.h1.copy(),
-            self.h2.copy(),
+            self.walls,
+            self.pos1,
+            self.pos2,
+            self.h1,
+            self.h2,
         )
     
     def view(self, flush=True):

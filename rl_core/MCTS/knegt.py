@@ -174,9 +174,8 @@ class KnegtAgent:
     #     self.optimizer.zero_grad()
     #     loss.backward()
     #     self.optimizer.step()
-
     def _mc_loss(self, states):
-        q_mc = torch.stack([torch.tensor(self._rollout(s), device=self.device) for s in states])
+        q_mc = torch.as_tensor(np.stack([self._rollout(s) for s in states]), device=self.device, dtype=torch.float32)
 
         obs = np.stack([TronDuoEnv.encode(s) for s in states], axis=0)[:, self.player]
         q_pred = self.network(torch.as_tensor(obs).to(self.device))
@@ -200,9 +199,8 @@ class KnegtAgent:
             self.envs.set_state(state)
             obs = self.envs.get_obs()
 
-            a = np.full(self.rollouts, i)
             b = self.adv_act(obs[:, 1 - self.player])
-            actions[:, self.player], actions[:, 1 - self.player] = a, b
+            actions[:, self.player], actions[:, 1 - self.player] = i, b
             obs, r, d, _, _ = self.envs.step(actions)
 
             total = r.copy()
@@ -215,8 +213,8 @@ class KnegtAgent:
                 obs, r, d, _, _ = self.envs.step(actions)
 
                 total[d] = r[d]
-                # active &= ~d
-                active = np.logical_and(active, ~d)
+                active &= ~d
+                # active = np.logical_and(active, ~d)
 
             q[i] = total.mean()
         

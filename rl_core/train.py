@@ -2,12 +2,12 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rainbow/#rainbow_ataripy
 import random, os, time, shutil
 
-import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from rich import print
 import yaml
+from tqdm import trange
 
 from .argp import read_args
 from .agents import RainbowAgent
@@ -101,6 +101,7 @@ if __name__ == "__main__":
     ep_lens = deque(maxlen=100)
 
     for global_step in range(1, total_loops + 1):
+    # for global_step in trange(1, total_loops + 1, desc="Training"):
         TimerRegistry.start()
         a1 = agent1.act(obs[:, 0])
         a2 = agent2.act(obs[:, 1])
@@ -124,19 +125,19 @@ if __name__ == "__main__":
 
         # Training
         if global_step > learn_start_loop:
-            for _ in range(train_count):
-                agent1.learn()
-                agent2.learn()
+            # for _ in range(train_count):
+            agent1.learn()
+            agent2.learn()
 
             # update target network
-            if global_step % target_every == 0:
-                agent1.update_target()
-                agent2.update_target()
+            # if global_step % target_every == 0:
+            #     agent1.update_target()
+            #     agent2.update_target()
             
-            if args.debug:
-                print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
-                quit()
-        
+            # if args.debug:
+                # print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
+                # quit()
+            # print("one learning step")
         
         # Logging
         for i in np.where(dones)[0]:  # Update results for any env that is done
