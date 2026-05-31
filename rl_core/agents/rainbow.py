@@ -55,8 +55,8 @@ class DuelingNetwork(nn.Module):
 
     
     @classmethod
-    def from_checkpoint(cls, path, obs_shape, n_actions, device="cpu"):
-        net = cls(obs_shape=obs_shape, n_actions=n_actions).to(device)
+    def from_checkpoint(cls, path, obs_shape, n_actions, args, device="cpu"):
+        net = cls(obs_shape=obs_shape, n_actions=n_actions, args=args).to(device)
         net_dict = torch.load(path, weights_only=True, map_location=device)
         net.load_state_dict(net_dict)
         return net

@@ -96,20 +96,19 @@ class PlayerModelNetwork(nn.Module):
 
 
 class PlayerModel:
-    def __init__(self, cnn, obs_shape, n_actions, encode_fn, player, args, device):
-        self.device, self.batch_size, self.player, self.encode = device, args.batch_size, player, encode_fn
+    def __init__(self, cnn, obs_shape, n_actions, player, args, device):
+        self.device, self.batch_size, self.player = device, args.batch_size, player
 
-        self.buffer = StateActionBuffer(args.buffer_size, args.seq_len, args.num_envs)
+        self.rb = StateActionBuffer(args.buffer_size, args.seq_len, args.num_envs)
+        self.net = PlayerModelNetwork(cnn, obs_shape, n_actions, args.emb_dim, args.hidden)
 
-        self.net = PlayerModelNetwork(cnn, obs_shape, n_actions, args.emb_dim, args.hidden).to(device)
-
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=args.lr)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=args.pm_lr)
 
     def add(self, states, actions, dones):
-        self.buffer.add(states, actions, dones)
+        self.rb.add(states, actions, dones)
 
     def train_predictor(self, epochs=1):
-        dataset = self.buffer.get_dataset(self.encode, self.player)
+        dataset = self.rb.get_dataset(self.encode, self.player)
 
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
 
@@ -135,3 +134,7 @@ class PlayerModel:
             print(f"loss={total_loss/total:.4f} acc={total_correct/total:.4f}")
         
         self.net.eval()
+
+
+if __name__ == "__main__":
+    pass

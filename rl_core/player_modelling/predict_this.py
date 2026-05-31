@@ -1,20 +1,11 @@
-from pathlib import Path
-import torch, yaml
 
-from rich import print
+import yaml
+from pathlib import Path
+from rl_core.eval.battle import make_agent
 
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.env.wrappers import TorchObservationWrapper
-from rl_core.agents.rainbow import DuelingNetwork
 
-def make_dqn(path, obs_shape, n_actions):
-    from rl_core.agents.dqn import QNetwork
-    return QNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
-
-def make_agent(path, obs_shape, n_actions, args):
-    agent = DuelingNetwork.from_checkpoint(path, obs_shape, n_actions, args, device="cpu")
-    agent.eval()
-    return agent
 
 def play(agent1, agent2, env: TronDuoEnv):
     obs, _ = env.reset()
@@ -31,7 +22,7 @@ def play(agent1, agent2, env: TronDuoEnv):
             print(history[:len(history)//2])  # Print first half
             print(history[len(history)//2:])  # Print second half
             quit()
-    
+
 def battle(folder):
     folder = Path("runs") / folder
     with open(folder / "args.yml", "r") as f:
@@ -48,12 +39,7 @@ def battle(folder):
     agent1, agent2 = make_agent(path1, obs_shape, n_actions, args), make_agent(path2, obs_shape, n_actions, args)
 
     play(agent1, agent2, env)
-        
 
-if __name__ == "__main__":
-    # Get args
-    import argparse
-    parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
-    parser.add_argument("folder", type=str, default="", help="Path folder of trained model checkpoints.")
-    args = parser.parse_args()
-    battle(args.folder)
+
+
+battle("Bench15_4")

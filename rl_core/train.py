@@ -127,9 +127,9 @@ if __name__ == "__main__":
         if global_step > learn_start_loop:
             # for _ in range(train_count):
             agent1.learn()
-            # if args.debug:
-            #     print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
-            #     quit()
+            if args.debug:
+                print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
+                quit()
             agent2.learn()
 
             # update target network

@@ -78,6 +78,8 @@ class Args:
     """the embedding dimension for the player modeler"""
     hidden = 32  # Rando
     """the hidden dimension for the player modeler"""
+    pm_lr = 1e-3
+    """the learning rate for the player modeler"""
 
     # Jason's additions
     save: bool = True
