@@ -42,6 +42,14 @@ class Args:
     mirror_prob: float = 0.1
     """the probability of mirroring the state in the replay buffer for data augmentation (specific to Tron)"""
 
+    # NN architecture
+    conv1: int = 16
+    """the number of channels for the 1st conv layer (specific to Tron)"""
+    conv2: int = 32
+    """the number of channels for the 2nd conv layer (specific to Tron)"""
+    hidden_size: int = 32
+    """the hidden size of the neural networks"""
+
     # Prioritized replay buffer
     per: bool = True
     """whether to use a prioritized experience replay buffer"""
@@ -52,19 +60,6 @@ class Args:
     per_eps: float = 1e-6
     """epsilon parameter for prioritized replay buffer"""
 
-    # Distributional
-    c51: bool = False
-    """whether to use the C51 distributional RL algorithm"""
-    n_atoms: int = 51
-    """the number of atoms"""
-    v_min: float = -100  # R_min / (1 - gamma)
-    """the return lower bound"""
-    v_max: float = 100
-    """the return upper bound"""
-
-    # Noisy Nets
-    noisy: bool = False
-    """whether to use noisy linear layers"""
 
     # MCTS
     mcts: bool = False
