@@ -75,6 +75,14 @@ class Args:
     horizon: int = 10
     """the maximum depth for MCTS"""
 
+    # Player modeller
+    seq_len = 5
+    """the context window length for the player modeler, i.e. how many past states and actions to consider when predicting the opponent's next action"""
+    emb_dim = 16  # Rando
+    """the embedding dimension for the player modeler"""
+    hidden = 32  # Rando
+    """the hidden dimension for the player modeler"""
+
     # Jason's additions
     save: bool = True
     """whether to save the final model"""

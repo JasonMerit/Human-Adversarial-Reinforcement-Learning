@@ -6,7 +6,7 @@ from rich import print
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.env.wrappers import TorchObservationWrapper
 from rl_core.agents.rainbow import DuelingNetwork
-from rl_core.agents.knegt import KnegtNetwork
+from rl_core.MCTS.knegt import KnegtNetwork
 
 def make_dqn(path, obs_shape, n_actions):
     from rl_core.agents.dqn import QNetwork
@@ -58,8 +58,8 @@ def battle(folder):
         args = yaml.safe_load(f)
         size = args['size']
 
-    env = TronDuoEnv(size)
-    # env = TronView(TronDuoEnv(size))
+    # env = TronDuoEnv(size)
+    env = TronView(TronDuoEnv(size))
     env = TorchObservationWrapper(env, device="cpu")
     n_actions = env.unwrapped.n_actions
     obs_shape = env.unwrapped.obs_shape

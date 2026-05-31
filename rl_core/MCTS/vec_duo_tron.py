@@ -14,6 +14,7 @@ class VecGameState:
 
     def __iter__(self):
         return iter((self.walls, self.p1, self.p2, self.h1, self.h2))
+    
 
 def rotate_batch(board, headings):
     """
@@ -149,9 +150,9 @@ class VecTronDuoEnv:
         if self.render:
             self.view()  # render
         
+        self.reset(mask=dones)  # Auto reset dones envs
         state = self.state
         obs = VecTronDuoEnv.encode(state)
-        self.reset(mask=dones)  # Auto reset dones envs
         
         infos = {"result": result, "state": state}
         return obs, reward, dones, None, infos
@@ -223,11 +224,11 @@ class VecTronDuoEnv:
     @property
     def state(self) -> VecGameState:
         return VecGameState(
-            self.walls,
-            self.pos1,
-            self.pos2,
-            self.h1,
-            self.h2,
+            self.walls.copy(),
+            self.pos1.copy(),
+            self.pos2.copy(),
+            self.h1.copy(),
+            self.h2.copy(),
         )
     
     def view(self, flush=True):

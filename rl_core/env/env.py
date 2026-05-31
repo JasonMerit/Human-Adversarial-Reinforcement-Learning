@@ -236,8 +236,6 @@ class TronDuoEnv(gym.Env):
     def step(self, joint_action : np.ndarray):
         assert self.action_space.contains(joint_action), f"[bold red]Jason! Invalid Action {joint_action}"
 
-        # a0, a1 = int(joint_action[0]), int(joint_action[1])
-
         self.heading1 = (self.heading1 + (joint_action[0] - 1)) % 4  # Because (left, forward, right)
         self.heading2 = (self.heading2 + (joint_action[1] - 1)) % 4  # Because (left, forward, right)
         

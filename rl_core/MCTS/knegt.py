@@ -9,9 +9,10 @@ from rich import print
 from .buffers import PrioritizedReplayBuffer, ReplayBuffer
 from ..utils import TimerRegistry
 # from .agent_mcts import MCTS
-from .expectimax1 import MCTS
+# from .expectimax1 import MCTS
 from rl_core.env import TronDuoEnv
 from .vec_duo_tron import VecTronDuoEnv
+from rl_core.player_modelling.player_model import PlayerModel, StateActionBuffer
 
 class KnegtNetwork(nn.Module):
     def __init__(self, obs_shape, n_actions):
@@ -43,15 +44,6 @@ class KnegtNetwork(nn.Module):
             nn.Linear(hidden, n_actions)
         )
 
-        self.opp_head = nn.Sequential(
-            nn.Linear(n_flatten, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, n_actions)
-        )
-        # make initial poponent policy uniform
-        nn.init.constant_(self.opp_head[-1].weight, 0)
-        nn.init.constant_(self.opp_head[-1].bias, 0)
-
     def forward(self, x) -> torch.Tensor:
         # assert x.ndim == 4, f"Expected input shape (B, C, H, W), got {x.shape}"
         # assert x.shape[1:] == (self.channels, self.size, self.size), f"Expected input shape (B, {self.channels}, {self.size}, {self.size}), got {x.shape}"
@@ -61,11 +53,6 @@ class KnegtNetwork(nn.Module):
         q = v + a - a.mean(dim=1, keepdim=True)
         return q
     
-    def predict(self, x) -> torch.Tensor:
-        h = self.cnn(x).detach() # No gradients for opponent prediction
-        logits = self.opp_head(h)
-        return logits
-
     @torch.inference_mode()
     def act(self, obs):
         h = self.cnn(obs)
@@ -88,8 +75,6 @@ class KnegtAgent:
         self.rollouts = args.rollouts
 
         self.network = KnegtNetwork(obs_shape, n_actions).to(device)
-        self.target_network = KnegtNetwork(obs_shape, n_actions).to(device)
-        self.target_network.load_state_dict(self.network.state_dict())
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
@@ -98,16 +83,21 @@ class KnegtAgent:
         Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
         self.rb = Buffer(VecTronDuoEnv.encode, player, args, device)
 
-        
-        self.player = player  # Keep track of which agent 
-        self.opp_weight = 0.1  # Weight for opponent prediction loss
+        self.epi_rb = StateActionBuffer(args.buffer_size, args.seq_len, args.num_envs, device)  # Separate buffer for opponent modeling
+        self.player_modeler = PlayerModel(self.network.cnn, obs_shape, n_actions, args, device).to(device)
+
+        self.player = player  # Keep track of which agent
         self.name = ["A", "B"][player]
         self.writer = writer
         self.learning_steps = 0
 
     def get_num_params(self):
         return sum(p.numel() for p in self.network.parameters())
-    
+
+    def add(self, state, actions, reward, next_state, done):
+        self.rb.add(state, actions, reward, next_state, done)
+        self.epi_rb.add(state, actions[:, 1 - self.player], done)  # Store opponent's actions for modeling
+
     def save(self, path, verbose=True):
         torch.save(self.network.state_dict(), path)
         if verbose:
@@ -188,9 +178,6 @@ class KnegtAgent:
         loss_per_sample = F.cross_entropy(logits, opp_actions.squeeze(), reduction="none")
         return loss_per_sample
 
-    def update_target(self):
-        self.target_network.load_state_dict(self.network.state_dict())
-    
     def _rollout(self, state):
         q = np.zeros(3)
         actions = np.empty((self.rollouts, 2), dtype=np.int8)
@@ -232,28 +219,7 @@ class KnegtAgent:
     def from_checkpoint(cls, path, player, obs_shape, n_actions, state_example, args):
         agent = cls(player, obs_shape, n_actions, state_example, args, "cpu")
         agent.network.load_state_dict(torch.load(path, weights_only=True, map_location="cpu"))
-        agent.update_target()
         return agent
 
 
-if __name__ == "__main__":
-    from ..argp import read_args
-    from rl_core.env import TronDuoEnv
-    from .vec_duo_tron import VecTronDuoEnv
-    args = read_args()
-    args.size = 15
 
-    # env = TronDuoEnv(args.size)
-    # envs = VecTronDuoEnv(64, args.size)
-
-    env = TronDuoEnv(args.size)
-    obs, info = env.reset()
-    state = info['state']
-
-    agent = KnegtAgent(0, env.obs_shape, env.n_actions, state, args, device="cpu")
-    # agent = KnegtAgent.from_checkpoint("runs\KnegtReg_0\A.pth", 0, env.obs_shape, env.n_actions, state, args)
-    obs = np.expand_dims(obs[1], axis=0)  # Add batch dimension and select opponent's perspective
-    logits = agent.predict(obs)
-    print(logits)
-    
-    

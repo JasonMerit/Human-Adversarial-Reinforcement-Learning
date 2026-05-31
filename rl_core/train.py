@@ -113,13 +113,13 @@ if __name__ == "__main__":
         a2[explore_mask] = np.random.randint(0, n_actions, size=explore_mask.sum())
         actions = np.stack([a1, a2], axis=1) 
 
-        next_obs, rewards, dones, _, infos = envs.step(actions)
+        obs, rewards, dones, _, infos = envs.step(actions)
         next_state = infos["state"]
 
-        agent1.rb.add(state, actions, rewards, next_state, dones)
-        agent2.rb.add(state, actions, -rewards, next_state, dones)
+        agent1.add(state, actions, rewards, next_state, dones)
+        agent2.add(state, actions, -rewards, next_state, dones)
 
-        obs, state = next_obs, next_state
+        state = next_state
         episode_lengths += 1
         TimerRegistry.stop("env_step")
 
@@ -127,6 +127,9 @@ if __name__ == "__main__":
         if global_step > learn_start_loop:
             # for _ in range(train_count):
             agent1.learn()
+            if args.debug:
+                print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
+                quit()
             agent2.learn()
 
             # update target network
@@ -134,8 +137,6 @@ if __name__ == "__main__":
             #     agent1.update_target()
             #     agent2.update_target()
             
-            # if args.debug:
-                # print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
                 # quit()
             # print("one learning step")
         
