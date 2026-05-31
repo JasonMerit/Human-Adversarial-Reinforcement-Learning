@@ -18,10 +18,10 @@ def to_vec_state(states):
 
     return VecGameState(
         walls=np.stack(walls),
-        pos1=np.stack(pos1),
-        pos2=np.stack(pos2),
-        heading1=np.array(h1, dtype=np.int8),
-        heading2=np.array(h2, dtype=np.int8),
+        p1=np.stack(pos1),
+        p2=np.stack(pos2),
+        h1=np.array(h1, dtype=np.int8),
+        h2=np.array(h2, dtype=np.int8),
     )
 
 
@@ -120,18 +120,6 @@ class PrioritizedReplayBuffer:
         self.tree = SumTree(self.capacity)
         self.max_priority = 1.0
 
-        # for element in state_example:
-        #     if isinstance(element, np.ndarray):
-        #         shape, dtype = element.shape[1:], element.dtype
-        #         self.state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
-        #         self.next_state_storage.append(np.empty((self.capacity, *shape), dtype=dtype))
-
-        #     elif isinstance(element, (int, float)):
-        #         self.state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-        #         self.next_state_storage.append(np.empty((self.capacity,), dtype=type(element)))
-
-        #     else:
-        #         raise TypeError
         self.state_storage = np.empty(self.capacity, dtype=object)  # Store entire GameState tuples
         self.next_state_storage = np.empty(self.capacity, dtype=object)  # Store entire GameState tuples
 
@@ -149,10 +137,6 @@ class PrioritizedReplayBuffer:
         batch_size = actions.shape[0]
         idxs = (np.arange(batch_size) + self.count) % self.capacity
 
-        # for i, (array, array_) in enumerate(zip(states, next_state)):
-        #     self.state_storage[i][idxs] = array
-        #     self.next_state_storage[i][idxs] = array_
-        
         self.state_storage[idxs] = [GameState(*elements) for elements in zip(*states)]  
         self.next_state_storage[idxs] = [GameState(*elements) for elements in zip(*next_state)]
 

@@ -13,7 +13,8 @@ class Args:
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
 
-    total_timesteps: int = 400_000  # Less time steps for Knegt due to long time in MC_ROLLOUTS
+    # total_timesteps: int = 400_000  # Less time steps for Knegt due to long time in MC_ROLLOUTS
+    total_timesteps: int = 2_000_000
     # total_timesteps: int = 4_000_000# 1_0000_000  # 1_000_000 ~ 1 hour on HPC
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4#0.0000625
@@ -26,7 +27,7 @@ class Args:
     """the discount factor gamma"""
     target_network_frequency: int = 1000#8000
     """the timesteps it takes to update the target network"""
-    batch_size: int = 32
+    batch_size: int = 128#32
     """the batch size of sample from the reply memory"""
     start_e: float = 1
     """the starting epsilon for exploration"""

@@ -1,6 +1,7 @@
 # From https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rainbow_atari.py
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rainbow/#rainbow_ataripy
 import random, os, time, shutil
+from collections import deque
 
 import numpy as np
 import torch
@@ -13,7 +14,6 @@ from .argp import read_args
 from .agents import RainbowAgent
 from .MCTS.knegt import KnegtAgent
 from .utils import TimerRegistry
-from .env import TronDuoEnv, TronView, PoLEnv
 from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     # total_episode_lengths = 0
     episode_lengths = np.zeros(args.num_envs, dtype=int)
 
-    from collections import deque
+    
     ep_lens = deque(maxlen=100)
 
     for global_step in range(1, total_loops + 1):
@@ -127,15 +127,15 @@ if __name__ == "__main__":
         if global_step > learn_start_loop:
             # for _ in range(train_count):
             agent1.learn()
-            if args.debug:
-                print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
-                quit()
+            # if args.debug:
+            #     print(f"[green]Success[/green] after {time.time() - start_time:.1f} seconds")
+            #     quit()
             agent2.learn()
 
             # update target network
-            # if global_step % target_every == 0:
-            #     agent1.update_target()
-            #     agent2.update_target()
+            if global_step % target_every == 0:
+                agent1.update_target()
+                agent2.update_target()
             
                 # quit()
             # print("one learning step")

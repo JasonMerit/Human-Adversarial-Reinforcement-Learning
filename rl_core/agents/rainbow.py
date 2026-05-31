@@ -224,6 +224,9 @@ class RainbowAgent:
             q = torch.sum(q * self.network.support, dim=2)
                 
         return torch.argmax(q, dim=1).cpu().numpy()
+    
+    def add(self, *args):
+        self.rb.add(*args)
 
     @TimerRegistry.wrap_fn("rainbow_learn")
     def learn(self):
