@@ -13,58 +13,7 @@ from ..utils import TimerRegistry
 from rl_core.env import TronDuoEnv
 from .vec_duo_tron import VecTronDuoEnv
 from rl_core.player_modelling.player_model import PlayerModel, StateActionBuffer
-
-class KnegtNetwork(nn.Module):
-    def __init__(self, obs_shape, n_actions):
-        super().__init__()
-        self.channels, self.size, _ = obs_shape
-        self.n_actions = n_actions
-
-        self.cnn = nn.Sequential(
-            nn.Conv2d(self.channels, 16, 3, 1, 1),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, 3, 1, 1),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-        with torch.no_grad():
-            dummy = torch.zeros(1, self.channels, self.size, self.size)
-            n_flatten = self.cnn(dummy).shape[1]
-
-        hidden = 32
-        self.value_head = nn.Sequential(
-            nn.Linear(n_flatten, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, 1)
-        )
-
-        self.adv_head = nn.Sequential(
-            nn.Linear(n_flatten, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, n_actions)
-        )
-
-    def forward(self, x) -> torch.Tensor:
-        # assert x.ndim == 4, f"Expected input shape (B, C, H, W), got {x.shape}"
-        # assert x.shape[1:] == (self.channels, self.size, self.size), f"Expected input shape (B, {self.channels}, {self.size}, {self.size}), got {x.shape}"
-        h = self.cnn(x)
-        v = self.value_head(h)
-        a = self.adv_head(h)
-        q = v + a - a.mean(dim=1, keepdim=True)
-        return q
-    
-    @torch.inference_mode()
-    def act(self, obs):
-        h = self.cnn(obs)
-        a = self.adv_head(h)
-        return torch.argmax(a, dim=1).cpu().numpy()
-    
-    @classmethod
-    def from_checkpoint(cls, path, obs_shape, n_actions, device="cpu"):
-        net = cls(obs_shape=obs_shape, n_actions=n_actions).to(device)
-        net.load_state_dict(torch.load(path, weights_only=True, map_location=device))        
-        return net
-    
+from rl_core.agents.rainbow import DuelingNetwork
 
 class KnegtAgent:
     """Assumes VecTronDuoEnv"""
@@ -74,7 +23,7 @@ class KnegtAgent:
         self.batch_size = args.batch_size
         self.rollouts = args.rollouts
 
-        self.network = KnegtNetwork(obs_shape, n_actions).to(device)
+        self.network = DuelingNetwork(obs_shape, n_actions, args).to(device)
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate, eps=1.5e-4)
 
@@ -83,8 +32,7 @@ class KnegtAgent:
         Buffer = PrioritizedReplayBuffer if args.per else ReplayBuffer
         self.rb = Buffer(VecTronDuoEnv.encode, player, args, device)
 
-        self.epi_rb = StateActionBuffer(args.buffer_size, args.seq_len, args.num_envs, device)  # Separate buffer for opponent modeling
-        self.player_modeler = PlayerModel(self.network.cnn, obs_shape, n_actions, args, device).to(device)
+        self.player_modeler : PlayerModel = PlayerModel(self.network.cnn, obs_shape, n_actions, player, args, device)
 
         self.player = player  # Keep track of which agent
         self.name = ["A", "B"][player]
@@ -96,7 +44,7 @@ class KnegtAgent:
 
     def add(self, state, actions, reward, next_state, done):
         self.rb.add(state, actions, reward, next_state, done)
-        self.epi_rb.add(state, actions[:, 1 - self.player], done)  # Store opponent's actions for modeling
+        self.player_modeler.add(state, actions[:, 1 - self.player], done)  # Store opponent's actions for modeling
 
     def save(self, path, verbose=True):
         torch.save(self.network.state_dict(), path)
