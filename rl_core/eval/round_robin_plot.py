@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-win_matrix = np.load("rl_core/round_robin_results.npy")
+win_matrix = np.load("rl_core/eval/rr_results/NNSize.npy")
 print(win_matrix)
 
 fig, ax = plt.subplots(figsize=(8, 6))
@@ -16,8 +16,15 @@ ax.set_xlabel("Opponent Team")
 ax.set_ylabel("Team")
 
 # Hide ticks
-ax.set_xticks([])
-ax.set_yticks([])
+# ax.set_xticks([])
+# ax.set_yticks([])
+n = win_matrix.shape[0]
+ax.set_xticks(range(n))
+ax.set_yticks(range(n))
+
+ax.set_xticklabels(range(n))
+ax.set_yticklabels(range(n))
+
 
 plt.tight_layout()
 plt.show()

@@ -124,6 +124,9 @@ def read_args():
         # args.buffer_size *= 1e89
         args.buffer_size = args.batch_size * 10
         args.batch_size = 2
+        args.conv1 = 64
+        args.conv2 = 64
+        args.hidden = 64
 
         args.exp_name = "debug_" + args.exp_name
         # args.pol = True  # Test PoL environment in debug mode

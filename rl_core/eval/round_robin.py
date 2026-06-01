@@ -23,12 +23,12 @@ def battle(agent_0 : QNetwork, agent_1 : QNetwork, env):
             return info.get("result")
     
 def round_robin(team_names):
-    env = TronDuoEnv(15)
+    env = TronDuoEnv()
+    env = TronView(env)
     env = TorchObservationWrapper(env, device="cpu")
 
     n = len(team_names)
-    # Matrix: rows = agent i, columns = agent j
-    win_matrix = np.full((n, n), np.nan)
+    win_matrix = np.full((n, n), np.nan)  
 
     for i in range(n):
         team_i = make_team(team_names[i], env)
@@ -48,9 +48,21 @@ if __name__ == "__main__":
     # parser.add_argument("path", type=str, help="Path folder of trained model checkpoints.")
     # args = parser.parse_args()
     team_names = [
-        "Bench15",
-        "Mirroring"
+        "NNSize0",
+        "NNSize1",
+        "NNSize2",
+        "NNSize3",
+        "NNSize4",
+        "NNSize5",
+        "NNSize6",
+        "NNSize7",
+        "NNSize8",
     ]
+    # Assert all folders exist
+    for name in team_names:
+        if not os.path.isdir(os.path.join("runs", name + "_0")):
+            raise ValueError(f"Folder for team '{name}' not found in 'runs/' directory.")
+        
     win_matrix = round_robin(team_names)
-    np.save("rl_core/round_robin_results.npy", win_matrix)
+    np.save("rl_core/rl_core/eval/rr_results/kek.npy", win_matrix)
     

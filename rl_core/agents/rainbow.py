@@ -40,6 +40,11 @@ class DuelingNetwork(nn.Module):
             nn.Linear(hidden, n_actions)
         )
 
+        # Print parameter count
+        # total_params = sum(p.numel() for p in self.parameters())
+        # print(f"DuelingNetwork initialized with {total_params:,} parameters.")
+        # quit()
+
     def forward(self,x) -> torch.Tensor:
         h = self.cnn(x)
         v = self.value_head(h)
