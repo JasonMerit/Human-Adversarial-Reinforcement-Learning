@@ -1,7 +1,7 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J NNSize0[1-5]
+#BSUB -J NNSize2[1-1]
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
@@ -34,7 +34,7 @@ PARAMS=(
 "128 128 128"
 )
 
-IDX=5
+IDX=2
 read CONV1 CONV2 HIDDEN <<< "${PARAMS[$IDX]}"
 echo "Running with CONV1=$CONV1, CONV2=$CONV2, HIDDEN=$HIDDEN"
 
