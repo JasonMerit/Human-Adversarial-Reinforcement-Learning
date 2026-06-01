@@ -3,13 +3,12 @@ import subprocess
 import os
 import torch
 import torch.nn as nn
+from rich import print
 from dotenv import load_dotenv
 from supabase import create_client
 
 from .agents.rainbow import DuelingNetwork
-from .env import utils
 from .argp import load_args
-from .eval.battle import make_agent
 
 class UnityExportWrapper(nn.Module):
         def __init__(self, model):
@@ -26,12 +25,19 @@ def pth2onnx(checkpoint_path, export_path):
     dummy_input = torch.rand(1, 25, 25, 3)
     args = load_args(checkpoint_path)
 
-    model = DuelingNetwork.from_checkpoint(checkpoint_path + "/A.pth", obs_shape, n_actions, args)  # Load your trained model
+    agent_path = checkpoint_path + "/A.pth"
+    if not os.path.exists(agent_path):
+        raise FileNotFoundError(f"Agent file not found: {agent_path}")
+    size = os.path.getsize(agent_path) / (1024 * 1024)
+    if size > 50:  # If file is larger than 50 MB, warn user
+        raise ValueError(f"Network file {agent_path} is larger than 50 MB! Got {size:.2f} MB")
+
+    model = DuelingNetwork.from_checkpoint(agent_path, obs_shape, n_actions, args)  # Load your trained model
     model.eval()  # Set to evaluation mode for export
 
     torch.onnx.export(UnityExportWrapper(model), dummy_input, export_path, opset_version=15)
 
-    print(f"Exported to .onnx at {utils.cyan(export_path)}")
+    print(f"Exported to .onnx at [cyan]{export_path}[/cyan]")
 
 def onnx2sentis(onnx2sentis_exe, onnx_path):
     result = subprocess.run([onnx2sentis_exe, onnx_path], capture_output=True, text=True)
@@ -47,15 +53,16 @@ def upload_sentis(name, bucket, sentis_path):
     extension = ".sentis"
     storage_path = name + extension
 
-    # Rename existing file
-    files = supabase.storage.from_(bucket).list()
-    count = len([f for f in files if f["name"].startswith(name) and f["name"].endswith(extension)])
-    if count > 0:
-        response = supabase.storage.from_(bucket).move(
-                storage_path,  # Assuming one already exists with this name
-                name + str(count) + extension
-            )
-        print(f"Renamed existing file to {utils.cyan(name + str(count) + extension)}")
+    # Rename existing file if exists
+    response = supabase.storage.from_(bucket)
+    existing_names = {f["name"] for f in response.list()}
+    if storage_path in existing_names:
+        i = 1
+        while (new_name := f"{name}{i}{extension}") in existing_names:
+            i += 1
+
+        response.move(storage_path, new_name)
+        print(f"Renamed existing file to [cyan]{new_name}[/cyan] to avoid overwrite.")
 
     # Upload new file
     with open(sentis_path, "rb") as f:
@@ -64,7 +71,7 @@ def upload_sentis(name, bucket, sentis_path):
             file=f,
             file_options={"content-type": "application/octet-stream"}
         )
-    print(f"Uploaded to {utils.cyan(response.fullPath)}")
+    print(f"Uploaded to [cyan]{response.fullPath}[/cyan]")
 
 def upload(checkpoint_path, name):
     onnx_path = f"rl_core/{name}.onnx"  # Temp location for ONNX file
@@ -74,9 +81,9 @@ def upload(checkpoint_path, name):
 
     pth2onnx(checkpoint_path, onnx_path)
     onnx2sentis(onnx2sentis_folder + "onnx2sentis.exe", onnx_path)
-    print("Converted to .sentis at "+ utils.cyan('tools/onnx2sentis_windows/' + name + '.sentis'))
+    print(f"Converted to .sentis at [cyan]{sentis_path}[/cyan]")
     upload_sentis(name, bucket, sentis_path)
-    print(utils.green("Upload complete!!!"))
+    print("[green]Upload complete!!![/green]")
 
 if __name__ == "__main__":
     # Get name from system args
