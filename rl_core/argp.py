@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
-import random
+import random, yaml
+from rich import print
 
 import tyro
 
@@ -131,4 +132,21 @@ def read_args():
     assert not args.save or (args.save and args.track), "If save is true, track must also be true"
     # assert not (args.dqn and args.mcts), "Cannot specify both dqn and mcts agents"
 
+    return args
+
+def load_args(path, verbose=True):
+    assert os.path.exists(path), f"File not found: {path}"
+    args = Args()
+    
+    with open(path, "r") as f:
+        loaded_args = yaml.safe_load(f)
+
+    skipped = []
+    for key, value in loaded_args.items():
+        if hasattr(args, key):
+            setattr(args, key, value)
+        else:
+            skipped.append(key)
+    if verbose and skipped:
+        print(f"{path} : Skipped unknown {skipped}")
     return args

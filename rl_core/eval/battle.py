@@ -6,6 +6,7 @@ from rich import print
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.env.wrappers import TorchObservationWrapper
 from rl_core.agents.rainbow import DuelingNetwork
+from rl_core.argp import load_args
 
 def make_dqn(path, obs_shape, n_actions):
     from rl_core.agents.dqn import QNetwork
@@ -30,13 +31,13 @@ def play(agent1, agent2, env: TronDuoEnv):
             print(info.get("result"), f"Total steps: {len(history)}")
             print(history[:len(history)//2])  # Print first half
             print(history[len(history)//2:])  # Print second half
-            quit()
+            break
     
 def battle(folder):
     folder = Path("runs") / folder
-    with open(folder / "args.yml", "r") as f:
-        args = yaml.safe_load(f)
-        size = args['size']
+    assert folder.exists(), f"Folder not found: {folder}"
+    args = load_args(folder / "args.yml")
+    size = args.size
 
     # env = TronDuoEnv(size)
     env = TronView(TronDuoEnv(size))

@@ -6,8 +6,9 @@ import yaml
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.env.wrappers import TorchObservationWrapper
 from .battle import make_agent
+from rl_core.argp import load_args
 
-def make_team(path, env):
+def make_team(path, env, args):
     # Find all folders in runs that start with the given path
     runs = [f for f in os.listdir('runs/') if os.path.isdir(Path('runs/') / f) and f.startswith(os.path.basename(path))]
 
@@ -16,8 +17,8 @@ def make_team(path, env):
 
     team = []
     for run in runs:
-        team.append(make_agent(Path('runs') / run / "A.pth", obs_shape, n_actions))
-        team.append(make_agent(Path('runs') / run / "B.pth", obs_shape, n_actions))
+        team.append(make_agent(Path('runs') / run / "A.pth", obs_shape, n_actions, args))
+        team.append(make_agent(Path('runs') / run / "B.pth", obs_shape, n_actions, args))
 
     return team
 
@@ -33,18 +34,16 @@ def play(agent1, agent2, env):
 
 
 def battle_team(folder1, folder2):
-    with open(Path("runs") / (folder1 + "_0") / "args.yml", "r") as f:
-        args = yaml.safe_load(f)
-        size = args['size']
-    with open(Path("runs") / (folder2 + "_0") / "args.yml", "r") as f:
-        args = yaml.safe_load(f)
-        assert size == args['size'], f"Both teams must have the same environment size. Got {size} and {args['size']}."
+    args1 = load_args(Path("runs") / (folder1 + "_0") / "args.yml")
+    size = args1.size
+    args2 = load_args(Path("runs") / (folder2 + "_0") / "args.yml")
+    assert size == args2.size, f"Both teams must have the same environment size. Got {size} and {args2.size}."
 
     env = TronDuoEnv(size)
     # env = TronView(TronDuoEnv(size))
     env = TorchObservationWrapper(env, device="cpu")
 
-    team1, team2 = make_team(folder1, env), make_team(folder2, env)
+    team1, team2 = make_team(folder1, env, args1), make_team(folder2, env, args2)
     print(f"Team {folder1} (x{len(team1)}) VS. Team {folder2} (x{len(team2)}) in Tron {size}x{size}")
 
     results = [0, 0, 0]
