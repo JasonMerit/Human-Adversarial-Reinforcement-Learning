@@ -1,7 +1,7 @@
-import os
 from dataclasses import dataclass
 import random, yaml
 from rich import print
+from pathlib import Path
 
 import tyro
 
@@ -138,10 +138,11 @@ def read_args():
     return args
 
 def load_args(path, verbose=True):
-    assert os.path.exists(path), f"File not found: {path}"
+    path = Path(path)
+    assert path.exists(), f"File not found: {path}"
     args = Args()
     
-    with open(path, "r") as f:
+    with open(path / "args.yml", "r") as f:
         loaded_args = yaml.safe_load(f)
 
     skipped = []

@@ -6,8 +6,10 @@ import torch.nn as nn
 from dotenv import load_dotenv
 from supabase import create_client
 
-from .agents.dqn import QNetwork
+from .agents.rainbow import DuelingNetwork
 from .env import utils
+from .argp import load_args
+from .eval.battle import make_agent
 
 class UnityExportWrapper(nn.Module):
         def __init__(self, model):
@@ -22,8 +24,9 @@ class UnityExportWrapper(nn.Module):
 def pth2onnx(checkpoint_path, export_path):
     obs_shape, n_actions = (3, 25, 25), 3
     dummy_input = torch.rand(1, 25, 25, 3)
+    args = load_args(checkpoint_path)
 
-    model = QNetwork.from_checkpoint(checkpoint_path, obs_shape, n_actions)  # Load your trained model
+    model = DuelingNetwork.from_checkpoint(checkpoint_path + "/A.pth", obs_shape, n_actions, args)  # Load your trained model
     model.eval()  # Set to evaluation mode for export
 
     torch.onnx.export(UnityExportWrapper(model), dummy_input, export_path, opset_version=15)
@@ -83,6 +86,6 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, default="adversary", help="Name of uploaded file.")
     args = parser.parse_args()
 
-    upload(args.path, args.name)
+    upload("runs/" + args.path, args.name)
     
     

@@ -36,7 +36,7 @@ def play(agent1, agent2, env: TronDuoEnv):
 def battle(folder):
     folder = Path("runs") / folder
     assert folder.exists(), f"Folder not found: {folder}"
-    args = load_args(folder / "args.yml")
+    args = load_args(folder)
     size = args.size
 
     # env = TronDuoEnv(size)
@@ -58,3 +58,4 @@ if __name__ == "__main__":
     parser.add_argument("folder", type=str, default="", help="Path folder of trained model checkpoints.")
     args = parser.parse_args()
     battle(args.folder)
+    
