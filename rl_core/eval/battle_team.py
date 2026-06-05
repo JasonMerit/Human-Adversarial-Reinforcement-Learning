@@ -10,7 +10,7 @@ from .battle import make_agent
 from rl_core.argp import load_args
 
 def make_team(path, env):
-    args = load_args(Path("runs") / (path + "_0") / "args.yml")
+    args = load_args(Path("runs") / (path + "_0"))
 
     # Find all folders in runs that start with the given path
     runs = [f for f in os.listdir('runs/') if os.path.isdir(Path('runs/') / f) and f.startswith(os.path.basename(path))]
@@ -22,6 +22,7 @@ def make_team(path, env):
     for run in runs:
         team.append(make_agent(Path('runs') / run / "A.pth", obs_shape, n_actions, args))
         team.append(make_agent(Path('runs') / run / "B.pth", obs_shape, n_actions, args))
+        # print(f"Added agent from run/{run}/A.pth and run/{run}/B.pth to team {path}")
 
     return team
 

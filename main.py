@@ -10,6 +10,8 @@
 from pathlib import Path
 import argparse
 
+import yaml
+
 def read_second_line(file_path: Path):
     try:
         with file_path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -22,22 +24,37 @@ def read_second_line(file_path: Path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--X", required=True, help="Setup name (X in runs/X_n/)")
+    parser.add_argument("X", type=str, help="Prefix of team folders to analyze (e.g., 'NN' to analyze 'NN0', 'NN1', etc.)")
     args = parser.parse_args()
 
     base = Path("runs")
-    pattern = f"{args.X}*/Out.out"
+    # pattern = f"{args.X}*/Out.out"
 
+    # files = sorted(base.glob(pattern))
+    # lines = set()
+    # for f in files:
+    #     second_line = read_second_line(f)
+    #     run_id = f.parent.name
+    #     print(f"{run_id}\t{second_line}")
+    #     if second_line in lines:
+    #         raise ValueError(f"Duplicate second line found: {second_line} in file {f}")
+    #     if second_line is not None:
+    #         lines.add(second_line)
+
+    # Do something similar but instead read the "training_time_mins" found within "results.yml" in each folder
+    pattern = f"{args.X}*/results.yml"
     files = sorted(base.glob(pattern))
-    lines = set()
+    times = []
     for f in files:
-        second_line = read_second_line(f)
         run_id = f.parent.name
-        print(f"{run_id}\t{second_line}")
-        if second_line in lines:
-            raise ValueError(f"Duplicate second line found: {second_line} in file {f}")
-        if second_line is not None:
-            lines.add(second_line)
+        with f.open("r") as y:
+            data = yaml.safe_load(y)
+            training_time = data.get("training_time_mins")
+            print(f"{run_id}\t{training_time}")
+            if training_time is not None:
+                times.append(training_time)
+
+    print(f"Max training time: {max(times) / 60:.2f} mins")
 
 if __name__ == "__main__":
     main()

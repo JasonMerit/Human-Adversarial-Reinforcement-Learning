@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-win_matrix = np.load("rl_core/eval/rr_results/NNSize.npy")
+win_matrix = np.load("rl_core/eval/rr_results/NN.npy")
 print(win_matrix)
 
 fig, ax = plt.subplots(figsize=(8, 6))

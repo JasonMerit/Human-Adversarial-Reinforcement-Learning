@@ -1,19 +1,21 @@
 #!/bin/bash
 ###BSUB -q hpc
 #BSUB -q gpuv100
-#BSUB -J NN0[1-5]
+#BSUB -J Arch0[1-5]
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=10GB]"
 #BSUB -M 10GB
 ###BSUB -W 8:00  # approx 4 hours wall time for 30_000_000 steps and size=25
-#BSUB -W 8:00  # Sligtly bigger never tried nn sizes
+#BSUB -W 10:00  # Sligtly bigger never tried nn sizes
 #BSUB -u s216135@dtu.dk
 #BSUB -B
 #BSUB -N
 #BSUB -oo rl_core/HPC/Out_%I.out
 #BSUB -eo rl_core/HPC/Err_%I.err
+
+IDX=0
 
 cd /zhome/8e/9/169771/Human-Adversarial-Reinforcement-Learning
 module purge
@@ -29,10 +31,9 @@ PARAMS=(
 "32 32 64"
 "32 64 64"
 "32 64 128"
-"64 64 128"
 )
 
-IDX=0
+
 read CONV1 CONV2 HIDDEN <<< "${PARAMS[$IDX]}"
 echo "Running with CONV1=$CONV1, CONV2=$CONV2, HIDDEN=$HIDDEN"
 

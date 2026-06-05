@@ -4,6 +4,8 @@ import gymnasium as gym
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from pathlib import Path
+from rich import print
 
 from rl_core.env import TronDuoEnv, TronView
 from rl_core.agents.dqn import QNetwork
@@ -24,11 +26,14 @@ def battle(agent_0 : QNetwork, agent_1 : QNetwork, env):
     
 def round_robin(team_names):
     env = TronDuoEnv()
-    env = TronView(env)
+    # env = TronView(env)
     env = TorchObservationWrapper(env, device="cpu")
 
     n = len(team_names)
     win_matrix = np.full((n, n), np.nan)  
+
+    total_team_battles = n * (n - 1) // 2  # 8 choose 2 = 28
+    total_battles = 0
 
     for i in range(n):
         team_i = make_team(team_names[i], env)
@@ -39,6 +44,10 @@ def round_robin(team_names):
             win_matrix[i, j] = res["score"]
             win_matrix[j, i] = 1.0 - res["score"]
 
+            total_battles += 1
+            print(f"Completed {total_battles}/{total_team_battles} battles ({team_names[i]} vs {team_names[j]}: {res['score']:.2f})")
+
+    quit()
     return win_matrix
 
 if __name__ == "__main__":
@@ -47,22 +56,25 @@ if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Play a trained model in the Tron environment.")
     # parser.add_argument("path", type=str, help="Path folder of trained model checkpoints.")
     # args = parser.parse_args()
-    team_names = [
-        "NNSize0",
-        "NNSize1",
-        "NNSize2",
-        "NNSize3",
-        "NNSize4",
-        "NNSize5",
-        "NNSize6",
-        "NNSize7",
-        "NNSize8",
-    ]
-    # Assert all folders exist
+    name = "NN"
+    save_file = f"rl_core/eval/rr_results/{name}.npy"
+    # if os.path.exists(save_file):
+    #     raise ValueError(f"Save file '{save_file}' already exists. Please choose a different name or remove the existing file.")
+    
+    team_names = [f"{name}{i}" for i in range(8)]
+
+    # Assert all folders and contain a trained Path.A.pth file
     for name in team_names:
         if not os.path.isdir(os.path.join("runs", name + "_0")):
             raise ValueError(f"Folder for team '{name}' not found in 'runs/' directory.")
-        
+        # Get all that start with "name" to check if each has a A.pth
+        samples = [f for f in os.listdir('runs/') if os.path.isdir(Path('runs/') / f) and f.startswith(name)]
+
+        for sample in samples:            
+            if not os.path.exists(Path('runs') / sample / "A.pth"):
+                raise ValueError(f"Checkpoint 'A.pth' not found for team '{name}' in folder '{sample}'. Not done training :(")
+    # print(total)
+    # quit()
     win_matrix = round_robin(team_names)
-    np.save("rl_core/rl_core/eval/rr_results/kek.npy", win_matrix)
+    np.save(save_file, win_matrix)
     

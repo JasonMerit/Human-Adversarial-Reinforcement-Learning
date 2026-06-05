@@ -164,9 +164,9 @@ if __name__ == "__main__":
             print(f"{progress*100:.1f}% - SPS: {sps} - epi_len: {avg:.2f} - {eta/60:.1f} minutes left...")
         
         env_step = global_step * args.num_envs
-        # if args.save and global_step % save_every == 0:
-        #     agent1.save(save_folder + f"A_{env_step}.pth")
-        #     agent2.save(save_folder + f"B_{env_step}.pth")
+        if args.save and global_step % save_every == 0:
+            agent1.save(save_folder + f"A_{env_step}.pth")
+            agent2.save(save_folder + f"B_{env_step}.pth")
 
     TimerRegistry.report()
 
