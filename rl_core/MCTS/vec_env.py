@@ -164,7 +164,7 @@ class VecTronEnv:
         assert walls.shape == (self.size, self.size), f"Expected shape {(self.size, self.size)}, got {walls.shape}"
         assert p1.shape == (2,), f"Expected shape {(2,)}, got {p1.shape}"
         assert p2.shape == (2,), f"Expected shape {(2,)}, got {p2.shape}"
-        assert isinstance(h1, int) and isinstance(h2, int), f"Expected integer headings, got {type(h1)} and {type(h2)}" 
+        assert isinstance(h1, np.integer) and isinstance(h2, np.integer), f"Expected integer headings, got {type(h1)} and {type(h2)}" 
 
         if mask is None:
             mask = np.ones(self.num_envs, dtype=bool)

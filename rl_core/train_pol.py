@@ -14,7 +14,7 @@ from .agents import RainbowAgent, MCTSAgent
 from .utils import TimerRegistry
 from .env import TronDuoEnv, TronView, PoLEnv
 from rl_core.MCTS.vec_pol import VecPoLEnv
-from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
+from rl_core.MCTS.vec_duo_env import VecTronDuoEnv
 
 
 def make_env(idx, args):

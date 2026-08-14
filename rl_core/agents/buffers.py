@@ -3,7 +3,7 @@
 import torch, random
 import numpy as np
 from rl_core.env import GameState
-from rl_core.MCTS.vec_duo_tron import VecGameState
+from rl_core.MCTS.vec_duo_env import VecGameState
 
 
 def mirror(obs, actions, next_obs):

@@ -185,7 +185,7 @@ class AlphaZeroAgent:
         return grad ** 0.5, weight ** 0.5
 
 if __name__ == "__main__":
-    from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
+    from rl_core.MCTS.vec_duo_env import VecTronDuoEnv
 
     env = VecTronDuoEnv(5, 25)
     agent1 = AlphaZeroAgent(env.obs_shape, env.n_actions, 1000, 32, 1e-3, 1e-5, "cpu")

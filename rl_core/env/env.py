@@ -110,10 +110,10 @@ class TronEnv(gym.Env):
     def state(self) -> GameState:
         return GameState(
             walls=self.tron.walls.copy(),
-            pos1=self.tron.pos1.copy(),
-            pos2=self.tron.pos2.copy(),
-            heading1=self.heading1,
-            heading2=self.heading2
+            p1=self.tron.pos1.copy(),
+            p2=self.tron.pos2.copy(),
+            h1=self.heading1,
+            h2=self.heading2
         )
     
     def sample_action(self):
@@ -234,7 +234,9 @@ class TronDuoEnv(gym.Env):
         return TronDuoEnv.encode(self.state), {'result': 0, 'state': self.state}
     
     def step(self, joint_action : np.ndarray):
-        assert self.action_space.contains(joint_action), f"[bold red]Jason! Invalid Action {joint_action}"
+        if not self.action_space.contains(joint_action):
+            print(f"[bold red]Jason! Invalid Action {joint_action}")
+            raise AssertionError(f"Invalid Action {joint_action}")
 
         self.heading1 = (self.heading1 + (joint_action[0] - 1)) % 4  # Because (left, forward, right)
         self.heading2 = (self.heading2 + (joint_action[1] - 1)) % 4  # Because (left, forward, right)

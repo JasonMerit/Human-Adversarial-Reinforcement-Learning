@@ -2,7 +2,7 @@ import numpy as np
 # from rich import print
 
 from rl_core.env import TronDuoEnv, GameState
-from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
+from rl_core.MCTS.vec_duo_env import VecTronDuoEnv
 from rl_core.utils import TimerRegistry
 from rl_core.env.heuristic import voronoi
 

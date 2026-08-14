@@ -14,7 +14,7 @@ from .argp import read_args
 from .agents import RainbowAgent
 from .MCTS.knegt import KnegtAgent
 from .utils import TimerRegistry
-from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
+from rl_core.MCTS.vec_duo_env import VecTronDuoEnv
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration

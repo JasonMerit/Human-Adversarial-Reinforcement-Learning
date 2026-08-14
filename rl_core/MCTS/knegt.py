@@ -11,7 +11,7 @@ from ..utils import TimerRegistry
 # from .agent_mcts import MCTS
 # from .expectimax1 import MCTS
 from rl_core.env import TronDuoEnv
-from .vec_duo_tron import VecTronDuoEnv
+from .vec_duo_env import VecTronDuoEnv
 from rl_core.player_modelling.player_model import PlayerModel, StateActionBuffer
 from rl_core.agents.rainbow import DuelingNetwork
 
@@ -149,7 +149,6 @@ class KnegtAgent:
 
                 total[d] = r[d]
                 active &= ~d
-                # active = np.logical_and(active, ~d)
 
             q[i] = total.mean()
         

@@ -1,6 +1,6 @@
 import numpy as np
 from rl_core.env import TronDuoEnv, GameState
-from rl_core.MCTS.vec_duo_tron import VecTronDuoEnv
+from rl_core.MCTS.vec_duo_env import VecTronDuoEnv
 from rich import print
 
 
