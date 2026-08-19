@@ -10,8 +10,6 @@ from .vec_duo_env import VecTronDuoEnv
 
 
 if __name__ == "__main__":
-    # os.system('cls')
-    # TimerRegistry.disable()  # Disable timers for this test
     from tqdm import trange
     SIZE=7
     NUM_ENVS = 64
@@ -23,10 +21,10 @@ if __name__ == "__main__":
     sim_env.reset()
     sim_envs = VecTronDuoEnv(NUM_ENVS, SIZE)
 
-    prior_policy = lambda state: np.ones(3) / 3.0  # Uniform
-    opp_policy = lambda state: np.array([0.0, 1.0, 0.0]) # Always 1
-    # opp_policy = lambda state: np.random.choice(3)  
-    # np.random.seed(3)
+    # prior_policy = lambda state: np.ones(3) / 3.0  # Uniform
+    opp_policy = lambda state: np.ones(3) / 3.0  # Uniform
+    # opp_policy = lambda state: np.array([0.0, 1.0, 0.0]) # Always 1
+    np.random.seed(3)
 
     wins = 0
     runs = 10
@@ -35,8 +33,8 @@ if __name__ == "__main__":
     for i in trange(runs):
         actual_env.reset()
         sim_env.reset()
-        mcts = MCTS(prior_policy, opp_policy, sim_env, sim_envs, rollouts=NUM_ENVS)
-        root = Node(actual_env.state, actual_env.n_actions)
+        mcts = MCTS(sim_env, sim_envs, rollouts=NUM_ENVS)
+        root = Node(actual_env.state)
 
         steps = 0
         while True:
@@ -49,8 +47,12 @@ if __name__ == "__main__":
 
             # joint_action is a numpy array [action, opp_action]; index children with separate indices
             child = root.children[action, opp_action]  # Reuse the subtree if it exists
+            print(child)
+            if not isinstance(child, Node):
+                print(f"Child is not of [cyan]Node[/cyan]. Got {type(child)} instead")
+                quit()
             if child is None:
-                root = Node(actual_env.state, actual_env.n_actions)
+                root = Node(actual_env.state)
             else:
                 child.parent = None
                 root = child

@@ -247,6 +247,7 @@ class TorchObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env, device):
         super().__init__(env)
         self.device = device
+        self.env = env
 
     def observation(self, obs):
         return torch.as_tensor(
@@ -254,3 +255,7 @@ class TorchObservationWrapper(gym.ObservationWrapper):
             dtype=torch.float32,
             device=self.device
         ).unsqueeze(0)
+    
+    @property
+    def state(self):
+        return self.env.state

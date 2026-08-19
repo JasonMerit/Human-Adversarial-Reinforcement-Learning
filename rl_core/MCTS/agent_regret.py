@@ -22,22 +22,36 @@ class Node:
         assert self.children.shape == (3, 3), f"Children shape is {self.children.shape}, expected (3, 3)"
         
         # Regret storage for Player 1 (Agent)
-        self.regret_sum = np.zeros(3) 
-        self.strategy_sum = np.zeros(3)
-        self.N = 0
+        self.regret_sum_p1 = np.zeros(3) 
+        self.strategy_sum_p1 = np.zeros(3)
         
+        # Regret storage for Player 2 (Opponent)
+        self.regret_sum_p2 = np.zeros(3) 
+        self.strategy_sum_p2 = np.zeros(3)
+
         # Track Q-values for the 3x3 joint action matrix
         self.Q_matrix = np.zeros((3, 3)) 
+        self.N = 0
 
-    def get_strategy(self):
-        """Regret Matching formula: S(a) = max(0, R(a)) / sum(max(0, R(a)))"""
-        regrets = np.maximum(self.regret_sum, 0)
+    def get_strategy_p1(self, gamma):
+        regrets = np.maximum(self.regret_sum_p1, 0)
         norm = np.sum(regrets)
-        return regrets / norm if norm > 0 else np.ones(3) / 3.0
+        P = regrets / norm if norm > 0 else np.ones(3) / 3.0
+        return (1 - gamma) * P + (gamma / 3.0)
+
+
+    def get_strategy_p2(self, gamma):
+        # Opponent wants to MINIMIZE Q (Zero-sum: My win is their loss)
+        # So we use negative Q for regret matching
+        regrets = np.maximum(-self.regret_sum_p2, 0) # Simplified logic
+        norm = np.sum(regrets)
+        P = regrets / norm if norm > 0 else np.ones(3) / 3.0
+        return (1 - gamma) * P + (gamma / 3.0)
 
     def update_strategy(self):
         # Accumulate the current strategy to compute the average later
-        self.strategy_sum += self.get_strategy()
+        self.strategy_sum_p1 += self.get_strategy_p1(0.0)  # Gamma = 0 because this is the final exploiting action suggestion
+        self.strategy_sum_p2 += self.get_strategy_p2(0.0)
 
     def is_expanded(self):
         return not np.any(self.children == None)
@@ -50,24 +64,21 @@ class Node:
 class MCTS:
     """Returns only interested in terminal states, otherwise value must be cumulative discounted when backup"""
 
-    def __init__(self, prior_policy: callable, opp_policy: callable, env: TronDuoEnv, envs: VecTronDuoEnv, rollouts: int, horizon=200):
-        self.prior_policy = prior_policy
-        self.opp_policy = opp_policy
-        # asser both policy and opp_policy are methods
-        assert callable(prior_policy), "Prior policy must be a callable function"
-        assert callable(opp_policy), "Opponent policy must be a callable function"
+    def __init__(self, env: TronDuoEnv, envs: VecTronDuoEnv, rollouts: int, gamma=.3):
+        # Gamma is the exploration constant to enable searching on dead nodes
         # Assert both produce a 3x1 array of probabilities
-        dummy_state = env.state  # envs here?
-        assert isinstance(prior_policy(dummy_state), np.ndarray) and prior_policy(dummy_state).shape == (3,), "Prior policy must return a 3-element numpy array"
-        assert isinstance(opp_policy(dummy_state), np.ndarray) and opp_policy(dummy_state).shape == (3,), "Opponent policy must return a 3-element numpy array"
+        # dummy_state = env.state  # envs here?
+        # assert isinstance(prior_policy(dummy_state), np.ndarray) and prior_policy(dummy_state).shape == (3,), "Prior policy must return a 3-element numpy array"
+        # assert isinstance(opp_policy(dummy_state), np.ndarray) and opp_policy(dummy_state).shape == (3,), "Opponent policy must return a 3-element numpy array"
         
         self.env = env  # For structured search
         self.envs = envs  # For structured search
         self.rollouts = rollouts
+        self.gamma = gamma
 
-    def act(self, node: Node):
-        probs = node.get_strategy() 
-        return np.random.choice(3, p=probs)
+    def reset(self):
+        self.env.reset()
+        self.envs.reset()
     
     @TimerRegistry.wrap_fn("MCTS.simulate_q_values")
     def plan(self, root, sims=400):
@@ -75,7 +86,7 @@ class MCTS:
             self.simulate(root)
 
         root.update_strategy()  # Update the average strategy after simulations
-        strategy = root.strategy_sum / np.sum(root.strategy_sum)
+        strategy = root.strategy_sum_p1 / np.sum(root.strategy_sum_p1)
         return np.random.choice(3, p=strategy)
 
     def simulate(self, node: Node):
@@ -83,13 +94,11 @@ class MCTS:
 
         # selection
         while node.is_expanded() and not node.terminal:
-            p1_strat = node.get_strategy()
-            a = np.random.choice(3, p=p1_strat)
-            # print(f"Selected action {a} for Player 1 based on strategy {p1_strat}")
-            b = np.random.choice(3, p=self.opp_policy(node.state))  # Opponent's action based on its policy
+            a1 = np.random.choice(3, p=node.get_strategy_p1(self.gamma))
+            a2 = np.random.choice(3, p=node.get_strategy_p2(self.gamma))
             
-            path.append((node, (a, b)))
-            node = node.children[a, b]
+            path.append((node, (a1, a2)))
+            node = node.children[a1, a2]
 
         # expansion
         if not node.is_expanded() and not node.terminal:  # non-terminal and not fully expanded
@@ -120,7 +129,7 @@ class MCTS:
                 node.children[a1, a2] = child
         
 
-    @TimerRegistry.wrap_fn("MCTS.rollout_vec")  # Other envs are stil running, and they randomly be done same time as a first timem env
+    @TimerRegistry.wrap_fn("MCTS.rollout_vec") 
     def rollout_vec(self, node: Node):
         actions = np.empty((self.rollouts, 2), dtype=np.int8)
 
@@ -132,9 +141,9 @@ class MCTS:
 
         while active.any():
             # a = self.act(node)
-            a = np.random.choice(3, size=self.rollouts, p=node.get_strategy())  # Player 1's actions based on its strategy
-            b = np.random.choice(3, size=self.rollouts, p=self.opp_policy(node.state))  # Opponent's action based on its policy  TODO: Iterate over each state
-            actions[:, 0], actions[:, 1] = a, b
+            a1 = np.random.choice(3, size=self.rollouts, p=node.get_strategy_p1(self.gamma))  # Player 1's actions based on its strategy
+            a2 = np.random.choice(3, size=self.rollouts, p=node.get_strategy_p2(self.gamma))  # Player 2's actions based on its strategy
+            actions[:, 0], actions[:, 1] = a1, a2
 
             _, r, d, _, _ = self.envs.step(actions)
 
@@ -155,23 +164,19 @@ class MCTS:
                 # A. Update the specific cell in the Q-matrix (Running Average)
                 node.Q_matrix[a1, a2] += (value - node.Q_matrix[a1, a2]) / node.N
                 
-                # B. Regret Update for Player 1
-                # We assume the opponent plays uniformly for now (p2_strat)
-                p2_strat = self.opp_policy(node.state)  # Opponent's strategy based on its policy
+                # B. Regret Updates
+                # --- P1 Regret (Maximize Q) ---
+                p2_strat = node.get_strategy_p2(self.gamma)
+                ev_p1 = np.dot(node.Q_matrix, p2_strat) # EV for each P1 action
+                current_ev_p1 = np.dot(node.get_strategy_p1(self.gamma), ev_p1)
+                node.regret_sum_p1 += (ev_p1 - current_ev_p1)
                 
-                # Calculate utility for each of our possible actions a (0, 1, 2)
-                # based on the Q_matrix and the opponent's strategy
-                ev_each_action = np.zeros(3)
-                for a in range(3):
-                    ev_each_action[a] = np.sum(node.Q_matrix[a, :] * p2_strat)
-                
-                # The value of our current strategy (what we actually got on average)
-                current_strategy = node.get_strategy()
-                expected_val = np.sum(ev_each_action * current_strategy)
-                
-                # Update regret: (Value of action a - Current strategy value)
-                for a in range(3):
-                    node.regret_sum[a] += (ev_each_action[a] - expected_val)
+                # --- P2 Regret (Minimize Q) ---
+                # P2 wants to minimize Q, so regret is (Current - Action_EV)
+                p1_strat = node.get_strategy_p1(self.gamma)
+                ev_p2 = np.dot(p1_strat, node.Q_matrix) # EV for each P2 action
+                current_ev_p2 = np.dot(p2_strat, ev_p2)
+                node.regret_sum_p2 += (current_ev_p2 - ev_p2)
                 
                 # C. Update the average strategy (to converge to Nash Equilibrium)
                 node.update_strategy()

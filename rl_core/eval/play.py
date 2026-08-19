@@ -6,14 +6,15 @@ import os
 from rich import print
 
 from rl_core.env.wrappers import TronPlay, TronView
+from .battle import make_agent
 
-def make_dqn(path, obs_shape, n_actions):
-    from rl_core.agents.dqn import QNetwork
-    return QNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
+# def make_dqn(path, obs_shape, n_actions):
+#     from rl_core.agents.dqn import QNetwork
+#     return QNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
-def make_rainbow(path, obs_shape, n_actions):
-    from rl_core.agents.rainbow import DuelingNetwork
-    return DuelingNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
+# def make_rainbow(path, obs_shape, n_actions):
+#     from rl_core.agents.rainbow import DuelingNetwork
+#     return DuelingNetwork.from_checkpoint(path, obs_shape, n_actions, device="cpu")
 
 def get_agent_files(agent_folder, num_agents):
     kek = Path("runs/") / agent_folder
@@ -52,7 +53,7 @@ def battle(path):
     if path[-4:] != ".pth":
         path = Path(path) / "A.pth"
 
-    agent = make_rainbow(path, obs_shape, n_actions)
+    agent = make_agent(path, obs_shape, n_actions)
     env = TronPlay(agent, size)  # Wrap the environment to play against agent2
     env = TronView(env)
 

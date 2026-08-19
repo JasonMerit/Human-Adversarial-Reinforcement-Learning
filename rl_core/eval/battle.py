@@ -34,7 +34,11 @@ def play(agent1, agent2, env: TronDuoEnv):
             break
     
 def battle(folder):
-    folder = Path("runs") / folder
+    if folder[:4] != "runs":
+        folder = Path("runs") / folder
+    else:
+        folder = Path(folder)
+    
     assert folder.exists(), f"Folder not found: {folder}"
     args = load_args(folder)
     size = args.size
