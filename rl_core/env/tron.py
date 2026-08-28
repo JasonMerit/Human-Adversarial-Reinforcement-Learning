@@ -1,5 +1,7 @@
 import numpy as np
 
+
+
 class Result:
     DRAW = 0
     BIKE2_CRASH = 1
@@ -13,8 +15,16 @@ class Tron:
 
     def reset(self):
         self.walls = np.zeros((self.size, self.size), dtype=np.int8)
-        self.pos1 = np.array([self.size // 6, self.size // 2], dtype=np.int8)
-        self.pos2 = np.array([5 * self.size // 6, self.size // 2], dtype=np.int8)
+        # kek = draw_circle(self.walls, self.size // 3)
+        # print(f"Spawned circle at {kek}")
+        # pos1, pos2 = draw_circle(self.walls, self.size // 3)
+
+        pos1 = [self.size // 6, self.size // 2]
+        pos2 = [5 * self.size // 6, self.size // 2]
+
+        self.pos1 = np.array(pos1, dtype=np.int8)
+        self.pos2 = np.array(pos2, dtype=np.int8)
+
         # self.walls[self.pos1[1], self.pos1[0]] = 1
         # self.walls[self.pos2[1], self.pos2[0]] = 2
 
@@ -55,4 +65,38 @@ class Tron:
             return Result.BIKE2_CRASH  
 
         return Result.PLAYING
-        
+
+# https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+def draw_circle(walls, radius):
+    """
+    Draws a circle using the Midpoint Circle Algorithm.
+    
+    :param walls: The 2D numpy array to draw the circle on.
+    :param radius: The radius of the circle to be drawn.
+    """
+    r = radius
+    center = walls.shape[0] // 2
+    x, y, p = r, 0, 1 - r
+    spawns = set()
+
+    while x >= y:
+        for j, k in [(1, 1), (1, -1), (-1, 1), (-1, -1)]:
+            spawns.add((center + k * y, center + j * x))
+        y += 1
+        if p <= 0:
+            p += 2 * y + 1
+        else:
+            x -= 1
+            p += 2 * y - 2 * x + 1
+    spawns = list(spawns)
+
+    spawns.sort(key=lambda x: x[1])
+    for spawn in spawns[:len(spawns)//2]:
+        walls[spawn[0], spawn[1]] = 1
+    for spawn in spawns[len(spawns)//2:]:
+        walls[spawn[0], spawn[1]] = 2
+
+    spawns_index = np.random.randint(len(spawns))
+    print(f"Spawns: {spawns}")
+    # quit()
+    return spawns[spawns_index]

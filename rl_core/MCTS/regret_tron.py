@@ -11,7 +11,7 @@ from .vec_duo_env import VecTronDuoEnv
 
 if __name__ == "__main__":
     from tqdm import trange
-    SIZE=7
+    SIZE=25
     NUM_ENVS = 64
 
     # actual_env = TronDuoEnv(SIZE)

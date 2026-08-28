@@ -27,6 +27,7 @@ python -m rl_core.battle runs\BenchMark_2 runs\BenchMark_2
 python -m rl_core.train_ppo --no-save --num-envs 3 --total-timesteps 1000
 python -m rl_core.rainbow.train --save False --num_envs 5
 python -m rl_core.clean_rainbow.train --debug
+python -m rl_core.MCTS.regret_tron
 
 
 conda env create -f environment.yml
