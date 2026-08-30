@@ -1,4 +1,5 @@
 import numpy as np
+from rich import print
 
 
 
@@ -9,7 +10,12 @@ class Result:
     PLAYING = -1
 
 class Tron:
-    
+
+    """A class representing the Tron game.
+
+    The game is played on a grid with coordinates (y, x).
+    """
+
     def __init__(self, size):
         self.size = size
 
@@ -17,13 +23,15 @@ class Tron:
         self.walls = np.zeros((self.size, self.size), dtype=np.int8)
         # kek = draw_circle(self.walls, self.size // 3)
         # print(f"Spawned circle at {kek}")
-        # pos1, pos2 = draw_circle(self.walls, self.size // 3)
+        pos1, pos2 = draw_circle(self.walls, self.size // 3)
+        print(f"Spawned bikes at {pos1} and {pos2}")
 
-        pos1 = [self.size // 6, self.size // 2]
-        pos2 = [5 * self.size // 6, self.size // 2]
+        # pos1 = [self.size // 6, self.size // 2]
+        # pos2 = [5 * self.size // 6, self.size // 2]
 
         self.pos1 = np.array(pos1, dtype=np.int8)
         self.pos2 = np.array(pos2, dtype=np.int8)
+
 
         # self.walls[self.pos1[1], self.pos1[0]] = 1
         # self.walls[self.pos2[1], self.pos2[0]] = 2
@@ -71,7 +79,7 @@ def draw_circle(walls, radius):
     """
     Draws a circle using the Midpoint Circle Algorithm.
     
-    :param walls: The 2D numpy array to draw the circle on.
+    :param walls: The 2D numpy array to draw the circle on. Debugging purposes only, not used for actual game logic.
     :param radius: The radius of the circle to be drawn.
     """
     r = radius
@@ -81,22 +89,25 @@ def draw_circle(walls, radius):
 
     while x >= y:
         for j, k in [(1, 1), (1, -1), (-1, 1), (-1, -1)]:
-            spawns.add((center + k * y, center + j * x))
+            # spawns.add((center + k * y, center + j * x))  # Left and right sides
+            spawns.add((center + k * x, center + j * y))  # Top and bottom sides
         y += 1
         if p <= 0:
             p += 2 * y + 1
         else:
             x -= 1
             p += 2 * y - 2 * x + 1
+
     spawns = list(spawns)
+    left = [spawn for spawn in spawns if spawn[0] < center]
+    right = [spawn for spawn in spawns if spawn[0] >= center]
+    print(f"Left spawns: {left}")
+    print(f"Right spawns: {right}")
 
-    spawns.sort(key=lambda x: x[1])
-    for spawn in spawns[:len(spawns)//2]:
-        walls[spawn[0], spawn[1]] = 1
-    for spawn in spawns[len(spawns)//2:]:
-        walls[spawn[0], spawn[1]] = 2
+    # Debugging: Mark the spawn points on the walls array
+    # for spawn in left:
+    #     walls[spawn[1], spawn[0]] = 1
+    # for spawn in right:
+    #     walls[spawn[1], spawn[0]] = 2
 
-    spawns_index = np.random.randint(len(spawns))
-    print(f"Spawns: {spawns}")
-    # quit()
-    return spawns[spawns_index]
+    return left[np.random.randint(0, len(left))], right[np.random.randint(0, len(right))]
